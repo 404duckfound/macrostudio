@@ -2,6 +2,7 @@ import { useTauriIpc } from "./hooks/useTauriIpc";
 import TitleBar from "./components/chrome/TitleBar";
 import Navbar from "./components/nav/Navbar";
 import ProfileRail from "./components/profiles/ProfileRail";
+import Workspace from "./components/workspace/Workspace";
 import "./theme.css";
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
         <Navbar />
         <div className="app-content">
           <ProfileRail />
+          <Workspace />
         </div>
       </div>
     </div>

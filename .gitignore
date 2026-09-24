@@ -15,6 +15,9 @@ dist-ssr
 # Rust / Tauri
 src-tauri/target
 
+# Stitch exports (local only)
+stitch/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
