@@ -23,7 +23,7 @@ Tauri v2 + React 19 + Zustand + Vite 8 desktop app (Windows-first). Design token
 - `windows` crate is `0.58`: module is `Win32::System::Diagnostics::ToolHelp` (capital H — feature `Win32_System_Diagnostics_ToolHelp`); `MSG` is in `UI::WindowsAndMessaging`; null HWND is `HWND(std::ptr::null_mut())`; `app.emit` needs `use tauri::Emitter` in scope.
 - `services/watcher.rs` shares the `AppHandle` via `static mut APP` + `std::ptr::addr_of!` — don't "simplify" to `APP.clone()` (hits `static_mut_refs` warning and breaks warning-free check).
 - `tools/AutoHotkey64.exe` **is in the repo** and bundled (`bundle.resources: ["../tools/*"]`); `ahk_manager.rs` spawns it with the **relative path** `tools/AutoHotkey64.exe` (works because cwd is the project root in dev).
-- Profiles/scripts are stored under raw `%APPDATA%/macro-studio/profiles` (JSON + `.ahk`) via `commands/profile.rs` — plain `std::env::var("APPDATA")`, not the Tauri path API. Windows-only assumption.
+- Profiles/scripts are stored under raw `%APPDATA%/macro-studio/profiles` (JSON + `.ahk`) via `commands/profile.rs` — plain `std::env::var("APPDATA")`, not the Tauri path API. Windows-only assumption. `profile_save` always writes both `{id}.json` and the compiled `{id}.ahk`; `profile_list` backfills a missing `.ahk` for older profiles.
 - `tauri.conf.json` declares an `overlay` window at `/overlay.html`, but **that HTML file does not exist**; `OverlayPanel.tsx` and `AhkEditor.tsx` are currently unwired (not imported by `App.tsx`).
 - `capabilities/default.json` grants permissions to windows `["main", "overlay"]`; a new window label needs adding there.
 - `tsconfig` is strict with `noUnusedLocals`/`noUnusedParameters` — unused imports fail `pnpm build`.

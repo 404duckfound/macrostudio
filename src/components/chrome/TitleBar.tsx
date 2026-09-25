@@ -61,8 +61,18 @@ export default function TitleBar() {
       onDoubleClick={toggleMaximize}
     >
       <div className="titlebar-left" data-tauri-drag-region>
-        <img src={appIcon} alt="" width={20} height={20} className="titlebar-logo" />
-        <span className="titlebar-title">Macro Studio</span>
+        <img
+          src={appIcon}
+          alt=""
+          width={20}
+          height={20}
+          className="titlebar-logo"
+          draggable={false}
+          data-tauri-drag-region
+        />
+        <span className="titlebar-title" data-tauri-drag-region>
+          Macro Studio
+        </span>
       </div>
       <div
         className="titlebar-controls"

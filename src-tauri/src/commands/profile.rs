@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::services::generator::{compile_to_ahk_v2, Action};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Profile {
     pub id: String,
@@ -17,6 +19,13 @@ fn profiles_dir() -> Result<std::path::PathBuf, String> {
     Ok(dir)
 }
 
+fn write_ahk_file(dir: &std::path::Path, profile: &Profile) {
+    let actions: Vec<Action> = serde_json::from_value(profile.actions.clone()).unwrap_or_default();
+    let script = compile_to_ahk_v2(&profile.trigger, &actions);
+    let path = dir.join(format!("{}.ahk", profile.id));
+    let _ = std::fs::write(path, script);
+}
+
 #[tauri::command]
 pub fn profile_list() -> Result<Vec<Profile>, String> {
     let dir = profiles_dir()?;
@@ -31,6 +40,12 @@ pub fn profile_list() -> Result<Vec<Profile>, String> {
             out.push(p);
         }
     }
+    for p in &out {
+        let ahk = dir.join(format!("{}.ahk", p.id));
+        if !ahk.exists() {
+            write_ahk_file(&dir, p);
+        }
+    }
     Ok(out)
 }
 
@@ -39,7 +54,9 @@ pub fn profile_save(profile: Profile) -> Result<(), String> {
     let dir = profiles_dir()?;
     let path = dir.join(format!("{}.json", profile.id));
     let content = serde_json::to_string_pretty(&profile).map_err(|e| e.to_string())?;
-    std::fs::write(path, content).map_err(|e| e.to_string())
+    std::fs::write(path, content).map_err(|e| e.to_string())?;
+    write_ahk_file(&dir, &profile);
+    Ok(())
 }
 
 #[tauri::command]
