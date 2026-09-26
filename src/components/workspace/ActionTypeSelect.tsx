@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Check, ChevronDown, ChevronUp, CodeXml, Keyboard, Mouse, Play, Search } from "lucide-react";
 import type { MacroAction } from "../../types";
 
 export type ActionTypeValue = MacroAction["type"];
@@ -38,78 +39,10 @@ export const ACTION_TYPES: ActionTypeMeta[] = [
 ];
 
 function TypeIcon({ value }: { value: ActionTypeValue }) {
-  if (value === "keys") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect
-          x="2"
-          y="5"
-          width="20"
-          height="14"
-          rx="2"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-        />
-        <path
-          d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M10 13h.01M14 13h.01M18 13h.01M7 16.5h10"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-      </svg>
-    );
-  }
-  if (value === "mouse") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect
-          x="7"
-          y="3"
-          width="10"
-          height="18"
-          rx="5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-        />
-        <line
-          x1="12"
-          y1="3"
-          x2="12"
-          y2="9"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-      </svg>
-    );
-  }
-  if (value === "custom") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          d="M7 4.5v15l13-7.5z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M8 6L3 12l5 6M16 6l5 6-5 6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  if (value === "keys") return <Keyboard aria-hidden="true" />;
+  if (value === "mouse") return <Mouse aria-hidden="true" />;
+  if (value === "custom") return <Play aria-hidden="true" />;
+  return <CodeXml aria-hidden="true" />;
 }
 
 export default function ActionTypeSelect({
@@ -183,41 +116,14 @@ export default function ActionTypeSelect({
           <span className="action-placeholder">Select action type…</span>
         )}
         <span className="action-chevron" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <path
-              d={open ? "M6 15l6-6 6 6" : "M6 9l6 6 6-6"}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          {open ? <ChevronUp /> : <ChevronDown />}
         </span>
       </button>
       {open && !disabled && (
         <div className="action-select-pop" role="listbox">
           <div className="action-search-row">
             <span className="action-search-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <circle
-                  cx="11"
-                  cy="11"
-                  r="7"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                />
-                <line
-                  x1="16.5"
-                  y1="16.5"
-                  x2="21"
-                  y2="21"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              </svg>
+              <Search />
             </span>
             <input
               className="action-search"
@@ -253,16 +159,7 @@ export default function ActionTypeSelect({
                 </span>
                 {active && (
                   <span className="action-check" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path
-                        d="M4 12.5l5 5L20 6.5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
+                    <Check />
                   </span>
                 )}
               </button>

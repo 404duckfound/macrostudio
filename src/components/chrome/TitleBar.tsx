@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Copy, Minus, Square, X } from "lucide-react";
 import appIcon from "../../assets/app-icon.png";
 
 export default function TitleBar() {
@@ -85,9 +86,7 @@ export default function TitleBar() {
           title="Minimize"
           onClick={minimize}
         >
-          <svg viewBox="0 0 12 12" aria-hidden="true">
-            <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
+          <Minus aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -97,14 +96,9 @@ export default function TitleBar() {
           onClick={toggleMaximize}
         >
           {maximized ? (
-            <svg viewBox="0 0 12 12" aria-hidden="true">
-              <rect x="3.5" y="1.5" width="7" height="7" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" />
-              <path d="M1.5 3.5v6a1 1 0 0 0 1 1h6" fill="none" stroke="currentColor" strokeWidth="1.3" />
-            </svg>
+            <Copy aria-hidden="true" />
           ) : (
-            <svg viewBox="0 0 12 12" aria-hidden="true">
-              <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" />
-            </svg>
+            <Square aria-hidden="true" />
           )}
         </button>
         <button
@@ -114,10 +108,7 @@ export default function TitleBar() {
           title="Close"
           onClick={close}
         >
-          <svg viewBox="0 0 12 12" aria-hidden="true">
-            <line x1="2.5" y1="2.5" x2="9.5" y2="9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            <line x1="9.5" y1="2.5" x2="2.5" y2="9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
+          <X aria-hidden="true" />
         </button>
       </div>
     </header>

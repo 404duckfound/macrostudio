@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { AppWindow, Crosshair, Ellipsis, FolderOpen, Plus } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import Modal from "../common/Modal";
 import type { Profile } from "../../types";
@@ -19,27 +20,7 @@ async function refresh() {
 }
 
 function ProfileIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect
-        x="3"
-        y="4"
-        width="18"
-        height="14"
-        rx="2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path
-        d="M12 10.5v5M9.5 13h5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <path d="M8 21h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
+  return <AppWindow aria-hidden="true" />;
 }
 
 function basename(path: string): string {
@@ -168,10 +149,10 @@ function ProfileFields({
                 }}
                 disabled={!hasActive}
               >
-                ◎ Detect
+                <Crosshair className="exe-btn-icon" aria-hidden="true" /> Detect
               </button>
               <button className="btn-secondary exe-btn" type="button" title="Browse for executable" onClick={browseExe}>
-                🗀 Browse
+                <FolderOpen className="exe-btn-icon" aria-hidden="true" /> Browse
               </button>
             </div>
             <div className="exe-path" title={browsePath || targetExe}>
@@ -358,7 +339,7 @@ export default function ProfileRail() {
       <div className="rail-head">
         <span className="rail-title">Profiles</span>
         <button className="rail-add" type="button" aria-label="Add profile" title="Add profile" onClick={openAdd}>
-          +
+          <Plus aria-hidden="true" />
         </button>
       </div>
       <div className="rail-list">
@@ -385,7 +366,7 @@ export default function ProfileRail() {
                 setOpenMenuId(openMenuId === p.id ? null : p.id);
               }}
             >
-              ⋯
+              <Ellipsis aria-hidden="true" />
             </button>
             {openMenuId === p.id && (
               <div className="rail-menu" onClick={(e) => e.stopPropagation()}>

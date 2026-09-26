@@ -61,16 +61,6 @@ button {
 }
 .btn-secondary:hover { background: var(--bg-interactive); }
 
-.layout {
-  display: grid;
-  grid-template-columns: 280px 1fr 360px;
-  grid-template-rows: 1fr 240px;
-  flex: 1;
-  min-height: 0;
-  gap: 1px;
-  background: var(--border-muted);
-}
-
 .app-shell {
   display: flex;
   flex-direction: column;
@@ -78,8 +68,6 @@ button {
   background: var(--bg-base);
   overflow: hidden;
 }
-
-.app-shell-row { flex-direction: row; }
 
 .app-body-row {
   flex: 1;
@@ -94,14 +82,6 @@ button {
   min-width: 0;
   min-height: 0;
   background: var(--bg-base);
-}
-
-.app-main-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
 }
 
 .titlebar {
@@ -179,10 +159,6 @@ button {
 
 h1, h2, h3, p { margin: 0; }
 h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
-
-.sidebar { grid-row: 1 / 3; }
-.log { grid-column: 2 / 4; background: var(--bg-base); }
-.layout.single { grid-template-columns: 1fr; grid-template-rows: 1fr; }
 
 .navbar {
   background: var(--bg-base);
@@ -269,6 +245,7 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
   padding: 0;
 }
 .rail-add:hover { background: var(--bg-interactive); }
+.rail-add svg { width: 16px; height: 16px; display: block; }
 
 .rail-list {
   flex: 1;
@@ -338,6 +315,7 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
   justify-content: center;
 }
 .rail-dots:hover { background: var(--bg-interactive); color: var(--text-primary); }
+.rail-dots svg { width: 16px; height: 16px; display: block; }
 
 .rail-menu {
   position: absolute;
@@ -381,7 +359,6 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
 
 .modal {
   width: 100%;
-  max-width: 400px;
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: 12px;
@@ -406,28 +383,19 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
   border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
+.modal-x svg { width: 14px; height: 14px; display: block; }
 .modal-x:hover { background: var(--bg-interactive); color: var(--text-primary); }
 
 .modal-body { padding: 14px; }
 
 .modal-form { display: flex; flex-direction: column; gap: 8px; }
 
-.modal-text { font-size: 14px; color: var(--text-secondary); }
-
 .modal-error { color: var(--status-danger); font-size: 13px; }
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 4px;
-}
-.modal-actions .btn-secondary,
-.modal-actions .btn-primary,
-.modal-actions .btn-danger { min-height: 36px; font-size: 14px; padding: 0 16px; }
 
 .btn-danger {
   background: var(--status-danger);
@@ -437,20 +405,6 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
 }
 .btn-danger:hover { background: #e04a56; }
 .btn-danger:disabled { opacity: 0.6; cursor: default; }
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 26px;
-  padding: 0 10px;
-  border-radius: 9999px;
-  font-size: 13px;
-  font-weight: 500;
-}
-.badge-active { background: #0b2a1f; color: #3ddc97; }
-.badge-idle { background: var(--bg-surface); color: var(--text-secondary); }
-.badge-error { background: #301014; color: #ff8a93; }
 
 input, select {
   background: var(--bg-base);
@@ -463,16 +417,8 @@ input::placeholder { color: var(--text-disabled); }
 input:focus, select:focus { outline: none; }
 select { appearance: none; }
 
-.exe-row { display: flex; gap: 8px; align-items: center; }
-.exe-row select { flex: 1; min-width: 0; }
-.exe-capture { flex-shrink: 0; min-height: 44px; font-size: 13px; padding: 0 12px; }
-.exe-capture:disabled { opacity: 0.5; cursor: default; }
-
 .modal-field { display: flex; flex-direction: column; gap: 6px; }
 .modal-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.modal-hint { font-size: 12px; color: var(--text-secondary); }
-.radio-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-primary); cursor: pointer; }
-.radio-row input { width: 16px; height: 16px; min-height: 0; margin: 0; padding: 0; accent-color: var(--accent-primary); cursor: pointer; }
 
 .modal-wide { max-width: 560px; }
 .modal-head-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -551,7 +497,8 @@ select { appearance: none; }
 .scope-card-danger:hover { border-color: #4a2328; }
 .exe-row { display: flex; gap: 8px; align-items: center; width: 100%; }
 .exe-row select { flex: 1; min-width: 0; }
-.exe-btn { flex-shrink: 0; min-height: 40px; font-size: 13px; padding: 0 12px; font-weight: 600; }
+.exe-btn { flex-shrink: 0; min-height: 40px; font-size: 13px; padding: 0 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.exe-btn-icon { width: 16px; height: 16px; display: block; flex-shrink: 0; }
 .exe-btn:disabled { opacity: 0.5; cursor: default; }
 .exe-path {
   width: 100%;
@@ -630,14 +577,6 @@ select { appearance: none; }
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.flow-sub {
-  font-size: 11px;
-  color: var(--text-disabled);
-  margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -724,7 +663,6 @@ select { appearance: none; }
 }
 .inspector-head-left { display: flex; align-items: center; gap: 8px; }
 .inspector-head-left h3 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-.inspector-dot { width: 8px; height: 8px; border-radius: 9999px; background: var(--accent-primary); }
 .inspector-body { padding: 16px; display: flex; flex-direction: column; gap: 16px; flex: 1; overflow-y: auto; }
 .field label { display: block; font-size: 12px; font-weight: 500; color: #c3c6d2; margin-bottom: 6px; }
 .field-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
@@ -843,7 +781,6 @@ select { appearance: none; }
 .action-delete { border: none; background: none; min-height: 0; padding: 4px; font-size: 11px; color: #8e98a8; border-radius: 4px; }
 .action-delete:hover { color: var(--status-danger); }
 .action-add-controls { display: flex; gap: 8px; margin-top: 8px; }
-.action-add-controls select { flex: 1; min-width: 0; }
 .action-select { position: relative; flex: 1; min-width: 0; }
 .action-select-btn {
   width: 100%;

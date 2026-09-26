@@ -9,5 +9,4 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   </React.StrictMode>,
 );
 
-// Uygulama genelinde sag tik menusunu kapat
 document.addEventListener("contextmenu", (e) => e.preventDefault());

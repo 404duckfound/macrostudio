@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { X } from "lucide-react";
 
 interface ModalProps {
   title: string;
@@ -33,7 +34,7 @@ export default function Modal({ title, subtitle, icon, onClose, children }: Moda
             </span>
           </div>
           <button className="modal-x" type="button" aria-label="Close" onClick={onClose}>
-            ✕
+            <X aria-hidden="true" />
           </button>
         </div>
         <div className="modal-body">{children}</div>
