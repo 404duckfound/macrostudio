@@ -132,8 +132,6 @@ export default function Workspace() {
   const [saving, setSaving] = useState(false);
 
   const [triggerType, setTriggerType] = useState("Hotkey Press");
-  const [triggerMode, setTriggerMode] = useState("Toggle ON/OFF");
-  const [repeatHeld, setRepeatHeld] = useState(false);
 
   useEffect(() => {
     setDraftTriggers(active?.triggers.length ? [...active.triggers] : []);
@@ -357,15 +355,6 @@ export default function Workspace() {
             </div>
           </div>
 
-          <div className="field">
-            <label>Trigger Mode</label>
-            <select value={triggerMode} onChange={(e) => setTriggerMode(e.target.value)}>
-              <option>Toggle ON/OFF</option>
-              <option>Hold Down / While Pressed</option>
-              <option>Single Fire / Execute Once</option>
-            </select>
-          </div>
-
           <div className="toggles">
             <div className="toggle-row">
               <div>
@@ -378,21 +367,6 @@ export default function Workspace() {
                 aria-checked={draftBlockKey}
                 className={`switch ${draftBlockKey ? "switch-on" : ""}`}
                 onClick={() => setDraftBlockKey((v) => !v)}
-              >
-                <span className="switch-thumb" />
-              </button>
-            </div>
-            <div className="toggle-row">
-              <div>
-                <span className="toggle-title">Repeat While Held</span>
-                <span className="toggle-sub">Loop execution continuously</span>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={repeatHeld}
-                className={`switch ${repeatHeld ? "switch-on" : ""}`}
-                onClick={() => setRepeatHeld((v) => !v)}
               >
                 <span className="switch-thumb" />
               </button>
