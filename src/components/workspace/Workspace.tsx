@@ -122,37 +122,26 @@ function ActionCard({
 export default function Workspace() {
   const activeId = useProfileStore((s) => s.activeId);
   const profiles = useProfileStore((s) => s.profiles);
-  const activeWindow = useProfileStore((s) => s.activeWindow);
   const active = profiles.find((p) => p.id === activeId) ?? null;
 
   const [draftTriggers, setDraftTriggers] = useState<string[]>(active?.triggers ?? ["F9"]);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [draftActions, setDraftActions] = useState<MacroAction[]>(active?.actions ?? []);
-  const [draftTarget, setDraftTarget] = useState(active?.target_exe ?? "");
   const [draftBlockKey, setDraftBlockKey] = useState(active?.block_key ?? true);
   const [recording, setRecording] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [exes, setExes] = useState<string[]>([]);
 
   const [triggerType, setTriggerType] = useState("Hotkey Press");
   const [triggerMode, setTriggerMode] = useState("Toggle ON/OFF");
-  const [cooldown, setCooldown] = useState(250);
   const [repeatHeld, setRepeatHeld] = useState(false);
 
   useEffect(() => {
     setDraftTriggers(active?.triggers.length ? [...active.triggers] : []);
     setSelectedIdx(0);
     setDraftActions(active?.actions ? [...active.actions] : []);
-    setDraftTarget(active?.target_exe ?? "");
     setDraftBlockKey(active?.block_key ?? true);
     setRecording(false);
-  }, [active?.id, active?.triggers, active?.actions, active?.target_exe, active?.block_key]);
-
-  useEffect(() => {
-    invoke<string[]>("system_running_exes")
-      .then(setExes)
-      .catch(() => setExes([]));
-  }, []);
+  }, [active?.id, active?.triggers, active?.actions, active?.block_key]);
 
   const sel = Math.min(selectedIdx, Math.max(0, draftTriggers.length - 1));
 
@@ -174,17 +163,11 @@ export default function Workspace() {
     return () => document.removeEventListener("keydown", onKey);
   }, [recording, sel]);
 
-  const exeOptions = [...exes];
-  if (activeWindow && activeWindow !== "Unknown" && !exeOptions.some((e) => e.toLowerCase() === activeWindow.toLowerCase())) {
-    exeOptions.push(activeWindow);
-  }
-
   const selectedChips = parseTrigger(draftTriggers[sel] ?? "");
   const dirty =
     active != null &&
     (JSON.stringify(draftTriggers) !== JSON.stringify(active.triggers) ||
       JSON.stringify(draftActions) !== JSON.stringify(active.actions) ||
-      (draftTarget || "") !== (active.target_exe ?? "") ||
       draftBlockKey !== active.block_key);
 
   function addTrigger() {
@@ -227,7 +210,6 @@ export default function Workspace() {
       const updated: Profile = {
         ...active,
         triggers: cleanTriggers,
-        target_exe: draftTarget.trim() || null,
         block_key: draftBlockKey,
         actions: draftActions,
       };
@@ -382,42 +364,6 @@ export default function Workspace() {
               <option>Hold Down / While Pressed</option>
               <option>Single Fire / Execute Once</option>
             </select>
-          </div>
-
-          <div className="field">
-            <label>Trigger Cooldown</label>
-            <div className="cooldown-wrap">
-              <input
-                type="number"
-                min={0}
-                value={cooldown}
-                onChange={(e) => setCooldown(Number(e.target.value))}
-              />
-              <span className="cooldown-unit">ms</span>
-            </div>
-          </div>
-
-          <div className="field">
-            <label>Target Application</label>
-            <div className="exe-row">
-              <select value={draftTarget} onChange={(e) => setDraftTarget(e.target.value)} aria-label="Target exe">
-                <option value="">No target (all windows)</option>
-                {exeOptions.map((x) => (
-                  <option key={x} value={x}>
-                    {x}
-                  </option>
-                ))}
-              </select>
-              <button
-                className="btn-secondary exe-capture"
-                type="button"
-                title="Set active window as target"
-                onClick={() => setDraftTarget(activeWindow)}
-                disabled={!activeWindow || activeWindow === "Unknown"}
-              >
-                Active window
-              </button>
-            </div>
           </div>
 
           <div className="toggles">

@@ -651,9 +651,6 @@ select { appearance: none; }
   flex-shrink: 0;
 }
 .clear-btn:hover { color: var(--status-danger); }
-.cooldown-wrap { position: relative; }
-.cooldown-wrap input { font-family: "JetBrains Mono", monospace; font-size: 14px; padding-right: 40px; }
-.cooldown-unit { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 11px; font-family: monospace; color: var(--text-disabled); }
 .toggles { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; border-top: 1px solid #1c222c; }
 .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .toggle-title { display: block; font-size: 13px; font-weight: 500; color: var(--text-primary); }
