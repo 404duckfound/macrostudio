@@ -6,10 +6,35 @@ use crate::services::generator::{compile_to_ahk_v2, Action};
 pub struct Profile {
     pub id: String,
     pub name: String,
-    pub trigger: String,
+    #[serde(default)]
+    pub triggers: Vec<String>,
     pub target_exe: Option<String>,
+    #[serde(default = "default_true")]
     pub enabled: bool,
+    #[serde(default)]
     pub actions: serde_json::Value,
+    #[serde(default = "default_true")]
+    pub block_key: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+/// Eski tek-triggirli JSON'u yeni semaya cevirir, legacy "trigger" anahtarini siler.
+fn migrate_value(mut v: serde_json::Value) -> serde_json::Value {
+    if v.get("triggers").is_none() {
+        let legacy = v
+            .get("trigger")
+            .and_then(|t| t.as_str())
+            .unwrap_or("F9")
+            .to_string();
+        if let Some(obj) = v.as_object_mut() {
+            obj.insert("triggers".to_string(), serde_json::json!([legacy]));
+            obj.remove("trigger");
+        }
+    }
+    v
 }
 
 fn profiles_dir() -> Result<std::path::PathBuf, String> {
@@ -21,7 +46,7 @@ fn profiles_dir() -> Result<std::path::PathBuf, String> {
 
 fn write_ahk_file(dir: &std::path::Path, profile: &Profile) {
     let actions: Vec<Action> = serde_json::from_value(profile.actions.clone()).unwrap_or_default();
-    let script = compile_to_ahk_v2(&profile.trigger, &actions);
+    let script = compile_to_ahk_v2(&profile.triggers, profile.block_key, &actions);
     let path = dir.join(format!("{}.ahk", profile.id));
     let _ = std::fs::write(path, script);
 }
@@ -36,7 +61,14 @@ pub fn profile_list() -> Result<Vec<Profile>, String> {
             continue;
         }
         let content = std::fs::read_to_string(entry.path()).map_err(|e| e.to_string())?;
-        if let Ok(p) = serde_json::from_str::<Profile>(&content) {
+        let value: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+        let needs_rewrite = value.get("triggers").is_none();
+        let migrated = migrate_value(value);
+        if let Ok(p) = serde_json::from_value::<Profile>(migrated.clone()) {
+            if needs_rewrite {
+                let pretty = serde_json::to_string_pretty(&migrated).map_err(|e| e.to_string())?;
+                std::fs::write(entry.path(), pretty).map_err(|e| e.to_string())?;
+            }
             out.push(p);
         }
     }
@@ -67,4 +99,21 @@ pub fn profile_delete(profile_id: String) -> Result<(), String> {
     let _ = std::fs::remove_file(json);
     let _ = std::fs::remove_file(ahk);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_single_trigger_migrates_to_triggers() {
+        let old = serde_json::json!({
+            "id": "x", "name": "N", "trigger": "Ctrl+Shift+F1",
+            "target_exe": null, "enabled": true, "actions": []
+        });
+        let migrated = migrate_value(old);
+        let p: Profile = serde_json::from_value(migrated).unwrap();
+        assert_eq!(p.triggers, vec!["Ctrl+Shift+F1".to_string()]);
+        assert!(p.block_key);
+    }
 }
