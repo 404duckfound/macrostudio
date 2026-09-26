@@ -549,6 +549,7 @@ select { appearance: none; }
 }
 .trigger-card-recording { border-color: var(--accent-primary); box-shadow: 0 0 0 1px var(--accent-primary); }
 .trigger-card-left { display: flex; align-items: center; gap: 14px; }
+.trigger-card-left .trigger-chips { margin-top: 0; }
 .trigger-icon {
   width: 36px;
   height: 36px;
@@ -684,14 +685,13 @@ select { appearance: none; }
   transition: left 0.15s ease;
 }
 .switch-on .switch-thumb { left: 22px; background: var(--bg-base); }
-.inspector-foot {
-  padding: 16px;
-  border-top: 1px solid #1c222c;
-  background: #0b0e13;
+.flow-head-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
+.flow-head-actions .flow-profile { max-width: 140px; }
 .btn-trigger-delete {
   height: 40px;
   min-height: 40px;
@@ -703,11 +703,12 @@ select { appearance: none; }
   font-size: 12px;
   font-weight: 500;
 }
-.btn-trigger-delete:hover { background: #2e1215; }
+.btn-trigger-delete:hover:not(:disabled) { background: #2e1215; }
+.btn-trigger-delete:disabled { opacity: 0.4; cursor: default; }
 .btn-trigger-save {
-  flex: 1;
   height: 40px;
   min-height: 40px;
+  padding: 0 18px;
   border: none;
   border-radius: 8px;
   background: var(--accent-primary);
@@ -752,6 +753,16 @@ select { appearance: none; }
 .block-row > input { flex: 1; min-width: 0; }
 .block-row .action-grid { flex: 1; min-width: 0; }
 .block-kind { font-size: 11px; font-weight: 600; color: var(--accent-primary); text-transform: uppercase; flex-shrink: 0; }
+.coord-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.coord-toggle input { min-height: 0; width: 16px; height: 16px; cursor: pointer; }
 .block-add-row { display: flex; gap: 8px; }
 .block-add-row button {
   flex: 1;

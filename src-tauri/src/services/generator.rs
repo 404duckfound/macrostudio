@@ -67,7 +67,13 @@ pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool) -> String {
                                 script.push_str(&format!("    Send(\"{escaped}\")\n"));
                             }
                             Block::Mouse { button, x, y } => {
-                                script.push_str(&format!("    Click({x}, {y}, \"{button}\")\n"));
+                                if *x == 0 && *y == 0 {
+                                    script.push_str(&format!("    Click(\"{button}\")\n"));
+                                } else {
+                                    script.push_str(&format!(
+                                        "    Click({x}, {y}, \"{button}\")\n"
+                                    ));
+                                }
                             }
                             Block::Delay { ms } => {
                                 script.push_str(&format!("    Sleep({ms})\n"));
@@ -155,6 +161,23 @@ mod tests {
             true,
         );
         assert!(out.contains("    Send(\"ab\")\n    Sleep(50)\n    Click(10, 20, \"Left\")\n"));
+    }
+
+    #[test]
+    fn zero_coords_click_current_pointer() {
+        let out = compile_to_ahk_v2(
+            &[trig(
+                "F9",
+                vec![custom(vec![Block::Mouse {
+                    button: "Right".to_string(),
+                    x: 0,
+                    y: 0,
+                }])],
+            )],
+            true,
+        );
+        assert!(out.contains("    Click(\"Right\")\n"));
+        assert!(!out.contains("Click(0, 0,"));
     }
 
     #[test]

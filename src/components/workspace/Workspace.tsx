@@ -69,19 +69,56 @@ const BLOCK_LABELS: Record<ActionBlock["kind"], string> = {
   delay: "Delay",
 };
 
-function BlockRow({
+const KEY_PRESETS = [
+  "Enter", "Tab", "Escape", "Space", "Backspace", "Delete",
+  "Up", "Down", "Left", "Right", "Home", "End", "PageUp", "PageDown",
+  "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+  "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+  "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+];
+
+const MOUSE_BUTTONS = ["Left", "Right", "Middle"];
+
+function KeysInput({
   block,
   onChange,
-  onDelete,
 }: {
-  block: ActionBlock;
+  block: { kind: "keys"; keys: string };
   onChange: (b: ActionBlock) => void;
-  onDelete: () => void;
 }) {
+  const [mode, setMode] = useState<"preset" | "custom">(
+    KEY_PRESETS.includes(block.keys) || block.keys === "" ? "preset" : "custom",
+  );
   return (
-    <div className="block-row">
-      <span className="block-kind">{BLOCK_LABELS[block.kind]}</span>
-      {block.kind === "keys" && (
+    <>
+      <select
+        value={mode}
+        aria-label="Keys input mode"
+        onChange={(e) => {
+          const next = e.target.value as "preset" | "custom";
+          setMode(next);
+          onChange({ kind: "keys", keys: next === "preset" ? block.keys || "Enter" : "" });
+        }}
+      >
+        <option value="preset">Pick key</option>
+        <option value="custom">Type keys</option>
+      </select>
+      {mode === "preset" ? (
+        <select
+          value={KEY_PRESETS.includes(block.keys) ? block.keys : ""}
+          aria-label="Key"
+          onChange={(e) => onChange({ kind: "keys", keys: e.target.value })}
+        >
+          {block.keys !== "" && !KEY_PRESETS.includes(block.keys) && (
+            <option value={block.keys}>{block.keys}</option>
+          )}
+          {KEY_PRESETS.map((k) => (
+            <option key={k} value={k}>
+              {k}
+            </option>
+          ))}
+        </select>
+      ) : (
         <input
           className="action-input"
           value={block.keys}
@@ -89,26 +126,44 @@ function BlockRow({
           onChange={(e) => onChange({ kind: "keys", keys: e.target.value })}
         />
       )}
-      {block.kind === "delay" && (
+    </>
+  );
+}
+
+function MouseInput({
+  block,
+  onChange,
+}: {
+  block: { kind: "mouse"; button: string; x: number; y: number };
+  onChange: (b: ActionBlock) => void;
+}) {
+  const [useCoords, setUseCoords] = useState(block.x !== 0 || block.y !== 0);
+  return (
+    <div className="action-grid">
+      <select
+        value={block.button}
+        aria-label="Mouse button"
+        onChange={(e) => onChange({ ...block, button: e.target.value })}
+      >
+        {MOUSE_BUTTONS.map((b) => (
+          <option key={b} value={b}>
+            {b}
+          </option>
+        ))}
+      </select>
+      <label className="coord-toggle" title="Use fixed coordinates instead of current pointer">
         <input
-          type="number"
-          min={0}
-          value={block.ms}
-          aria-label="Delay milliseconds"
-          onChange={(e) => onChange({ kind: "delay", ms: Number(e.target.value) || 0 })}
+          type="checkbox"
+          checked={useCoords}
+          onChange={(e) => {
+            setUseCoords(e.target.checked);
+            onChange({ ...block, x: 0, y: 0 });
+          }}
         />
-      )}
-      {block.kind === "mouse" && (
-        <div className="action-grid">
-          <select
-            value={block.button}
-            aria-label="Mouse button"
-            onChange={(e) => onChange({ ...block, button: e.target.value })}
-          >
-            <option value="Left">Left</option>
-            <option value="Right">Right</option>
-            <option value="Middle">Middle</option>
-          </select>
+        <span>X/Y</span>
+      </label>
+      {useCoords && (
+        <>
           <input
             type="number"
             value={block.x}
@@ -121,8 +176,35 @@ function BlockRow({
             aria-label="Click Y"
             onChange={(e) => onChange({ ...block, y: Number(e.target.value) || 0 })}
           />
-        </div>
+        </>
       )}
+    </div>
+  );
+}
+
+function BlockRow({
+  block,
+  onChange,
+  onDelete,
+}: {
+  block: ActionBlock;
+  onChange: (b: ActionBlock) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="block-row">
+      <span className="block-kind">{BLOCK_LABELS[block.kind]}</span>
+      {block.kind === "keys" && <KeysInput block={block} onChange={onChange} />}
+      {block.kind === "delay" && (
+        <input
+          type="number"
+          min={0}
+          value={block.ms}
+          aria-label="Delay milliseconds"
+          onChange={(e) => onChange({ kind: "delay", ms: Number(e.target.value) || 0 })}
+        />
+      )}
+      {block.kind === "mouse" && <MouseInput block={block} onChange={onChange} />}
       <button type="button" className="action-delete" onClick={onDelete} title="Delete block">
         ×
       </button>
@@ -348,14 +430,26 @@ export default function Workspace() {
               <h3 className="flow-title">Configured Triggers ({draftTriggers.length})</h3>
               <p className="flow-sub">Events and keyboard/mouse hooks that execute this macro sequence</p>
             </div>
-            <span className="flow-profile" title={active.target_exe ?? "All windows"}>
-              {active.name}
-            </span>
+            <div className="flow-head-actions">
+              <span className="flow-profile" title={active.target_exe ?? "All windows"}>
+                {active.name}
+              </span>
+              <button
+                type="button"
+                className="btn-trigger-delete"
+                onClick={removeSelected}
+                disabled={!selected}
+                title="Remove Trigger"
+              >
+                Sil
+              </button>
+              <button type="button" className="btn-trigger-save" onClick={save} disabled={saving || !dirty} title="Save Changes">
+                {saving ? "Saving…" : "Kaydet"}
+              </button>
+            </div>
           </div>
 
-          {draftTriggers.length === 0 && (
-            <div className="flow-empty">No triggers yet — add one below.</div>
-          )}
+          {draftTriggers.length === 0 && <div className="flow-empty">No triggers yet.</div>}
           {draftTriggers.map((t, i) => (
             <div
               key={`${i}-${t.shortcut}`}
@@ -378,15 +472,12 @@ export default function Workspace() {
                     />
                   </svg>
                 </div>
-                <div>
-                  <span className="trigger-name">Hotkey Activation</span>
-                  <div className="trigger-chips">
-                    {recording && i === sel ? (
-                      <span className="trigger-recording-hint">Press a key or click… (Esc to cancel)</span>
-                    ) : (
-                      <Chips parts={parseTrigger(t.shortcut)} box={false} />
-                    )}
-                  </div>
+                <div className="trigger-chips">
+                  {recording && i === sel ? (
+                    <span className="trigger-recording-hint">Press a key or click… (Esc to cancel)</span>
+                  ) : (
+                    <Chips parts={parseTrigger(t.shortcut)} box={false} />
+                  )}
                 </div>
               </div>
             </div>
@@ -486,15 +577,6 @@ export default function Workspace() {
               </button>
             </div>
           </div>
-        </div>
-
-        <div className="inspector-foot">
-          <button type="button" className="btn-trigger-delete" onClick={removeSelected} title="Remove Trigger">
-            Sil
-          </button>
-          <button type="button" className="btn-trigger-save" onClick={save} disabled={saving || !dirty} title="Save Changes">
-            {saving ? "Saving…" : "Kaydet"}
-          </button>
         </div>
       </aside>
     </main>
