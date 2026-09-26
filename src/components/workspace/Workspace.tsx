@@ -32,7 +32,7 @@ export default function Workspace() {
   const activeWindow = useProfileStore((s) => s.activeWindow);
   const active = profiles.find((p) => p.id === activeId) ?? null;
 
-  const [draftTrigger, setDraftTrigger] = useState(active?.trigger ?? "F9");
+  const [draftTrigger, setDraftTrigger] = useState(active?.triggers[0] ?? "F9");
   const [draftTarget, setDraftTarget] = useState(active?.target_exe ?? "");
   const [recording, setRecording] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -45,10 +45,10 @@ export default function Workspace() {
   const [repeatHeld, setRepeatHeld] = useState(false);
 
   useEffect(() => {
-    setDraftTrigger(active?.trigger ?? "F9");
+    setDraftTrigger(active?.triggers[0] ?? "F9");
     setDraftTarget(active?.target_exe ?? "");
     setRecording(false);
-  }, [active?.id, active?.trigger, active?.target_exe]);
+  }, [active?.id, active?.triggers, active?.target_exe]);
 
   useEffect(() => {
     invoke<string[]>("system_running_exes")
@@ -80,14 +80,14 @@ export default function Workspace() {
   }
 
   const chips = parseTrigger(draftTrigger);
-  const dirty = active != null && (draftTrigger !== active.trigger || (draftTarget || "") !== (active.target_exe ?? ""));
+  const dirty = active != null && (draftTrigger !== (active.triggers[0] ?? "F9") || (draftTarget || "") !== (active.target_exe ?? ""));
 
   async function save() {
     if (!active) return;
     const clean = draftTrigger.trim() || "F9";
     setSaving(true);
     try {
-      const updated: Profile = { ...active, trigger: clean, target_exe: draftTarget.trim() || null };
+      const updated: Profile = { ...active, triggers: [clean], target_exe: draftTarget.trim() || null };
       await invoke("profile_save", { profile: updated });
       const list = await invoke<Profile[]>("profile_list");
       useProfileStore.getState().setProfiles(list);

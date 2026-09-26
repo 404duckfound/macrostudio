@@ -81,9 +81,10 @@ export default function ProfileRail() {
         const profile: Profile = {
           id: newId(),
           name: cleanName,
-          trigger: "F9",
+          triggers: ["F9"],
           target_exe: cleanTarget || null,
           enabled: true,
+          block_key: true,
           actions: [],
         };
         await invoke("profile_save", { profile });
@@ -125,6 +126,20 @@ export default function ProfileRail() {
   function makeDefault(id: string) {
     setDefaultId(id);
     setActiveId(id);
+    setOpenMenuId(null);
+  }
+
+  async function duplicateProfile(p: Profile) {
+    const copy: Profile = {
+      ...p,
+      id: newId(),
+      name: `${p.name} (copy)`,
+      triggers: [...p.triggers],
+      actions: p.actions.map((a) => ({ ...a })),
+    };
+    await invoke("profile_save", { profile: copy });
+    await refresh();
+    setActiveId(copy.id);
     setOpenMenuId(null);
   }
 
@@ -183,6 +198,13 @@ export default function ProfileRail() {
                   }}
                 >
                   Delete
+                </button>
+                <button
+                  className="rail-menu-item"
+                  type="button"
+                  onClick={() => duplicateProfile(p)}
+                >
+                  Duplicate
                 </button>
                 <button
                   className="rail-menu-item"

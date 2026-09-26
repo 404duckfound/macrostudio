@@ -1,4 +1,4 @@
-export type ActionType = "send_keys" | "delay" | "mouse_click";
+export type ActionType = "send_keys" | "delay" | "mouse_click" | "custom";
 
 export interface SendKeysAction {
   type: "send_keys";
@@ -17,13 +17,19 @@ export interface MouseClickAction {
   y: number;
 }
 
-export type MacroAction = SendKeysAction | DelayAction | MouseClickAction;
+export interface CustomAction {
+  type: "custom";
+  code: string;
+}
+
+export type MacroAction = SendKeysAction | DelayAction | MouseClickAction | CustomAction;
 
 export interface Profile {
   id: string;
   name: string;
-  trigger: string;
+  triggers: string[];
   target_exe?: string | null;
   enabled: boolean;
+  block_key: boolean;
   actions: MacroAction[];
 }
