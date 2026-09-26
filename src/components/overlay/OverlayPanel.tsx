@@ -7,7 +7,12 @@ export default function OverlayPanel() {
   async function quickStart(id: string) {
     const p = profiles.find((x) => x.id === id);
     if (!p) return;
-    await invoke("ahk_start_profile", { profileId: p.id, trigger: p.trigger, actions: p.actions });
+    await invoke("ahk_start_profile", {
+      profileId: p.id,
+      triggers: p.triggers,
+      blockKey: p.block_key,
+      actions: p.actions,
+    });
     setActiveId(p.id);
   }
 

@@ -10,7 +10,11 @@ export default function AhkEditor() {
 
   useEffect(() => {
     if (!active) return;
-    invoke<string>("ahk_compile_preview", { trigger: active.trigger, actions: active.actions })
+    invoke<string>("ahk_compile_preview", {
+      triggers: active.triggers,
+      blockKey: active.block_key,
+      actions: active.actions,
+    })
       .then(setCode)
       .catch(console.error);
   }, [active]);
