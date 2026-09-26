@@ -11,7 +11,6 @@ export default function OverlayPanel() {
       profileId: p.id,
       triggers: p.triggers,
       blockKey: p.block_key,
-      actions: p.actions,
     });
     setActiveId(p.id);
   }

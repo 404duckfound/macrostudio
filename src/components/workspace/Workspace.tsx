@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useProfileStore } from "../../stores/useProfileStore";
-import type { MacroAction, Profile } from "../../types";
+import type { MacroAction, Profile, Trigger } from "../../types";
 
 function parseTrigger(trigger: string): string[] {
   return trigger
@@ -124,9 +124,10 @@ export default function Workspace() {
   const profiles = useProfileStore((s) => s.profiles);
   const active = profiles.find((p) => p.id === activeId) ?? null;
 
-  const [draftTriggers, setDraftTriggers] = useState<string[]>(active?.triggers ?? ["F9"]);
+  const [draftTriggers, setDraftTriggers] = useState<Trigger[]>(
+    active?.triggers ?? [{ shortcut: "F9", actions: [] }],
+  );
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const [draftActions, setDraftActions] = useState<MacroAction[]>(active?.actions ?? []);
   const [draftBlockKey, setDraftBlockKey] = useState(active?.block_key ?? true);
   const [recording, setRecording] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -134,14 +135,18 @@ export default function Workspace() {
   const [triggerType, setTriggerType] = useState("Hotkey Press");
 
   useEffect(() => {
-    setDraftTriggers(active?.triggers.length ? [...active.triggers] : []);
+    setDraftTriggers(
+      active?.triggers.length
+        ? active.triggers.map((t) => ({ shortcut: t.shortcut, actions: [...t.actions] }))
+        : [],
+    );
     setSelectedIdx(0);
-    setDraftActions(active?.actions ? [...active.actions] : []);
     setDraftBlockKey(active?.block_key ?? true);
     setRecording(false);
-  }, [active?.id, active?.triggers, active?.actions, active?.block_key]);
+  }, [active?.id, active?.triggers, active?.block_key]);
 
   const sel = Math.min(selectedIdx, Math.max(0, draftTriggers.length - 1));
+  const selected = draftTriggers[sel] ?? null;
 
   useEffect(() => {
     if (!recording) return;
@@ -153,7 +158,7 @@ export default function Workspace() {
       }
       const t = keyEventToTrigger(e);
       if (t) {
-        setDraftTriggers((prev) => prev.map((x, i) => (i === sel ? t : x)));
+        setDraftTriggers((prev) => prev.map((x, i) => (i === sel ? { ...x, shortcut: t } : x)));
         setRecording(false);
       }
     }
@@ -161,21 +166,20 @@ export default function Workspace() {
     return () => document.removeEventListener("keydown", onKey);
   }, [recording, sel]);
 
-  const selectedChips = parseTrigger(draftTriggers[sel] ?? "");
+  const selectedChips = parseTrigger(selected?.shortcut ?? "");
   const dirty =
     active != null &&
     (JSON.stringify(draftTriggers) !== JSON.stringify(active.triggers) ||
-      JSON.stringify(draftActions) !== JSON.stringify(active.actions) ||
       draftBlockKey !== active.block_key);
 
   function addTrigger() {
-    const pending = draftTriggers.findIndex((t) => t.trim().length === 0);
+    const pending = draftTriggers.findIndex((t) => t.shortcut.trim().length === 0);
     if (pending >= 0) {
       setSelectedIdx(pending);
       setRecording(true);
       return;
     }
-    setDraftTriggers((prev) => [...prev, "F9"]);
+    setDraftTriggers((prev) => [...prev, { shortcut: "F9", actions: [] }]);
     setSelectedIdx(draftTriggers.length);
     setRecording(true);
   }
@@ -186,7 +190,12 @@ export default function Workspace() {
     setRecording(false);
   }
 
+  function updateSelectedActions(next: MacroAction[]) {
+    setDraftTriggers((prev) => prev.map((x, i) => (i === sel ? { ...x, actions: next } : x)));
+  }
+
   function addAction(type: MacroAction["type"]) {
+    if (!selected) return;
     const fresh: MacroAction =
       type === "send_keys"
         ? { type: "send_keys", payload: "" }
@@ -195,21 +204,25 @@ export default function Workspace() {
           : type === "mouse_click"
             ? { type: "mouse_click", button: "Left", x: 0, y: 0 }
             : { type: "custom", code: "" };
-    setDraftActions((prev) => [...prev, fresh]);
+    updateSelectedActions([...selected.actions, fresh]);
   }
 
   async function save() {
     if (!active) return;
-    const cleanTriggers = Array.from(
-      new Set(draftTriggers.map((t) => t.trim()).filter((t) => t.length > 0)),
-    );
+    const seen = new Set<string>();
+    const cleanTriggers: Trigger[] = [];
+    for (const t of draftTriggers) {
+      const shortcut = t.shortcut.trim();
+      if (!shortcut || seen.has(shortcut)) continue;
+      seen.add(shortcut);
+      cleanTriggers.push({ shortcut, actions: t.actions });
+    }
     setSaving(true);
     try {
       const updated: Profile = {
         ...active,
         triggers: cleanTriggers,
         block_key: draftBlockKey,
-        actions: draftActions,
       };
       await invoke("profile_save", { profile: updated });
       const list = await invoke<Profile[]>("profile_list");
@@ -248,13 +261,13 @@ export default function Workspace() {
           )}
           {draftTriggers.map((t, i) => (
             <div
-              key={`${i}-${t}`}
+              key={`${i}-${t.shortcut}`}
               className={`trigger-card ${i === sel ? "trigger-card-selected" : ""} ${recording && i === sel ? "trigger-card-recording" : ""}`}
               onClick={() => {
                 setSelectedIdx(i);
-                setRecording(true);
+                setRecording(false);
               }}
-              title="Click to record a new shortcut"
+              title="Click to select"
             >
               <div className="trigger-card-left">
                 <div className="trigger-icon">
@@ -274,7 +287,7 @@ export default function Workspace() {
                     {recording && i === sel ? (
                       <span className="trigger-recording-hint">Press keys… (Esc to cancel)</span>
                     ) : (
-                      <Chips parts={parseTrigger(t)} box={false} />
+                      <Chips parts={parseTrigger(t.shortcut)} box={false} />
                     )}
                   </div>
                 </div>
@@ -289,16 +302,25 @@ export default function Workspace() {
 
           <div className="flow-head flow-actions-head">
             <div>
-              <h3 className="flow-title">Actions ({draftActions.length})</h3>
-              <p className="flow-sub">What runs when any trigger fires, in order</p>
+              <h3 className="flow-title">Actions ({selected?.actions.length ?? 0})</h3>
+              <p className="flow-sub">
+                {selected
+                  ? `What runs when ${selected.shortcut || "this trigger"} fires, in order`
+                  : "Select a trigger to edit its actions"}
+              </p>
             </div>
           </div>
-          {draftActions.map((a, i) => (
+          {(selected?.actions ?? []).map((a, i) => (
             <ActionCard
               key={i}
               action={a}
-              onChange={(next) => setDraftActions((prev) => prev.map((x, j) => (j === i ? next : x)))}
-              onDelete={() => setDraftActions((prev) => prev.filter((_, j) => j !== i))}
+              onChange={(next) =>
+                selected &&
+                updateSelectedActions(selected.actions.map((x, j) => (j === i ? next : x)))
+              }
+              onDelete={() =>
+                selected && updateSelectedActions(selected.actions.filter((_, j) => j !== i))
+              }
             />
           ))}
           <div className="action-add-row">
@@ -347,7 +369,9 @@ export default function Workspace() {
               <button
                 type="button"
                 className="clear-btn"
-                onClick={() => setDraftTriggers((prev) => prev.map((x, i) => (i === sel ? "" : x)))}
+                onClick={() =>
+                  setDraftTriggers((prev) => prev.map((x, i) => (i === sel ? { ...x, shortcut: "" } : x)))
+                }
                 title="Clear Hotkey"
               >
                 Clear

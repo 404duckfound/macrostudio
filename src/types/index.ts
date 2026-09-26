@@ -24,12 +24,16 @@ export interface CustomAction {
 
 export type MacroAction = SendKeysAction | DelayAction | MouseClickAction | CustomAction;
 
+export interface Trigger {
+  shortcut: string;
+  actions: MacroAction[];
+}
+
 export interface Profile {
   id: string;
   name: string;
-  triggers: string[];
+  triggers: Trigger[];
   target_exe?: string | null;
   enabled: boolean;
   block_key: boolean;
-  actions: MacroAction[];
 }

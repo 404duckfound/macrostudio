@@ -1,6 +1,6 @@
 use tauri::State;
 
-use crate::services::generator::{compile_to_ahk_v2, Action};
+use crate::services::generator::{compile_to_ahk_v2, Trigger};
 use crate::state::AppState;
 
 /// Profili baslat: AHK betigini derle, dosyaya yaz, AutoHotkey64.exe ile calistir.
@@ -8,11 +8,10 @@ use crate::state::AppState;
 pub async fn ahk_start_profile(
     state: State<'_, AppState>,
     profile_id: String,
-    triggers: Vec<String>,
+    triggers: Vec<Trigger>,
     block_key: bool,
-    actions: Vec<Action>,
 ) -> Result<u32, String> {
-    let script = compile_to_ahk_v2(&triggers, block_key, &actions);
+    let script = compile_to_ahk_v2(&triggers, block_key);
 
     let config_dir = dirs_config_dir()?;
     let profiles_dir = std::path::Path::new(&config_dir).join("macro-studio/profiles");
@@ -35,8 +34,8 @@ pub async fn ahk_stop_profile(state: State<'_, AppState>, profile_id: String) ->
 
 /// Sadece derle, calistirmadan AHK v2 kodu dondur (editor onizleme icin).
 #[tauri::command]
-pub fn ahk_compile_preview(triggers: Vec<String>, block_key: bool, actions: Vec<Action>) -> String {
-    compile_to_ahk_v2(&triggers, block_key, &actions)
+pub fn ahk_compile_preview(triggers: Vec<Trigger>, block_key: bool) -> String {
+    compile_to_ahk_v2(&triggers, block_key)
 }
 
 fn dirs_config_dir() -> Result<String, String> {

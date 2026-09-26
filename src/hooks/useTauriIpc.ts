@@ -16,11 +16,10 @@ function buildDefaultProfile(): Profile {
   return {
     id: newId(),
     name: DEFAULT_NAME,
-    triggers: ["F9"],
+    triggers: [{ shortcut: "F9", actions: [] }],
     target_exe: null, // hicbir hedef siniri yok => tum pencereler
     enabled: true,
     block_key: true,
-    actions: [],
   };
 }
 
