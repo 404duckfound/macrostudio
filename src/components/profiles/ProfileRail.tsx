@@ -135,7 +135,11 @@ export default function ProfileRail() {
       name: `${p.name} (copy)`,
       triggers: p.triggers.map((t) => ({
         shortcut: t.shortcut,
-        actions: t.actions.map((a) => ({ ...a })),
+        actions: t.actions.map((a) =>
+          a.type === "custom"
+            ? { type: "custom", blocks: a.blocks.map((b) => ({ ...b })) }
+            : { ...a },
+        ),
       })),
     };
     await invoke("profile_save", { profile: copy });

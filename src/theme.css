@@ -534,15 +534,19 @@ select { appearance: none; }
 .trigger-card {
   width: 100%;
   background: #10141b;
-  background-image: linear-gradient(to right, rgba(18, 25, 39, 0.8), #10141b);
-  border: 1px solid rgba(122, 162, 232, 0.7);
+  border: 1px solid var(--border-default);
   border-radius: 12px;
-  padding: 16px;
+  padding: 12px 16px;
+  margin-bottom: 10px;
   cursor: pointer;
   box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.45);
 }
-.trigger-card:hover { border-color: var(--accent-primary); }
-.trigger-card-selected { box-shadow: 0 0 0 1px var(--accent-primary); }
+.trigger-card:hover { border-color: rgba(122, 162, 232, 0.5); }
+.trigger-card-selected {
+  border-color: var(--accent-primary);
+  background-image: linear-gradient(to right, rgba(18, 25, 39, 0.8), #10141b);
+  box-shadow: 0 0 0 1px var(--accent-primary);
+}
 .trigger-card-recording { border-color: var(--accent-primary); box-shadow: 0 0 0 1px var(--accent-primary); }
 .trigger-card-left { display: flex; align-items: center; gap: 14px; }
 .trigger-icon {
@@ -578,7 +582,7 @@ select { appearance: none; }
 .trigger-add {
   width: 100%;
   height: 44px;
-  margin-top: 16px;
+  margin-top: 6px;
   border-radius: 12px;
   border: 1px dashed #283241;
   background: transparent;
@@ -714,7 +718,6 @@ select { appearance: none; }
 .btn-trigger-save:hover:not(:disabled) { background: #aac7ff; }
 .btn-trigger-save:disabled { opacity: 0.5; cursor: default; }
 
-.flow-actions-head { margin-top: 24px; }
 .action-card {
   width: 100%;
   background: #10141b;
@@ -732,19 +735,35 @@ select { appearance: none; }
 .action-kind { font-size: 12px; font-weight: 600; color: var(--accent-primary); text-transform: uppercase; letter-spacing: 0.05em; }
 .action-delete { border: none; background: none; min-height: 0; padding: 4px; font-size: 11px; color: #8e98a8; border-radius: 4px; }
 .action-delete:hover { color: var(--status-danger); }
-.action-add-row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
-.action-add-row button {
+.action-add-controls { display: flex; gap: 8px; margin-top: 8px; }
+.action-add-controls select { flex: 1; min-width: 0; }
+.action-add-btn { flex-shrink: 0; min-height: 44px; font-size: 13px; padding: 0 16px; }
+.block-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+.block-row input, .block-row select { min-height: 36px; font-size: 13px; }
+.block-row > input { flex: 1; min-width: 0; }
+.block-row .action-grid { flex: 1; min-width: 0; }
+.block-kind { font-size: 11px; font-weight: 600; color: var(--accent-primary); text-transform: uppercase; flex-shrink: 0; }
+.block-add-row { display: flex; gap: 8px; }
+.block-add-row button {
   flex: 1;
-  min-height: 40px;
+  min-height: 36px;
   border: 1px dashed #283241;
   border-radius: 8px;
   background: transparent;
   color: #c3c6d2;
   font-size: 12px;
   font-weight: 500;
-  white-space: nowrap;
 }
-.action-add-row button:hover { border-color: rgba(122, 162, 232, 0.7); color: var(--text-primary); }
+.block-add-row button:hover { border-color: rgba(122, 162, 232, 0.7); color: var(--text-primary); }
 .action-input { font-family: "JetBrains Mono", monospace; font-size: 13px; }
 .action-textarea {
   background: var(--bg-base);

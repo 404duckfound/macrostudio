@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::services::generator::{compile_to_ahk_v2, Action, Trigger};
+use crate::services::generator::{compile_to_ahk_v2, Trigger};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Profile {
@@ -40,11 +40,21 @@ fn is_new_triggers(v: Option<&serde_json::Value>) -> bool {
 /// trigger objelerine donusur. Legacy anahtarlar silinir.
 fn migrate_value(mut v: serde_json::Value) -> serde_json::Value {
     if is_new_triggers(v.get("triggers")) {
+        if let Some(arr) = v.get_mut("triggers").and_then(|t| t.as_array_mut()) {
+            for t in arr.iter_mut() {
+                if let Some(actions) = t.get_mut("actions").and_then(|a| a.as_array_mut()) {
+                    for a in actions.iter_mut() {
+                        *a = convert_action(a.clone());
+                    }
+                }
+            }
+        }
         return v;
     }
-    let shared: Vec<Action> = v
+    let shared: Vec<serde_json::Value> = v
         .get("actions")
-        .and_then(|a| serde_json::from_value(a.clone()).ok())
+        .and_then(|a| a.as_array())
+        .map(|arr| arr.iter().cloned().map(convert_action).collect())
         .unwrap_or_default();
     let mut shortcuts: Vec<String> = match v.get("triggers") {
         Some(serde_json::Value::Array(arr)) => arr
@@ -76,6 +86,43 @@ fn migrate_value(mut v: serde_json::Value) -> serde_json::Value {
         obj.remove("actions");
     }
     v
+}
+
+/// Eski aksiyon seklini yeni semaya cevirir; yeni sekiller aynen gecer.
+fn convert_action(v: serde_json::Value) -> serde_json::Value {
+    let kind = v.get("type").and_then(|t| t.as_str()).unwrap_or("");
+    match kind {
+        "custom" if v.get("blocks").is_some() => v,
+        "script" => v,
+        "send_keys" => {
+            let keys = v
+                .get("payload")
+                .cloned()
+                .unwrap_or(serde_json::Value::String(String::new()));
+            serde_json::json!({ "type": "custom", "blocks": [{ "kind": "keys", "keys": keys }] })
+        }
+        "delay" => {
+            let ms = v.get("ms").cloned().unwrap_or(serde_json::json!(0));
+            serde_json::json!({ "type": "custom", "blocks": [{ "kind": "delay", "ms": ms }] })
+        }
+        "mouse_click" => {
+            let button = v
+                .get("button")
+                .cloned()
+                .unwrap_or(serde_json::Value::String("Left".to_string()));
+            let x = v.get("x").cloned().unwrap_or(serde_json::json!(0));
+            let y = v.get("y").cloned().unwrap_or(serde_json::json!(0));
+            serde_json::json!({ "type": "custom", "blocks": [{ "kind": "mouse", "button": button, "x": x, "y": y }] })
+        }
+        "custom" => {
+            let code = v
+                .get("code")
+                .cloned()
+                .unwrap_or(serde_json::Value::String(String::new()));
+            serde_json::json!({ "type": "script", "code": code })
+        }
+        _ => v,
+    }
 }
 
 fn profiles_dir() -> Result<std::path::PathBuf, String> {
@@ -142,6 +189,7 @@ pub fn profile_delete(profile_id: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::generator::Action;
 
     #[test]
     fn legacy_single_trigger_migrates_to_triggers() {
@@ -154,7 +202,10 @@ mod tests {
         let p: Profile = serde_json::from_value(migrated).unwrap();
         assert_eq!(p.triggers.len(), 1);
         assert_eq!(p.triggers[0].shortcut, "Ctrl+Shift+F1");
-        assert_eq!(p.triggers[0].actions.len(), 1);
+        match &p.triggers[0].actions[..] {
+            [Action::Custom { blocks }] => assert_eq!(blocks.len(), 1),
+            _ => panic!("expected single custom action"),
+        }
         assert!(p.block_key);
     }
 
@@ -170,6 +221,20 @@ mod tests {
         assert_eq!(p.triggers.len(), 2);
         assert!(p.triggers.iter().all(|t| t.actions.len() == 1));
         assert!(!p.block_key);
+    }
+
+    #[test]
+    fn legacy_raw_custom_becomes_script() {
+        let old = serde_json::json!({
+            "id": "x", "name": "N", "trigger": "F9",
+            "actions": [{ "type": "custom", "code": "Send(\"x\")" }]
+        });
+        let migrated = migrate_value(old);
+        let p: Profile = serde_json::from_value(migrated).unwrap();
+        match &p.triggers[0].actions[..] {
+            [Action::Script { code }] => assert!(code.contains("Send")),
+            _ => panic!("expected script action"),
+        }
     }
 
     #[test]

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useProfileStore } from "../../stores/useProfileStore";
-import type { MacroAction, Profile, Trigger } from "../../types";
+import type { ActionBlock, MacroAction, Profile, Trigger } from "../../types";
 
 function parseTrigger(trigger: string): string[] {
   return trigger
@@ -26,6 +26,29 @@ function keyEventToTrigger(e: KeyboardEvent): string | null {
   return parts.join("+");
 }
 
+function mouseEventToTrigger(e: MouseEvent): string | null {
+  const btn =
+    e.button === 0
+      ? "MouseLeft"
+      : e.button === 1
+        ? "MouseMiddle"
+        : e.button === 2
+          ? "MouseRight"
+          : e.button === 3
+            ? "MouseX1"
+            : e.button === 4
+              ? "MouseX2"
+              : null;
+  if (!btn) return null;
+  const parts: string[] = [];
+  if (e.ctrlKey) parts.push("Ctrl");
+  if (e.shiftKey) parts.push("Shift");
+  if (e.altKey) parts.push("Alt");
+  if (e.metaKey) parts.push("Meta");
+  parts.push(btn);
+  return parts.join("+");
+}
+
 function Chips({ parts, box }: { parts: string[]; box: boolean }) {
   if (parts.length === 0) return <span className="trigger-recording-hint">No shortcut set</span>;
   return (
@@ -40,12 +63,72 @@ function Chips({ parts, box }: { parts: string[]; box: boolean }) {
   );
 }
 
-const ACTION_LABELS: Record<MacroAction["type"], string> = {
-  send_keys: "Send Keys",
+const BLOCK_LABELS: Record<ActionBlock["kind"], string> = {
+  keys: "Keys",
+  mouse: "Mouse",
   delay: "Delay",
-  mouse_click: "Mouse Click",
-  custom: "Custom AHK",
 };
+
+function BlockRow({
+  block,
+  onChange,
+  onDelete,
+}: {
+  block: ActionBlock;
+  onChange: (b: ActionBlock) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="block-row">
+      <span className="block-kind">{BLOCK_LABELS[block.kind]}</span>
+      {block.kind === "keys" && (
+        <input
+          className="action-input"
+          value={block.keys}
+          placeholder="Keys to send"
+          onChange={(e) => onChange({ kind: "keys", keys: e.target.value })}
+        />
+      )}
+      {block.kind === "delay" && (
+        <input
+          type="number"
+          min={0}
+          value={block.ms}
+          aria-label="Delay milliseconds"
+          onChange={(e) => onChange({ kind: "delay", ms: Number(e.target.value) || 0 })}
+        />
+      )}
+      {block.kind === "mouse" && (
+        <div className="action-grid">
+          <select
+            value={block.button}
+            aria-label="Mouse button"
+            onChange={(e) => onChange({ ...block, button: e.target.value })}
+          >
+            <option value="Left">Left</option>
+            <option value="Right">Right</option>
+            <option value="Middle">Middle</option>
+          </select>
+          <input
+            type="number"
+            value={block.x}
+            aria-label="Click X"
+            onChange={(e) => onChange({ ...block, x: Number(e.target.value) || 0 })}
+          />
+          <input
+            type="number"
+            value={block.y}
+            aria-label="Click Y"
+            onChange={(e) => onChange({ ...block, y: Number(e.target.value) || 0 })}
+          />
+        </div>
+      )}
+      <button type="button" className="action-delete" onClick={onDelete} title="Delete block">
+        ×
+      </button>
+    </div>
+  );
+}
 
 function ActionCard({
   action,
@@ -56,68 +139,66 @@ function ActionCard({
   onChange: (a: MacroAction) => void;
   onDelete: () => void;
 }) {
+  function addBlock(kind: ActionBlock["kind"]) {
+    if (action.type !== "custom") return;
+    const fresh: ActionBlock =
+      kind === "keys"
+        ? { kind: "keys", keys: "" }
+        : kind === "mouse"
+          ? { kind: "mouse", button: "Left", x: 0, y: 0 }
+          : { kind: "delay", ms: 500 };
+    onChange({ type: "custom", blocks: [...action.blocks, fresh] });
+  }
+
+  function updateBlock(i: number, next: ActionBlock) {
+    if (action.type !== "custom") return;
+    onChange({ type: "custom", blocks: action.blocks.map((b, j) => (j === i ? next : b)) });
+  }
+
+  function deleteBlock(i: number) {
+    if (action.type !== "custom") return;
+    onChange({ type: "custom", blocks: action.blocks.filter((_, j) => j !== i) });
+  }
+
   return (
     <div className="action-card">
       <div className="action-card-head">
-        <span className="action-kind">{ACTION_LABELS[action.type]}</span>
+        <span className="action-kind">{action.type === "custom" ? "Custom" : "Script"}</span>
         <button type="button" className="action-delete" onClick={onDelete} title="Delete action">
           Delete
         </button>
       </div>
-      {action.type === "send_keys" && (
-        <input
-          className="action-input"
-          value={action.payload}
-          placeholder="Text to type"
-          onChange={(e) => onChange({ type: "send_keys", payload: e.target.value })}
-        />
-      )}
-      {action.type === "delay" && (
-        <input
-          type="number"
-          min={0}
-          value={action.ms}
-          aria-label="Delay milliseconds"
-          onChange={(e) => onChange({ type: "delay", ms: Number(e.target.value) || 0 })}
-        />
-      )}
-      {action.type === "mouse_click" && (
-        <div className="action-grid">
-          <select
-            value={action.button}
-            aria-label="Mouse button"
-            onChange={(e) => onChange({ ...action, button: e.target.value })}
-          >
-            <option value="Left">Left</option>
-            <option value="Right">Right</option>
-            <option value="Middle">Middle</option>
-          </select>
-          <input
-            type="number"
-            value={action.x}
-            aria-label="Click X"
-            onChange={(e) => onChange({ ...action, x: Number(e.target.value) || 0 })}
-          />
-          <input
-            type="number"
-            value={action.y}
-            aria-label="Click Y"
-            onChange={(e) => onChange({ ...action, y: Number(e.target.value) || 0 })}
-          />
-        </div>
-      )}
-      {action.type === "custom" && (
+      {action.type === "script" && (
         <textarea
           className="action-textarea"
           value={action.code}
           placeholder={'Raw AHK v2, e.g.\nSend("hello")'}
           spellCheck={false}
-          onChange={(e) => onChange({ type: "custom", code: e.target.value })}
+          onChange={(e) => onChange({ type: "script", code: e.target.value })}
         />
+      )}
+      {action.type === "custom" && (
+        <>
+          {action.blocks.map((b, i) => (
+            <BlockRow
+              key={i}
+              block={b}
+              onChange={(next) => updateBlock(i, next)}
+              onDelete={() => deleteBlock(i)}
+            />
+          ))}
+          <div className="block-add-row">
+            <button type="button" onClick={() => addBlock("keys")}>+ Keys</button>
+            <button type="button" onClick={() => addBlock("mouse")}>+ Mouse</button>
+            <button type="button" onClick={() => addBlock("delay")}>+ Delay</button>
+          </div>
+        </>
       )}
     </div>
   );
 }
+
+type AddKind = "keys-press" | "mouse-press" | "custom" | "script";
 
 export default function Workspace() {
   const activeId = useProfileStore((s) => s.activeId);
@@ -129,15 +210,21 @@ export default function Workspace() {
   );
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [draftBlockKey, setDraftBlockKey] = useState(active?.block_key ?? true);
+  const [addKind, setAddKind] = useState<AddKind>("keys-press");
   const [recording, setRecording] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const [triggerType, setTriggerType] = useState("Hotkey Press");
 
   useEffect(() => {
     setDraftTriggers(
       active?.triggers.length
-        ? active.triggers.map((t) => ({ shortcut: t.shortcut, actions: [...t.actions] }))
+        ? active.triggers.map((t) => ({
+            shortcut: t.shortcut,
+            actions: t.actions.map((a) =>
+              a.type === "custom"
+                ? { type: "custom", blocks: a.blocks.map((b) => ({ ...b })) }
+                : { ...a },
+            ),
+          }))
         : [],
     );
     setSelectedIdx(0);
@@ -162,8 +249,20 @@ export default function Workspace() {
         setRecording(false);
       }
     }
+    function onMouse(e: MouseEvent) {
+      e.preventDefault();
+      const t = mouseEventToTrigger(e);
+      if (t) {
+        setDraftTriggers((prev) => prev.map((x, i) => (i === sel ? { ...x, shortcut: t } : x)));
+        setRecording(false);
+      }
+    }
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onMouse);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onMouse);
+    };
   }, [recording, sel]);
 
   const selectedChips = parseTrigger(selected?.shortcut ?? "");
@@ -176,12 +275,10 @@ export default function Workspace() {
     const pending = draftTriggers.findIndex((t) => t.shortcut.trim().length === 0);
     if (pending >= 0) {
       setSelectedIdx(pending);
-      setRecording(true);
       return;
     }
     setDraftTriggers((prev) => [...prev, { shortcut: "F9", actions: [] }]);
     setSelectedIdx(draftTriggers.length);
-    setRecording(true);
   }
 
   function removeSelected() {
@@ -194,16 +291,16 @@ export default function Workspace() {
     setDraftTriggers((prev) => prev.map((x, i) => (i === sel ? { ...x, actions: next } : x)));
   }
 
-  function addAction(type: MacroAction["type"]) {
+  function addAction() {
     if (!selected) return;
     const fresh: MacroAction =
-      type === "send_keys"
-        ? { type: "send_keys", payload: "" }
-        : type === "delay"
-          ? { type: "delay", ms: 500 }
-          : type === "mouse_click"
-            ? { type: "mouse_click", button: "Left", x: 0, y: 0 }
-            : { type: "custom", code: "" };
+      addKind === "keys-press"
+        ? { type: "custom", blocks: [{ kind: "keys", keys: "" }] }
+        : addKind === "mouse-press"
+          ? { type: "custom", blocks: [{ kind: "mouse", button: "Left", x: 0, y: 0 }] }
+          : addKind === "custom"
+            ? { type: "custom", blocks: [] }
+            : { type: "script", code: "" };
     updateSelectedActions([...selected.actions, fresh]);
   }
 
@@ -285,7 +382,7 @@ export default function Workspace() {
                   <span className="trigger-name">Hotkey Activation</span>
                   <div className="trigger-chips">
                     {recording && i === sel ? (
-                      <span className="trigger-recording-hint">Press keys… (Esc to cancel)</span>
+                      <span className="trigger-recording-hint">Press a key or click… (Esc to cancel)</span>
                     ) : (
                       <Chips parts={parseTrigger(t.shortcut)} box={false} />
                     )}
@@ -299,36 +396,6 @@ export default function Workspace() {
             <span aria-hidden="true">+</span>
             <span>Add New Trigger</span>
           </button>
-
-          <div className="flow-head flow-actions-head">
-            <div>
-              <h3 className="flow-title">Actions ({selected?.actions.length ?? 0})</h3>
-              <p className="flow-sub">
-                {selected
-                  ? `What runs when ${selected.shortcut || "this trigger"} fires, in order`
-                  : "Select a trigger to edit its actions"}
-              </p>
-            </div>
-          </div>
-          {(selected?.actions ?? []).map((a, i) => (
-            <ActionCard
-              key={i}
-              action={a}
-              onChange={(next) =>
-                selected &&
-                updateSelectedActions(selected.actions.map((x, j) => (j === i ? next : x)))
-              }
-              onDelete={() =>
-                selected && updateSelectedActions(selected.actions.filter((_, j) => j !== i))
-              }
-            />
-          ))}
-          <div className="action-add-row">
-            <button type="button" onClick={() => addAction("send_keys")}>+ Text</button>
-            <button type="button" onClick={() => addAction("delay")}>+ Delay</button>
-            <button type="button" onClick={() => addAction("mouse_click")}>+ Click</button>
-            <button type="button" onClick={() => addAction("custom")}>+ Custom</button>
-          </div>
         </div>
       </div>
 
@@ -342,18 +409,8 @@ export default function Workspace() {
 
         <div className="inspector-body">
           <div className="field">
-            <label>Trigger Type</label>
-            <select value={triggerType} onChange={(e) => setTriggerType(e.target.value)}>
-              <option>Hotkey Press</option>
-              <option>Mouse Button Click</option>
-              <option>Window Focus / Event</option>
-              <option>Application Launch</option>
-            </select>
-          </div>
-
-          <div className="field">
             <div className="field-row">
-              <label>Assigned Shortcut</label>
+              <label>Shortcut</label>
               <button type="button" className="link-btn" onClick={() => setRecording(true)}>
                 {recording ? "Recording…" : "Record Key"}
               </button>
@@ -361,7 +418,7 @@ export default function Workspace() {
             <div className={`shortcut-box ${recording ? "shortcut-box-recording" : ""}`}>
               <div className="trigger-chips">
                 {recording ? (
-                  <span className="trigger-recording-hint">Press keys…</span>
+                  <span className="trigger-recording-hint">Press a key or click in this window…</span>
                 ) : (
                   <Chips parts={selectedChips} box />
                 )}
@@ -393,6 +450,39 @@ export default function Workspace() {
                 onClick={() => setDraftBlockKey((v) => !v)}
               >
                 <span className="switch-thumb" />
+              </button>
+            </div>
+          </div>
+
+          <div className="field">
+            <div className="field-row">
+              <label>
+                Actions ({selected?.actions.length ?? 0}
+                {selected?.shortcut ? ` — ${selected.shortcut}` : ""})
+              </label>
+            </div>
+            {(selected?.actions ?? []).map((a, i) => (
+              <ActionCard
+                key={i}
+                action={a}
+                onChange={(next) =>
+                  selected &&
+                  updateSelectedActions(selected.actions.map((x, j) => (j === i ? next : x)))
+                }
+                onDelete={() =>
+                  selected && updateSelectedActions(selected.actions.filter((_, j) => j !== i))
+                }
+              />
+            ))}
+            <div className="action-add-controls">
+              <select value={addKind} onChange={(e) => setAddKind(e.target.value as AddKind)} aria-label="Action type">
+                <option value="keys-press">Keyboard Press</option>
+                <option value="mouse-press">Mouse Press</option>
+                <option value="custom">Custom</option>
+                <option value="script">Script</option>
+              </select>
+              <button type="button" className="btn-secondary action-add-btn" onClick={addAction} disabled={!selected}>
+                Add
               </button>
             </div>
           </div>
