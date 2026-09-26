@@ -4,42 +4,77 @@ pub async fn system_active_pids(state: tauri::State<'_, crate::state::AppState>)
     Ok(state.ahk_manager.list())
 }
 
-/// Calisan sureclerin exe adlarini benzersiz + sirali dondur (hedef secimi icin).
+/// Gorunur penceresi olan uygulamalarin exe adlarini benzersiz + sirali dondur (hedef secimi icin).
+/// Arka plan surecleri dahil degil: yalnizca gorunur ve baslikli pencereler taranir.
 #[cfg(windows)]
 #[tauri::command]
-pub async fn system_running_exes() -> Result<Vec<String>, String> {
-    use windows::Win32::Foundation::CloseHandle;
-    use windows::Win32::System::Diagnostics::ToolHelp::{
-        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS,
-        PROCESSENTRY32W,
+pub async fn system_visible_window_exes() -> Result<Vec<String>, String> {
+    use windows::Win32::Foundation::{CloseHandle, BOOL, HWND, LPARAM};
+    use windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_FORMAT,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetWindowTextLengthW, GetWindowThreadProcessId, IsWindowVisible,
     };
 
+    unsafe extern "system" fn collect(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        let out = &mut *(lparam.0 as *mut Vec<HWND>);
+        out.push(hwnd);
+        BOOL(1)
+    }
+
+    fn exe_of_window(hwnd: HWND) -> Option<String> {
+        unsafe {
+            if !IsWindowVisible(hwnd).as_bool() {
+                return None;
+            }
+            if GetWindowTextLengthW(hwnd) == 0 {
+                return None;
+            }
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(hwnd, Some(&mut pid));
+            if pid == 0 {
+                return None;
+            }
+            let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+            let mut buf = [0u16; 1024];
+            let mut size = buf.len() as u32;
+            let exe = if QueryFullProcessImageNameW(
+                handle,
+                PROCESS_NAME_FORMAT(0),
+                windows::core::PWSTR(buf.as_mut_ptr()),
+                &mut size,
+            )
+            .is_ok()
+            {
+                let full = String::from_utf16_lossy(&buf[..size as usize]);
+                full.rsplit(['\\', '/']).next().filter(|s| !s.is_empty()).map(str::to_string)
+            } else {
+                None
+            };
+            let _ = CloseHandle(handle);
+            exe
+        }
+    }
+
     unsafe {
-        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0).map_err(|e| e.to_string())?;
-        let mut entry = PROCESSENTRY32W::default();
-        entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+        let mut hwnds: Vec<HWND> = Vec::new();
+        EnumWindows(Some(collect), LPARAM(&mut hwnds as *mut Vec<HWND> as isize))
+            .map_err(|e| e.to_string())?;
 
         let mut set = std::collections::BTreeSet::new();
-        if Process32FirstW(snapshot, &mut entry).is_ok() {
-            loop {
-                let len = entry
-                    .szExeFile
-                    .iter()
-                    .position(|&c| c == 0)
-                    .unwrap_or(entry.szExeFile.len());
-                set.insert(String::from_utf16_lossy(&entry.szExeFile[..len]));
-                if Process32NextW(snapshot, &mut entry).is_err() {
-                    break;
-                }
+        for hwnd in hwnds {
+            if let Some(exe) = exe_of_window(hwnd) {
+                set.insert(exe);
             }
         }
-        let _ = CloseHandle(snapshot);
         Ok(set.into_iter().collect())
     }
 }
 
 #[cfg(not(windows))]
 #[tauri::command]
-pub async fn system_running_exes() -> Result<Vec<String>, String> {
+pub async fn system_visible_window_exes() -> Result<Vec<String>, String> {
     Ok(Vec::new())
 }

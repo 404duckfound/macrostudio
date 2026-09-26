@@ -1,20 +1,20 @@
 ---
 name: Macro Studio Dark Engine
 colors:
-  surface: "0a0a0c"
-  surface-dim: "0a0a0c"
-  surface-bright: "14181f"
-  surface-container-lowest: "0a0a0c"
-  surface-container-low: "0e1217"
+  surface: "0f1319"
+  surface-dim: "0f1319"
+  surface-bright: "181f2a"
+  surface-container-lowest: "0f1319"
+  surface-container-low: "131922"
   surface-container: "#101623"
-  surface-container-high: "14181f"
-  surface-container-highest: "171c24"
+  surface-container-high: "181f2a"
+  surface-container-highest: "1d2430"
   on-surface: "f5f7fa"
   on-surface-variant: "aab4c2"
   inverse-surface: "f5f7fa"
-  inverse-on-surface: "14181f"
+  inverse-on-surface: "181f2a"
   outline: "6b7480"
-  outline-variant: "232a35"
+  outline-variant: "2a3342"
   surface-tint: "7aa2e8"
   primary: "7aa2e8"
   on-primary: "001020"
@@ -45,9 +45,9 @@ colors:
   tertiary-fixed-dim: "#ffb02e"
   on-tertiary-fixed: "#2a1a00"
   on-tertiary-fixed-variant: "#5a3800"
-  background: "0a0a0c"
+  background: "0f1319"
   on-background: "f5f7fa"
-  surface-variant: "171c24"
+  surface-variant: "1d2430"
 typography:
   headline-xl:
     fontFamily: Inter
@@ -137,12 +137,12 @@ The aesthetic is Modern Technical Minimalism: deep, layered architectural slate 
 The palette leverages a dark architectural scale with rigorous contrast standards (WCAG AAA for primary content, WCAG AA for secondary labels).
 
 - **Canvas & Layering**:
-  - `bg-base`: `0a0a0c` (Near-black foundation for root canvas and application frame)
-  - `bg-surface`: `0e1217` (Elevated panels, node canvases, cards, and modal dialogs)
-  - `bg-surface-elevated`: `14181f` (Floating palettes, active inspector panels)
-  - `bg-interactive`: `171c24` (Hover states, active selections, interactive control backings)
-  - `border-default`: `232a35` (Structural separation, high visibility panel dividers)
-  - `border-muted`: `141920` (Secondary internal dividers, data rows)
+  - `bg-base`: `0f1319` (Near-black foundation for root canvas and application frame)
+  - `bg-surface`: `131922` (Elevated panels, node canvases, cards, and modal dialogs)
+  - `bg-surface-elevated`: `181f2a` (Floating palettes, active inspector panels)
+  - `bg-interactive`: `1d2430` (Hover states, active selections, interactive control backings)
+  - `border-default`: `2a3342` (Structural separation, high visibility panel dividers)
+  - `border-muted`: `1a212c` (Secondary internal dividers, data rows)
 
 - **Typography & Text Surfaces**:
   - `text-primary`: `f5f7fa` (Near-white, maximum AAA legibility on black layers)
@@ -189,10 +189,10 @@ The layout is structured on a strict 8px spatial grid (`8px`, `16px`, `24px`, `3
 
 Visual depth is driven primarily through **tonal layering** and **high-contrast structural outlines**, avoiding muddy dark shadows:
 
-- **Layer 0 (Canvas Base - `0a0a0c`)**: The infinite stage and root frame. Recessed inputs and inactive canvas areas sit directly here.
-- **Layer 1 (Panels & Node Cards - `0e1217`)**: Standard working plane for cards, list blocks, and macro action steps. Outlined with a 1px border (`232a35`).
-- **Layer 2 (Raised Controls & Dropdowns - `14181f`)**: Flyout menus, parameter selectors, and hovering palette elements. Supported by a crisp, low-spread ambient shadow: `0 8px 24px -4px rgba(0, 0, 0, 0.45)`.
-- **Layer 3 (Modals & Command Palettes - `0e1217`)**: Root-level overlays paired with a 60% alpha backdrop scrim (`000000` at 70% opacity). Border elevated to `6b7480`.
+- **Layer 0 (Canvas Base - `0f1319`)**: The infinite stage and root frame. Recessed inputs and inactive canvas areas sit directly here.
+- **Layer 1 (Panels & Node Cards - `131922`)**: Standard working plane for cards, list blocks, and macro action steps. Outlined with a 1px border (`2a3342`).
+- **Layer 2 (Raised Controls & Dropdowns - `181f2a`)**: Flyout menus, parameter selectors, and hovering palette elements. Supported by a crisp, low-spread ambient shadow: `0 8px 24px -4px rgba(0, 0, 0, 0.45)`.
+- **Layer 3 (Modals & Command Palettes - `131922`)**: Root-level overlays paired with a 60% alpha backdrop scrim (`000000` at 70% opacity). Border elevated to `6b7480`.
 - **Focus Elevation**: Focused elements do not use blur shadows; they render an unmistakable `3px` solid stroke in `7aa2e8` with a `2px` transparent offset gap.
 
 ## Shapes
@@ -206,18 +206,18 @@ Larger container frames, flyout modals, and grouped panel sections utilize `16px
 ### Buttons
 
 - **Primary**: Background `7aa2e8`, text `000000`, font-weight 600, minimum height 44px, horizontal padding 20px, border-radius 12px. Active/hover transitions to `4b7cc4`. Focus visible: 3px outline `7aa2e8` with 2px offset.
-- **Secondary / Surface**: Background `0e1217`, border 1px solid `232a35`, text `f5f7fa`. Hover brings background to `171c24` and border to `6b7480`.
+- **Secondary / Surface**: Background `131922`, border 1px solid `2a3342`, text `f5f7fa`. Hover brings background to `1d2430` and border to `6b7480`.
 - **Danger**: Background `#FF5F6B` with text `f5f7fa`, or subtle ghost with text `#FF5F6B` and border `#FF5F6B`. Used exclusively for macro termination, node deletion, or destructive actions.
 
 ### Macro Action Cards & Canvas Nodes
 
-- Container: Surface background `0e1217`, border 1px solid `232a35`, border-radius 14px, internal padding 16px.
-- Selected State: Border changes to 2px solid `7aa2e8`, background shifts subtly to `14181f`.
+- Container: Surface background `131922`, border 1px solid `2a3342`, border-radius 14px, internal padding 16px.
+- Selected State: Border changes to 2px solid `7aa2e8`, background shifts subtly to `181f2a`.
 - Header: Icon avatar with high-contrast glyph, macro step name in `16px` Semi-Bold `f5f7fa`, trailing status pill badge, and drag handle.
 
 ### Input Fields & Selectors
 
-- Minimum height: 44px. Background `0a0a0c` with border 1px solid `232a35` and border-radius 12px.
+- Minimum height: 44px. Background `0f1319` with border 1px solid `2a3342` and border-radius 12px.
 - Typography: 15px `f5f7fa`, placeholder `6b7480`.
 - Focus state: Border color transitions to `7aa2e8` with a 2px outline ring.
 
@@ -227,13 +227,13 @@ Larger container frames, flyout modals, and grouped panel sections utilize `16px
 - Pair an 8px circular status pip or Lucide icon with concise 13px medium text:
   - Active: `#3DDC97` tint (15% background `0b2a1f`, solid text `#3DDC97`).
   - Error: `#FF5F6B` tint (15% background `301014`, solid text `#FF8A93`).
-  - Idle: `6b7480` tint (15% background `0e1217`, solid text `aab4c2`).
+  - Idle: `6b7480` tint (15% background `131922`, solid text `aab4c2`).
 
 ### Checkboxes & Toggle Switches
 
-- Checkboxes: 20×20px box with 6px border-radius, border 2px solid `232a35`. Checked state fills `7aa2e8` with `000000` checkmark.
-- Switches: Track 48×28px, background `171c24` (off) to `7aa2e8` (on). Thumb 22×22px pure white `#FFFFFF` with smooth physical spring transit.
+- Checkboxes: 20×20px box with 6px border-radius, border 2px solid `2a3342`. Checked state fills `7aa2e8` with `000000` checkmark.
+- Switches: Track 48×28px, background `1d2430` (off) to `7aa2e8` (on). Thumb 22×22px pure white `#FFFFFF` with smooth physical spring transit.
 
 ### Keystroke & Hotkey Chips (Kbd)
 
-- Monospaced 13px text inside an elevated `171c24` container with a 1px solid border `232a35`, border-radius 6px, and 2px bottom bevel highlight (`0e1217`) creating a tactile keycap impression.
+- Monospaced 13px text inside an elevated `1d2430` container with a 1px solid border `2a3342`, border-radius 6px, and 2px bottom bevel highlight (`131922`) creating a tactile keycap impression.

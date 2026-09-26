@@ -26,7 +26,7 @@ pub fn run() {
             profile_save,
             profile_delete,
             system_active_pids,
-            system_running_exes,
+            system_visible_window_exes,
         ])
         .setup(|app| {
             init_tray(app)?;

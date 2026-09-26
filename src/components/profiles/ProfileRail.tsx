@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useProfileStore } from "../../stores/useProfileStore";
 import Modal from "../common/Modal";
 import type { Profile } from "../../types";
@@ -17,6 +18,204 @@ async function refresh() {
   return list;
 }
 
+function ProfileIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect
+        x="3"
+        y="4"
+        width="18"
+        height="14"
+        rx="2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M12 10.5v5M9.5 13h5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path d="M8 21h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function basename(path: string): string {
+  const clean = path.replace(/\//g, "\\");
+  return clean.split("\\").pop() ?? path;
+}
+
+function ProfileFields({
+  name,
+  setName,
+  targetExe,
+  setTargetExe,
+  exeOptions,
+  activeWindow,
+  browsePath,
+  setBrowsePath,
+}: {
+  name: string;
+  setName: (v: string) => void;
+  targetExe: string;
+  setTargetExe: (v: string) => void;
+  exeOptions: string[];
+  activeWindow: string;
+  browsePath: string;
+  setBrowsePath: (v: string) => void;
+}) {
+  const hasActive = activeWindow !== "" && activeWindow !== "Unknown";
+  const specific = targetExe !== "";
+
+  async function browseExe() {
+    try {
+      const picked = await open({
+        multiple: false,
+        filters: [{ name: "Executable", extensions: ["exe"] }],
+      });
+      if (typeof picked === "string" && picked) {
+        setBrowsePath(picked);
+        setTargetExe(basename(picked));
+      }
+    } catch {
+      // dialog kapandiysa sessiz gec
+    }
+  }
+
+  return (
+    <>
+      <div className="modal-field">
+        <div className="field-row">
+          <label className="modal-label" htmlFor="profile-name">
+            Profile Name <span className="modal-required">*</span>
+          </label>
+          <span className="modal-side">Identifier</span>
+        </div>
+        <input
+          id="profile-name"
+          className="modal-input"
+          placeholder="e.g. DaVinci Production Suite"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={60}
+          autoFocus
+        />
+      </div>
+      <div className="modal-field">
+        <span className="modal-label">Which window should this profile apply to?</span>
+        <button
+          type="button"
+          className={`scope-card ${!specific ? "scope-card-active" : ""}`}
+          onClick={() => {
+            setTargetExe("");
+            setBrowsePath("");
+          }}
+        >
+          <span className={`scope-radio ${!specific ? "scope-radio-on" : ""}`} aria-hidden="true" />
+          <span className="scope-text">
+            <span className="scope-title-row">
+              <span className="scope-title">All windows</span>
+              <span className="scope-badge">Global</span>
+            </span>
+            <span className="scope-desc">Available across all active applications without filter.</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          className={`scope-card ${specific ? "scope-card-active" : ""}`}
+          onClick={() => {
+            if (!specific) setTargetExe(hasActive ? activeWindow : (exeOptions[0] ?? ""));
+          }}
+        >
+          <span className={`scope-radio ${specific ? "scope-radio-on" : ""}`} aria-hidden="true" />
+          <span className="scope-text">
+            <span className="scope-title-row">
+              <span className="scope-title">Only a specific application</span>
+              {specific && <span className="scope-badge scope-badge-linked">Linked</span>}
+            </span>
+            <span className="scope-desc">Activates automatically when the selected process is active.</span>
+          </span>
+        </button>
+        {specific && (
+          <div className="scope-card scope-card-active scope-detail">
+            <div className="exe-row">
+              <select
+                value={targetExe}
+                onChange={(e) => {
+                  setTargetExe(e.target.value);
+                  setBrowsePath("");
+                }}
+                aria-label="Target application"
+              >
+                {exeOptions.length === 0 && <option value="">No open windows found</option>}
+                {exeOptions.map((x) => (
+                  <option key={x} value={x}>
+                    {x}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="btn-secondary exe-btn"
+                type="button"
+                title="Set active window as target"
+                onClick={() => {
+                  if (hasActive) {
+                    setTargetExe(activeWindow);
+                    setBrowsePath("");
+                  }
+                }}
+                disabled={!hasActive}
+              >
+                ◎ Detect
+              </button>
+              <button className="btn-secondary exe-btn" type="button" title="Browse for executable" onClick={browseExe}>
+                🗀 Browse
+              </button>
+            </div>
+            <div className="exe-path" title={browsePath || targetExe}>
+              {browsePath || targetExe}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+function ModalFooter({
+  saving,
+  onCancel,
+  submitLabel,
+  danger,
+}: {
+  saving: boolean;
+  onCancel: () => void;
+  submitLabel: string;
+  danger?: boolean;
+}) {
+  return (
+    <div className="modal-foot">
+      <span className="modal-esc">
+        <kbd>Esc</kbd> to cancel
+      </span>
+      <span className="modal-foot-actions">
+        <button className="btn-ghost" type="button" onClick={onCancel}>
+          Cancel
+        </button>
+        <button
+          className={danger ? "btn-danger" : "btn-primary"}
+          type="submit"
+          disabled={saving}
+        >
+          {submitLabel}
+        </button>
+      </span>
+    </div>
+  );
+}
+
 export default function ProfileRail() {
   const { profiles, activeId, defaultId, setActiveId, setDefaultId } = useProfileStore();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -27,26 +226,31 @@ export default function ProfileRail() {
   // modal form state
   const [name, setName] = useState("");
   const [targetExe, setTargetExe] = useState("");
+  const [browsePath, setBrowsePath] = useState("");
   const [exes, setExes] = useState<string[]>([]);
   const activeWindow = useProfileStore((s) => s.activeWindow);
 
-  // calisan surecleri tara (modal acilmasa da bir kez yeterli)
+  // modal her acildiginda gorunur pencereleri tazele
   useEffect(() => {
-    invoke<string[]>("system_running_exes")
+    if (!modal) return;
+    invoke<string[]>("system_visible_window_exes")
       .then(setExes)
       .catch(() => setExes([]));
-  }, []);
+  }, [modal]);
 
-  // yakalanan aktif pencere listede yoksa seçeneğe ekle
+  // yakalanan aktif pencere ya da kayitli hedef listede yoksa secenege ekle
   const exeOptions = [...exes];
-  if (activeWindow && activeWindow !== "Unknown" && !exeOptions.some((e) => e.toLowerCase() === activeWindow.toLowerCase())) {
-    exeOptions.push(activeWindow);
+  for (const extra of [activeWindow, targetExe]) {
+    if (extra && extra !== "Unknown" && !exeOptions.some((e) => e.toLowerCase() === extra.toLowerCase())) {
+      exeOptions.push(extra);
+    }
   }
 
   function openAdd() {
     setError("");
     setName("");
     setTargetExe("");
+    setBrowsePath("");
     setModal({ kind: "add" });
   }
 
@@ -54,6 +258,7 @@ export default function ProfileRail() {
     setError("");
     setName(p.name);
     setTargetExe(p.target_exe ?? "");
+    setBrowsePath("");
     setModal({ kind: "edit", profile: p });
   }
 
@@ -226,103 +431,101 @@ export default function ProfileRail() {
       </div>
 
       {modal?.kind === "add" && (
-        <Modal title="New Profile" onClose={() => setModal(null)}>
-          <form onSubmit={saveModal} className="modal-form">
-            <input
-              placeholder="Profile name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={60}
-              autoFocus
+        <Modal
+          title="New Profile"
+          subtitle="Configure workspace context & trigger scope"
+          icon={<ProfileIcon />}
+          onClose={() => setModal(null)}
+        >
+          <form onSubmit={saveModal} className="modal-form modal-form-wide">
+            <ProfileFields
+              name={name}
+              setName={setName}
+              targetExe={targetExe}
+              setTargetExe={setTargetExe}
+              exeOptions={exeOptions}
+              activeWindow={activeWindow}
+              browsePath={browsePath}
+              setBrowsePath={setBrowsePath}
             />
-            <div className="exe-row">
-              <select value={targetExe} onChange={(e) => setTargetExe(e.target.value)} aria-label="Target exe">
-                <option value="">No target (all windows)</option>
-                {exeOptions.map((x) => (
-                  <option key={x} value={x}>
-                    {x}
-                  </option>
-                ))}
-              </select>
-              <button
-                className="btn-secondary exe-capture"
-                type="button"
-                title="Set active window as target"
-                onClick={() => setTargetExe(activeWindow)}
-                disabled={!activeWindow || activeWindow === "Unknown"}
-              >
-                Active window
-              </button>
-            </div>
             {error && <span className="modal-error">{error}</span>}
-            <div className="modal-actions">
-              <button className="btn-secondary" type="button" onClick={() => setModal(null)}>
-                Cancel
-              </button>
-              <button className="btn-primary" type="submit" disabled={saving}>
-                {saving ? "Adding..." : "Add"}
-              </button>
-            </div>
+            <ModalFooter
+              saving={saving}
+              onCancel={() => setModal(null)}
+              submitLabel={saving ? "Creating..." : "+ Create Profile"}
+            />
           </form>
         </Modal>
       )}
 
       {modal?.kind === "edit" && (
-        <Modal title="Edit Profile" onClose={() => setModal(null)}>
-          <form onSubmit={saveModal} className="modal-form">
-            <input
-              placeholder="Profile name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={60}
-              autoFocus
+        <Modal
+          title="Edit Profile"
+          subtitle="Update workspace context & trigger scope"
+          icon={<ProfileIcon />}
+          onClose={() => setModal(null)}
+        >
+          <form onSubmit={saveModal} className="modal-form modal-form-wide">
+            <ProfileFields
+              name={name}
+              setName={setName}
+              targetExe={targetExe}
+              setTargetExe={setTargetExe}
+              exeOptions={exeOptions}
+              activeWindow={activeWindow}
+              browsePath={browsePath}
+              setBrowsePath={setBrowsePath}
             />
-            <div className="exe-row">
-              <select value={targetExe} onChange={(e) => setTargetExe(e.target.value)} aria-label="Target exe">
-                <option value="">No target (all windows)</option>
-                {exeOptions.map((x) => (
-                  <option key={x} value={x}>
-                    {x}
-                  </option>
-                ))}
-              </select>
-              <button
-                className="btn-secondary exe-capture"
-                type="button"
-                title="Set active window as target"
-                onClick={() => setTargetExe(activeWindow)}
-                disabled={!activeWindow || activeWindow === "Unknown"}
-              >
-                Active window
-              </button>
-            </div>
             {error && <span className="modal-error">{error}</span>}
-            <div className="modal-actions">
-              <button className="btn-secondary" type="button" onClick={() => setModal(null)}>
-                Cancel
-              </button>
-              <button className="btn-primary" type="submit" disabled={saving}>
-                {saving ? "Saving..." : "Save"}
-              </button>
-            </div>
+            <ModalFooter
+              saving={saving}
+              onCancel={() => setModal(null)}
+              submitLabel={saving ? "Saving..." : "Save Changes"}
+            />
           </form>
         </Modal>
       )}
 
       {modal?.kind === "delete" && (
-        <Modal title="Delete Profile" onClose={() => setModal(null)}>
-          <p className="modal-text">
-            <strong>{modal.profile.name}</strong> — delete this profile? This cannot be undone.
-          </p>
-          {error && <span className="modal-error">{error}</span>}
-          <div className="modal-actions">
-            <button className="btn-secondary" type="button" onClick={() => setModal(null)}>
-              Cancel
-            </button>
-            <button className="btn-danger" type="button" disabled={saving} onClick={deleteModal}>
-              {saving ? "Deleting..." : "Delete"}
-            </button>
-          </div>
+        <Modal
+          title="Delete Profile"
+          subtitle="This cannot be undone"
+          icon={<ProfileIcon />}
+          onClose={() => setModal(null)}
+        >
+          <form
+            className="modal-form modal-form-wide"
+            onSubmit={(e) => {
+              e.preventDefault();
+              deleteModal();
+            }}
+          >
+            <div className="scope-card scope-card-danger">
+              <span className="scope-text">
+                <span className="scope-title-row">
+                  <span className="scope-title">{modal.profile.name}</span>
+                  {modal.profile.target_exe ? (
+                    <span className="scope-badge scope-badge-linked">Linked</span>
+                  ) : (
+                    <span className="scope-badge">Global</span>
+                  )}
+                </span>
+                <span className="scope-desc">
+                  {modal.profile.target_exe
+                    ? `Linked to ${modal.profile.target_exe}. Triggers in this profile will stop working.`
+                    : "Global profile. Triggers in this profile will stop working."}{" "}
+                  Delete this profile?
+                </span>
+              </span>
+            </div>
+            {error && <span className="modal-error">{error}</span>}
+            <ModalFooter
+              saving={saving}
+              onCancel={() => setModal(null)}
+              submitLabel={saving ? "Deleting..." : "Delete Profile"}
+              danger
+            />
+          </form>
         </Modal>
       )}
     </aside>
