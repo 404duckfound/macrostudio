@@ -4,6 +4,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Action {
+    Keys { #[serde(default)] keys: String },
+    Mouse {
+        #[serde(default = "default_mouse_button")]
+        button: String,
+        #[serde(default)] x: i32,
+        #[serde(default)] y: i32,
+    },
     Custom { #[serde(default)] blocks: Vec<Block> },
     Script { #[serde(default)] code: String },
 }
@@ -36,12 +43,8 @@ pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool) -> String {
     let mut script = String::from("#Requires AutoHotkey v2.0\n\n");
     // Block acikken `*` tuusu tamamen yutar, kapaliyken `~` ile OS'a gecer.
     let prefix = if block_key { "*" } else { "~" };
-    let fallback = Trigger {
-        shortcut: "F9".to_string(),
-        actions: Vec::new(),
-    };
     let mut seen = std::collections::HashSet::new();
-    let mut blocks: Vec<(String, &Trigger)> = triggers
+    let blocks: Vec<(String, &Trigger)> = triggers
         .iter()
         .filter(|t| !t.shortcut.trim().is_empty())
         .map(|t| {
@@ -52,13 +55,17 @@ pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool) -> String {
         })
         .filter(|(k, _)| seen.insert(k.clone()))
         .collect();
-    if blocks.is_empty() {
-        blocks.push((format!("{prefix}F9"), &fallback));
-    }
     for (key, trigger) in &blocks {
         script.push_str(&format!("{key}::\n{{\n"));
         for action in &trigger.actions {
             match action {
+                Action::Keys { keys } => {
+                    let escaped = keys.replace('"', "`\"");
+                    script.push_str(&format!("    Send(\"{escaped}\")\n"));
+                }
+                Action::Mouse { button, x, y } => {
+                    script.push_str(&mouse_click_line(button, *x, *y));
+                }
                 Action::Custom { blocks } => {
                     for block in blocks {
                         match block {
@@ -67,13 +74,7 @@ pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool) -> String {
                                 script.push_str(&format!("    Send(\"{escaped}\")\n"));
                             }
                             Block::Mouse { button, x, y } => {
-                                if *x == 0 && *y == 0 {
-                                    script.push_str(&format!("    Click(\"{button}\")\n"));
-                                } else {
-                                    script.push_str(&format!(
-                                        "    Click({x}, {y}, \"{button}\")\n"
-                                    ));
-                                }
+                                script.push_str(&mouse_click_line(button, *x, *y));
                             }
                             Block::Delay { ms } => {
                                 script.push_str(&format!("    Sleep({ms})\n"));
@@ -91,6 +92,14 @@ pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool) -> String {
         script.push_str("}\n");
     }
     script
+}
+
+fn mouse_click_line(button: &str, x: i32, y: i32) -> String {
+    if x == 0 && y == 0 {
+        format!("    Click(\"{button}\")\n")
+    } else {
+        format!("    Click({x}, {y}, \"{button}\")\n")
+    }
 }
 
 fn map_shortcut_to_ahk(input: &str) -> String {
@@ -133,14 +142,40 @@ mod tests {
             &[
                 trig(
                     "Ctrl+Shift+F1",
-                    vec![custom(vec![Block::Keys { keys: "hi".to_string() }])],
+                    vec![Action::Keys { keys: "hi".to_string() }],
                 ),
-                trig("F9", vec![custom(vec![Block::Delay { ms: 10 }])]),
+                trig(
+                    "F9",
+                    vec![custom(vec![Block::Delay { ms: 10 }])],
+                ),
             ],
             true,
         );
         assert!(out.contains("^+F1::\n{\n    Send(\"hi\")\n}\n"));
         assert!(out.contains("F9::\n{\n    Sleep(10)\n}\n"));
+    }
+
+    #[test]
+    fn mouse_action_clicks_pointer_or_coords() {
+        let out = compile_to_ahk_v2(
+            &[trig(
+                "F9",
+                vec![
+                    Action::Mouse {
+                        button: "Right".to_string(),
+                        x: 0,
+                        y: 0,
+                    },
+                    Action::Mouse {
+                        button: "Left".to_string(),
+                        x: 5,
+                        y: 6,
+                    },
+                ],
+            )],
+            true,
+        );
+        assert!(out.contains("    Click(\"Right\")\n    Click(5, 6, \"Left\")\n"));
     }
 
     #[test]
@@ -195,9 +230,20 @@ mod tests {
     }
 
     #[test]
-    fn empty_triggers_fall_back_to_f9() {
+    fn empty_triggers_emit_no_hotkey() {
         let out = compile_to_ahk_v2(&[], true);
-        assert!(out.contains("F9::"));
+        assert!(!out.contains("::"));
+        assert!(out.starts_with("#Requires AutoHotkey v2.0"));
+    }
+
+    #[test]
+    fn shortcutless_triggers_emit_nothing() {
+        let out = compile_to_ahk_v2(
+            &[trig("", vec![custom(vec![Block::Delay { ms: 5 }])]), trig("F9", vec![])],
+            true,
+        );
+        assert_eq!(out.matches("::").count(), 1);
+        assert!(!out.contains("Sleep(5)"));
     }
 
     #[test]
@@ -215,13 +261,9 @@ mod tests {
     }
 
     #[test]
-    fn blank_trigger_strings_fall_back_to_f9() {
-        let out = compile_to_ahk_v2(
-            &[trig("", vec![]), trig("   ", vec![])],
-            true,
-        );
-        assert!(out.contains("F9::"));
-        assert!(!out.contains("::\n::"));
+    fn blank_trigger_strings_are_skipped() {
+        let out = compile_to_ahk_v2(&[trig("", vec![]), trig("   ", vec![])], true);
+        assert!(!out.contains("::"));
     }
 
     #[test]

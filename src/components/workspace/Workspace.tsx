@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useProfileStore } from "../../stores/useProfileStore";
 import type { ActionBlock, MacroAction, Profile, Trigger } from "../../types";
@@ -79,15 +79,9 @@ const KEY_PRESETS = [
 
 const MOUSE_BUTTONS = ["Left", "Right", "Middle"];
 
-function KeysInput({
-  block,
-  onChange,
-}: {
-  block: { kind: "keys"; keys: string };
-  onChange: (b: ActionBlock) => void;
-}) {
+function KeysInput({ keys, onKeys }: { keys: string; onKeys: (keys: string) => void }) {
   const [mode, setMode] = useState<"preset" | "custom">(
-    KEY_PRESETS.includes(block.keys) || block.keys === "" ? "preset" : "custom",
+    KEY_PRESETS.includes(keys) || keys === "" ? "preset" : "custom",
   );
   return (
     <>
@@ -97,21 +91,15 @@ function KeysInput({
         onChange={(e) => {
           const next = e.target.value as "preset" | "custom";
           setMode(next);
-          onChange({ kind: "keys", keys: next === "preset" ? block.keys || "Enter" : "" });
+          onKeys(next === "preset" ? keys || "Enter" : "");
         }}
       >
         <option value="preset">Pick key</option>
         <option value="custom">Type keys</option>
       </select>
       {mode === "preset" ? (
-        <select
-          value={KEY_PRESETS.includes(block.keys) ? block.keys : ""}
-          aria-label="Key"
-          onChange={(e) => onChange({ kind: "keys", keys: e.target.value })}
-        >
-          {block.keys !== "" && !KEY_PRESETS.includes(block.keys) && (
-            <option value={block.keys}>{block.keys}</option>
-          )}
+        <select value={KEY_PRESETS.includes(keys) ? keys : ""} aria-label="Key" onChange={(e) => onKeys(e.target.value)}>
+          {keys !== "" && !KEY_PRESETS.includes(keys) && <option value={keys}>{keys}</option>}
           {KEY_PRESETS.map((k) => (
             <option key={k} value={k}>
               {k}
@@ -121,9 +109,9 @@ function KeysInput({
       ) : (
         <input
           className="action-input"
-          value={block.keys}
+          value={keys}
           placeholder="Keys to send"
-          onChange={(e) => onChange({ kind: "keys", keys: e.target.value })}
+          onChange={(e) => onKeys(e.target.value)}
         />
       )}
     </>
@@ -131,20 +119,20 @@ function KeysInput({
 }
 
 function MouseInput({
-  block,
-  onChange,
+  button,
+  x,
+  y,
+  onPatch,
 }: {
-  block: { kind: "mouse"; button: string; x: number; y: number };
-  onChange: (b: ActionBlock) => void;
+  button: string;
+  x: number;
+  y: number;
+  onPatch: (patch: { button?: string; x?: number; y?: number }) => void;
 }) {
-  const [useCoords, setUseCoords] = useState(block.x !== 0 || block.y !== 0);
+  const [useCoords, setUseCoords] = useState(x !== 0 || y !== 0);
   return (
     <div className="action-grid">
-      <select
-        value={block.button}
-        aria-label="Mouse button"
-        onChange={(e) => onChange({ ...block, button: e.target.value })}
-      >
+      <select value={button} aria-label="Mouse button" onChange={(e) => onPatch({ button: e.target.value })}>
         {MOUSE_BUTTONS.map((b) => (
           <option key={b} value={b}>
             {b}
@@ -157,7 +145,7 @@ function MouseInput({
           checked={useCoords}
           onChange={(e) => {
             setUseCoords(e.target.checked);
-            onChange({ ...block, x: 0, y: 0 });
+            onPatch({ x: 0, y: 0 });
           }}
         />
         <span>X/Y</span>
@@ -166,15 +154,15 @@ function MouseInput({
         <>
           <input
             type="number"
-            value={block.x}
+            value={x}
             aria-label="Click X"
-            onChange={(e) => onChange({ ...block, x: Number(e.target.value) || 0 })}
+            onChange={(e) => onPatch({ x: Number(e.target.value) || 0 })}
           />
           <input
             type="number"
-            value={block.y}
+            value={y}
             aria-label="Click Y"
-            onChange={(e) => onChange({ ...block, y: Number(e.target.value) || 0 })}
+            onChange={(e) => onPatch({ y: Number(e.target.value) || 0 })}
           />
         </>
       )}
@@ -194,7 +182,9 @@ function BlockRow({
   return (
     <div className="block-row">
       <span className="block-kind">{BLOCK_LABELS[block.kind]}</span>
-      {block.kind === "keys" && <KeysInput block={block} onChange={onChange} />}
+      {block.kind === "keys" && (
+        <KeysInput keys={block.keys} onKeys={(keys) => onChange({ kind: "keys", keys })} />
+      )}
       {block.kind === "delay" && (
         <input
           type="number"
@@ -204,7 +194,14 @@ function BlockRow({
           onChange={(e) => onChange({ kind: "delay", ms: Number(e.target.value) || 0 })}
         />
       )}
-      {block.kind === "mouse" && <MouseInput block={block} onChange={onChange} />}
+      {block.kind === "mouse" && (
+        <MouseInput
+          button={block.button}
+          x={block.x}
+          y={block.y}
+          onPatch={(patch) => onChange({ ...block, ...patch })}
+        />
+      )}
       <button type="button" className="action-delete" onClick={onDelete} title="Delete block">
         ×
       </button>
@@ -242,14 +239,26 @@ function ActionCard({
     onChange({ type: "custom", blocks: action.blocks.filter((_, j) => j !== i) });
   }
 
+  const kindLabel = action.type === "keys" ? "Keyboard" : action.type === "mouse" ? "Mouse" : action.type === "custom" ? "Custom" : "Script";
   return (
     <div className="action-card">
       <div className="action-card-head">
-        <span className="action-kind">{action.type === "custom" ? "Custom" : "Script"}</span>
+        <span className="action-kind">{kindLabel}</span>
         <button type="button" className="action-delete" onClick={onDelete} title="Delete action">
           Delete
         </button>
       </div>
+      {action.type === "keys" && (
+        <KeysInput keys={action.keys} onKeys={(keys) => onChange({ type: "keys", keys })} />
+      )}
+      {action.type === "mouse" && (
+        <MouseInput
+          button={action.button}
+          x={action.x}
+          y={action.y}
+          onPatch={(patch) => onChange({ ...action, ...patch })}
+        />
+      )}
       {action.type === "script" && (
         <textarea
           className="action-textarea"
@@ -280,19 +289,17 @@ function ActionCard({
   );
 }
 
-type AddKind = "keys-press" | "mouse-press" | "custom" | "script";
+type AddKind = "" | "keys" | "mouse" | "custom" | "script";
 
 export default function Workspace() {
   const activeId = useProfileStore((s) => s.activeId);
   const profiles = useProfileStore((s) => s.profiles);
   const active = profiles.find((p) => p.id === activeId) ?? null;
 
-  const [draftTriggers, setDraftTriggers] = useState<Trigger[]>(
-    active?.triggers ?? [{ shortcut: "F9", actions: [] }],
-  );
+  const [draftTriggers, setDraftTriggers] = useState<Trigger[]>(active?.triggers ?? []);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [draftBlockKey, setDraftBlockKey] = useState(active?.block_key ?? true);
-  const [addKind, setAddKind] = useState<AddKind>("keys-press");
+  const [compactHead, setCompactHead] = useState(false);
   const [recording, setRecording] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -316,6 +323,17 @@ export default function Workspace() {
 
   const sel = Math.min(selectedIdx, Math.max(0, draftTriggers.length - 1));
   const selected = draftTriggers[sel] ?? null;
+  const headRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = headRef.current;
+    if (!el) return;
+    const fit = () => setCompactHead(el.scrollWidth > el.clientWidth + 1);
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!recording) return;
@@ -359,7 +377,7 @@ export default function Workspace() {
       setSelectedIdx(pending);
       return;
     }
-    setDraftTriggers((prev) => [...prev, { shortcut: "F9", actions: [] }]);
+    setDraftTriggers((prev) => [...prev, { shortcut: "", actions: [] }]);
     setSelectedIdx(draftTriggers.length);
   }
 
@@ -373,14 +391,16 @@ export default function Workspace() {
     setDraftTriggers((prev) => prev.map((x, i) => (i === sel ? { ...x, actions: next } : x)));
   }
 
-  function addAction() {
+  const [addKind, setAddKind] = useState<AddKind>("");
+
+  function addActionKind(kind: Exclude<AddKind, "">) {
     if (!selected) return;
     const fresh: MacroAction =
-      addKind === "keys-press"
-        ? { type: "custom", blocks: [{ kind: "keys", keys: "" }] }
-        : addKind === "mouse-press"
-          ? { type: "custom", blocks: [{ kind: "mouse", button: "Left", x: 0, y: 0 }] }
-          : addKind === "custom"
+      kind === "keys"
+        ? { type: "keys", keys: "" }
+        : kind === "mouse"
+          ? { type: "mouse", button: "Left", x: 0, y: 0 }
+          : kind === "custom"
             ? { type: "custom", blocks: [] }
             : { type: "script", code: "" };
     updateSelectedActions([...selected.actions, fresh]);
@@ -425,31 +445,74 @@ export default function Workspace() {
     <main className="workspace">
       <div className="flow-canvas">
         <div className="flow-inner">
-          <div className="flow-head">
+          <div ref={headRef} className={`flow-head${compactHead ? " compact-head" : ""}`}>
             <div>
-              <h3 className="flow-title">Configured Triggers ({draftTriggers.length})</h3>
-              <p className="flow-sub">Events and keyboard/mouse hooks that execute this macro sequence</p>
+              <h3 className="flow-title">Triggers ({draftTriggers.length})</h3>
             </div>
             <div className="flow-head-actions">
-              <span className="flow-profile" title={active.target_exe ?? "All windows"}>
-                {active.name}
-              </span>
+              <button
+                type="button"
+                className="btn-trigger-add"
+                onClick={addTrigger}
+                title="Add New Trigger"
+                aria-label="Add New Trigger"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+                <span>Add</span>
+              </button>
               <button
                 type="button"
                 className="btn-trigger-delete"
                 onClick={removeSelected}
                 disabled={!selected}
                 title="Remove Trigger"
+                aria-label="Remove Trigger"
               >
-                Sil
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span>Remove</span>
               </button>
-              <button type="button" className="btn-trigger-save" onClick={save} disabled={saving || !dirty} title="Save Changes">
-                {saving ? "Saving…" : "Kaydet"}
+              <button
+                type="button"
+                className="btn-trigger-save"
+                onClick={save}
+                disabled={saving || !dirty}
+                title="Save Changes"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <polyline points="17 21 17 13 7 13 7 21" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  <polyline points="7 3 7 8 15 8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span>{saving ? "Saving…" : "Save"}</span>
               </button>
             </div>
           </div>
 
-          {draftTriggers.length === 0 && <div className="flow-empty">No triggers yet.</div>}
+          {draftTriggers.length === 0 && (
+            <div className="flow-empty">
+              <span>No triggers yet.</span>
+              <span>Use + to add one, then record a shortcut.</span>
+            </div>
+          )}
           {draftTriggers.map((t, i) => (
             <div
               key={`${i}-${t.shortcut}`}
@@ -482,11 +545,6 @@ export default function Workspace() {
               </div>
             </div>
           ))}
-
-          <button type="button" className="trigger-add" onClick={addTrigger}>
-            <span aria-hidden="true">+</span>
-            <span>Add New Trigger</span>
-          </button>
         </div>
       </div>
 
@@ -566,15 +624,22 @@ export default function Workspace() {
               />
             ))}
             <div className="action-add-controls">
-              <select value={addKind} onChange={(e) => setAddKind(e.target.value as AddKind)} aria-label="Action type">
-                <option value="keys-press">Keyboard Press</option>
-                <option value="mouse-press">Mouse Press</option>
+              <select
+                value={addKind}
+                onChange={(e) => {
+                  const kind = e.target.value as AddKind;
+                  if (kind !== "") addActionKind(kind);
+                  setAddKind("");
+                }}
+                aria-label="Add action"
+                disabled={!selected}
+              >
+                <option value="">Add action…</option>
+                <option value="keys">Keyboard Press</option>
+                <option value="mouse">Mouse Press</option>
                 <option value="custom">Custom</option>
                 <option value="script">Script</option>
               </select>
-              <button type="button" className="btn-secondary action-add-btn" onClick={addAction} disabled={!selected}>
-                Add
-              </button>
             </div>
           </div>
         </div>

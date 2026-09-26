@@ -491,15 +491,14 @@ select { appearance: none; }
   flex: 1;
   min-width: 0;
   overflow-y: auto;
-  padding: 24px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
 }
 
 .flow-inner {
   width: 100%;
-  max-width: 620px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -507,29 +506,42 @@ select { appearance: none; }
 
 .flow-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
   padding-bottom: 14px;
   margin-bottom: 4px;
 }
+.flow-head > div:first-child { flex: 1; min-width: 0; }
 
-.flow-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.flow-sub { font-size: 11px; color: var(--text-disabled); margin-top: 2px; }
-.flow-profile {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--accent-primary);
-  background: #172338;
-  border: 1px solid var(--border-default);
-  border-radius: 9999px;
-  padding: 4px 12px;
+.flow-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 180px;
 }
-.flow-empty { color: var(--text-disabled); font-size: 14px; margin-top: 48px; }
+.flow-sub {
+  font-size: 11px;
+  color: var(--text-disabled);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flow-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  min-height: 240px;
+  color: var(--text-disabled);
+  font-size: 14px;
+}
+.flow-empty span:last-child { font-size: 12px; color: #4a5260; }
 
 .trigger-card {
   width: 100%;
@@ -688,32 +700,43 @@ select { appearance: none; }
 .flow-head-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
-.flow-head-actions .flow-profile { max-width: 140px; }
-.btn-trigger-delete {
-  height: 40px;
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid #3d181b;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--status-danger);
+.flow-head-actions button {
+  height: 32px;
+  min-height: 32px;
+  padding: 0 12px;
   font-size: 12px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.flow-head-actions svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
+.compact-head .flow-head-actions button { width: 32px; padding: 0; }
+.compact-head .flow-head-actions button span { display: none; }
+.flow-head-actions .btn-trigger-save { gap: 6px; padding: 0 14px; }
+.btn-trigger-add {
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
   font-weight: 500;
 }
-.btn-trigger-delete:hover:not(:disabled) { background: #2e1215; }
+.btn-trigger-add:hover { border-color: #384558; background: var(--bg-interactive); color: var(--text-primary); }
+.btn-trigger-delete {
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.btn-trigger-delete:hover:not(:disabled) { border-color: #3d181b; background: #2e1215; color: var(--status-danger); }
 .btn-trigger-delete:disabled { opacity: 0.4; cursor: default; }
 .btn-trigger-save {
-  height: 40px;
-  min-height: 40px;
-  padding: 0 18px;
   border: none;
-  border-radius: 8px;
   background: var(--accent-primary);
   color: var(--bg-base);
-  font-size: 13px;
   font-weight: 600;
 }
 .btn-trigger-save:hover:not(:disabled) { background: #aac7ff; }
@@ -738,7 +761,6 @@ select { appearance: none; }
 .action-delete:hover { color: var(--status-danger); }
 .action-add-controls { display: flex; gap: 8px; margin-top: 8px; }
 .action-add-controls select { flex: 1; min-width: 0; }
-.action-add-btn { flex-shrink: 0; min-height: 44px; font-size: 13px; padding: 0 16px; }
 .block-row {
   display: flex;
   gap: 8px;

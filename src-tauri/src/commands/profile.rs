@@ -93,13 +93,13 @@ fn convert_action(v: serde_json::Value) -> serde_json::Value {
     let kind = v.get("type").and_then(|t| t.as_str()).unwrap_or("");
     match kind {
         "custom" if v.get("blocks").is_some() => v,
-        "script" => v,
+        "keys" | "mouse" | "script" => v,
         "send_keys" => {
             let keys = v
                 .get("payload")
                 .cloned()
                 .unwrap_or(serde_json::Value::String(String::new()));
-            serde_json::json!({ "type": "custom", "blocks": [{ "kind": "keys", "keys": keys }] })
+            serde_json::json!({ "type": "keys", "keys": keys })
         }
         "delay" => {
             let ms = v.get("ms").cloned().unwrap_or(serde_json::json!(0));
@@ -112,7 +112,7 @@ fn convert_action(v: serde_json::Value) -> serde_json::Value {
                 .unwrap_or(serde_json::Value::String("Left".to_string()));
             let x = v.get("x").cloned().unwrap_or(serde_json::json!(0));
             let y = v.get("y").cloned().unwrap_or(serde_json::json!(0));
-            serde_json::json!({ "type": "custom", "blocks": [{ "kind": "mouse", "button": button, "x": x, "y": y }] })
+            serde_json::json!({ "type": "mouse", "button": button, "x": x, "y": y })
         }
         "custom" => {
             let code = v
@@ -220,6 +220,10 @@ mod tests {
         assert!(needs_rewrite);
         assert_eq!(p.triggers.len(), 2);
         assert!(p.triggers.iter().all(|t| t.actions.len() == 1));
+        match &p.triggers[0].actions[..] {
+            [Action::Keys { keys }] => assert_eq!(keys, "hi"),
+            _ => panic!("expected keys action"),
+        }
         assert!(!p.block_key);
     }
 

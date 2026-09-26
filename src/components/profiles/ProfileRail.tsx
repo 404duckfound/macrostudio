@@ -81,7 +81,7 @@ export default function ProfileRail() {
         const profile: Profile = {
           id: newId(),
           name: cleanName,
-          triggers: [{ shortcut: "F9", actions: [] }],
+          triggers: [],
           target_exe: cleanTarget || null,
           enabled: true,
           block_key: true,
