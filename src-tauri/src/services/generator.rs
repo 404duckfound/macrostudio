@@ -47,12 +47,7 @@ pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool) -> String {
     let blocks: Vec<(String, &Trigger)> = triggers
         .iter()
         .filter(|t| !t.shortcut.trim().is_empty())
-        .map(|t| {
-            (
-                format!("{prefix}{}", map_shortcut_to_ahk(t.shortcut.trim())),
-                t,
-            )
-        })
+        .map(|t| (format!("{prefix}{}", map_shortcut_to_ahk(t.shortcut.trim())), t))
         .filter(|(k, _)| seen.insert(k.clone()))
         .collect();
     for (key, trigger) in &blocks {
@@ -60,8 +55,7 @@ pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool) -> String {
         for action in &trigger.actions {
             match action {
                 Action::Keys { keys } => {
-                    let escaped = keys.replace('"', "`\"");
-                    script.push_str(&format!("    Send(\"{escaped}\")\n"));
+                    script.push_str(&send_line(keys));
                 }
                 Action::Mouse { button, x, y } => {
                     script.push_str(&mouse_click_line(button, *x, *y));
@@ -70,8 +64,7 @@ pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool) -> String {
                     for block in blocks {
                         match block {
                             Block::Keys { keys } => {
-                                let escaped = keys.replace('"', "`\"");
-                                script.push_str(&format!("    Send(\"{escaped}\")\n"));
+                                script.push_str(&send_line(keys));
                             }
                             Block::Mouse { button, x, y } => {
                                 script.push_str(&mouse_click_line(button, *x, *y));
@@ -92,6 +85,11 @@ pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool) -> String {
         script.push_str("}\n");
     }
     script
+}
+
+fn send_line(keys: &str) -> String {
+    let escaped = keys.replace('"', "`\"");
+    format!("    Send(\"{escaped}\")\n")
 }
 
 fn mouse_click_line(button: &str, x: i32, y: i32) -> String {

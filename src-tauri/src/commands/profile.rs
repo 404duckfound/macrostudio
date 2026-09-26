@@ -88,6 +88,12 @@ fn migrate_value(mut v: serde_json::Value) -> serde_json::Value {
     v
 }
 
+fn text_field(v: &serde_json::Value, key: &str, default: &str) -> serde_json::Value {
+    v.get(key)
+        .cloned()
+        .unwrap_or(serde_json::Value::String(default.to_string()))
+}
+
 /// Eski aksiyon seklini yeni semaya cevirir; yeni sekiller aynen gecer.
 fn convert_action(v: serde_json::Value) -> serde_json::Value {
     let kind = v.get("type").and_then(|t| t.as_str()).unwrap_or("");
@@ -95,31 +101,19 @@ fn convert_action(v: serde_json::Value) -> serde_json::Value {
         "custom" if v.get("blocks").is_some() => v,
         "keys" | "mouse" | "script" => v,
         "send_keys" => {
-            let keys = v
-                .get("payload")
-                .cloned()
-                .unwrap_or(serde_json::Value::String(String::new()));
-            serde_json::json!({ "type": "keys", "keys": keys })
+            serde_json::json!({ "type": "keys", "keys": text_field(&v, "payload", "") })
         }
         "delay" => {
             let ms = v.get("ms").cloned().unwrap_or(serde_json::json!(0));
             serde_json::json!({ "type": "custom", "blocks": [{ "kind": "delay", "ms": ms }] })
         }
         "mouse_click" => {
-            let button = v
-                .get("button")
-                .cloned()
-                .unwrap_or(serde_json::Value::String("Left".to_string()));
             let x = v.get("x").cloned().unwrap_or(serde_json::json!(0));
             let y = v.get("y").cloned().unwrap_or(serde_json::json!(0));
-            serde_json::json!({ "type": "mouse", "button": button, "x": x, "y": y })
+            serde_json::json!({ "type": "mouse", "button": text_field(&v, "button", "Left"), "x": x, "y": y })
         }
         "custom" => {
-            let code = v
-                .get("code")
-                .cloned()
-                .unwrap_or(serde_json::Value::String(String::new()));
-            serde_json::json!({ "type": "script", "code": code })
+            serde_json::json!({ "type": "script", "code": text_field(&v, "code", "") })
         }
         _ => v,
     }

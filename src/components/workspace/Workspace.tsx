@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useProfileStore } from "../../stores/useProfileStore";
 import type { ActionBlock, MacroAction, Profile, Trigger } from "../../types";
@@ -10,43 +10,31 @@ function parseTrigger(trigger: string): string[] {
     .filter((s) => s.length > 0);
 }
 
-function keyEventToTrigger(e: KeyboardEvent): string | null {
-  if (e.key === "Escape") return null;
-  if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return null;
+function heldModifiers(e: { ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean }): string[] {
   const parts: string[] = [];
   if (e.ctrlKey) parts.push("Ctrl");
   if (e.shiftKey) parts.push("Shift");
   if (e.altKey) parts.push("Alt");
   if (e.metaKey) parts.push("Meta");
+  return parts;
+}
+
+function keyEventToTrigger(e: KeyboardEvent): string | null {
+  if (e.key === "Escape") return null;
+  if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return null;
   let key = e.key;
   if (key === " ") key = "Space";
   else if (key.length === 1) key = key.toUpperCase();
   else key = key.charAt(0).toUpperCase() + key.slice(1);
-  parts.push(key);
-  return parts.join("+");
+  return [...heldModifiers(e), key].join("+");
 }
 
+const MOUSE_EVENT_BUTTONS = ["MouseLeft", "MouseMiddle", "MouseRight", "MouseX1", "MouseX2"];
+
 function mouseEventToTrigger(e: MouseEvent): string | null {
-  const btn =
-    e.button === 0
-      ? "MouseLeft"
-      : e.button === 1
-        ? "MouseMiddle"
-        : e.button === 2
-          ? "MouseRight"
-          : e.button === 3
-            ? "MouseX1"
-            : e.button === 4
-              ? "MouseX2"
-              : null;
+  const btn = MOUSE_EVENT_BUTTONS[e.button] ?? null;
   if (!btn) return null;
-  const parts: string[] = [];
-  if (e.ctrlKey) parts.push("Ctrl");
-  if (e.shiftKey) parts.push("Shift");
-  if (e.altKey) parts.push("Alt");
-  if (e.metaKey) parts.push("Meta");
-  parts.push(btn);
-  return parts.join("+");
+  return [...heldModifiers(e), btn].join("+");
 }
 
 function Chips({ parts, box }: { parts: string[]; box: boolean }) {
@@ -67,6 +55,13 @@ const BLOCK_LABELS: Record<ActionBlock["kind"], string> = {
   keys: "Keys",
   mouse: "Mouse",
   delay: "Delay",
+};
+
+const ACTION_LABELS: Record<MacroAction["type"], string> = {
+  keys: "Keyboard",
+  mouse: "Mouse",
+  custom: "Custom",
+  script: "Script",
 };
 
 const KEY_PRESETS = [
@@ -220,12 +215,18 @@ function ActionCard({
 }) {
   function addBlock(kind: ActionBlock["kind"]) {
     if (action.type !== "custom") return;
-    const fresh: ActionBlock =
-      kind === "keys"
-        ? { kind: "keys", keys: "" }
-        : kind === "mouse"
-          ? { kind: "mouse", button: "Left", x: 0, y: 0 }
-          : { kind: "delay", ms: 500 };
+    let fresh: ActionBlock;
+    switch (kind) {
+      case "keys":
+        fresh = { kind: "keys", keys: "" };
+        break;
+      case "mouse":
+        fresh = { kind: "mouse", button: "Left", x: 0, y: 0 };
+        break;
+      case "delay":
+        fresh = { kind: "delay", ms: 500 };
+        break;
+    }
     onChange({ type: "custom", blocks: [...action.blocks, fresh] });
   }
 
@@ -239,7 +240,7 @@ function ActionCard({
     onChange({ type: "custom", blocks: action.blocks.filter((_, j) => j !== i) });
   }
 
-  const kindLabel = action.type === "keys" ? "Keyboard" : action.type === "mouse" ? "Mouse" : action.type === "custom" ? "Custom" : "Script";
+  const kindLabel = ACTION_LABELS[action.type];
   return (
     <div className="action-card">
       <div className="action-card-head">
@@ -299,7 +300,6 @@ export default function Workspace() {
   const [draftTriggers, setDraftTriggers] = useState<Trigger[]>(active?.triggers ?? []);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [draftBlockKey, setDraftBlockKey] = useState(active?.block_key ?? true);
-  const [compactHead, setCompactHead] = useState(false);
   const [recording, setRecording] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -323,17 +323,6 @@ export default function Workspace() {
 
   const sel = Math.min(selectedIdx, Math.max(0, draftTriggers.length - 1));
   const selected = draftTriggers[sel] ?? null;
-  const headRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = headRef.current;
-    if (!el) return;
-    const fit = () => setCompactHead(el.scrollWidth > el.clientWidth + 1);
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   useEffect(() => {
     if (!recording) return;
@@ -395,14 +384,21 @@ export default function Workspace() {
 
   function addActionKind(kind: Exclude<AddKind, "">) {
     if (!selected) return;
-    const fresh: MacroAction =
-      kind === "keys"
-        ? { type: "keys", keys: "" }
-        : kind === "mouse"
-          ? { type: "mouse", button: "Left", x: 0, y: 0 }
-          : kind === "custom"
-            ? { type: "custom", blocks: [] }
-            : { type: "script", code: "" };
+    let fresh: MacroAction;
+    switch (kind) {
+      case "keys":
+        fresh = { type: "keys", keys: "" };
+        break;
+      case "mouse":
+        fresh = { type: "mouse", button: "Left", x: 0, y: 0 };
+        break;
+      case "custom":
+        fresh = { type: "custom", blocks: [] };
+        break;
+      case "script":
+        fresh = { type: "script", code: "" };
+        break;
+    }
     updateSelectedActions([...selected.actions, fresh]);
   }
 
@@ -445,7 +441,7 @@ export default function Workspace() {
     <main className="workspace">
       <div className="flow-canvas">
         <div className="flow-inner">
-          <div ref={headRef} className={`flow-head${compactHead ? " compact-head" : ""}`}>
+          <div className="flow-head">
             <div>
               <h3 className="flow-title">Triggers ({draftTriggers.length})</h3>
             </div>
@@ -461,7 +457,6 @@ export default function Workspace() {
                   <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
-                <span>Add</span>
               </button>
               <button
                 type="button"
@@ -481,7 +476,6 @@ export default function Workspace() {
                     strokeLinejoin="round"
                   />
                 </svg>
-                <span>Remove</span>
               </button>
               <button
                 type="button"
@@ -502,7 +496,6 @@ export default function Workspace() {
                   <polyline points="17 21 17 13 7 13 7 21" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                   <polyline points="7 3 7 8 15 8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span>{saving ? "Saving…" : "Save"}</span>
               </button>
             </div>
           </div>
