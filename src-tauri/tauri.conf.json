@@ -19,18 +19,6 @@
         "minWidth": 1024,
         "minHeight": 640,
         "decorations": false
-      },
-      {
-        "label": "overlay",
-        "title": "Quick Profile Switcher",
-        "url": "/overlay.html",
-        "width": 480,
-        "height": 360,
-        "decorations": false,
-        "alwaysOnTop": true,
-        "visible": false,
-        "skipTaskbar": true,
-        "resizable": false
       }
     ],
     "security": {
