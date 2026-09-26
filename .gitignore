@@ -18,6 +18,9 @@ src-tauri/target
 # Stitch exports (local only)
 stitch/
 
+# Superpowers execution workspaces (local scratch)
+.superpowers/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
