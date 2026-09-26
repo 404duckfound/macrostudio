@@ -21,6 +21,15 @@ fn default_true() -> bool {
     true
 }
 
+/// Tek dosyalik profili cozumler; bozuk icerik disinda tutulmasi icin None doner.
+fn parse_profile_entry(content: &str) -> Option<(Profile, bool)> {
+    let value: serde_json::Value = serde_json::from_str(content).ok()?;
+    let needs_rewrite = value.get("triggers").is_none();
+    let migrated = migrate_value(value);
+    let profile: Profile = serde_json::from_value(migrated).ok()?;
+    Some((profile, needs_rewrite))
+}
+
 /// Eski tek-triggirli JSON'u yeni semaya cevirir, legacy "trigger" anahtarini siler.
 fn migrate_value(mut v: serde_json::Value) -> serde_json::Value {
     if v.get("triggers").is_none() {
@@ -61,16 +70,14 @@ pub fn profile_list() -> Result<Vec<Profile>, String> {
             continue;
         }
         let content = std::fs::read_to_string(entry.path()).map_err(|e| e.to_string())?;
-        let value: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-        let needs_rewrite = value.get("triggers").is_none();
-        let migrated = migrate_value(value);
-        if let Ok(p) = serde_json::from_value::<Profile>(migrated.clone()) {
-            if needs_rewrite {
-                let pretty = serde_json::to_string_pretty(&migrated).map_err(|e| e.to_string())?;
-                std::fs::write(entry.path(), pretty).map_err(|e| e.to_string())?;
-            }
-            out.push(p);
+        let Some((p, needs_rewrite)) = parse_profile_entry(&content) else {
+            continue;
+        };
+        if needs_rewrite {
+            let pretty = serde_json::to_string_pretty(&p).map_err(|e| e.to_string())?;
+            std::fs::write(entry.path(), pretty).map_err(|e| e.to_string())?;
         }
+        out.push(p);
     }
     for p in &out {
         let ahk = dir.join(format!("{}.ahk", p.id));
@@ -115,5 +122,19 @@ mod tests {
         let p: Profile = serde_json::from_value(migrated).unwrap();
         assert_eq!(p.triggers, vec!["Ctrl+Shift+F1".to_string()]);
         assert!(p.block_key);
+    }
+
+    #[test]
+    fn corrupt_json_entry_is_skipped() {
+        assert!(parse_profile_entry("not json{{{").is_none());
+    }
+
+    #[test]
+    fn legacy_entry_reports_rewrite() {
+        let (_, needs_rewrite) = parse_profile_entry(
+            r#"{"id":"x","name":"N","trigger":"F9","enabled":true,"actions":[]}"#,
+        )
+        .unwrap();
+        assert!(needs_rewrite);
     }
 }

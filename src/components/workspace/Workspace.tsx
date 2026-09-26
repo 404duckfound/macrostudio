@@ -188,6 +188,12 @@ export default function Workspace() {
       draftBlockKey !== active.block_key);
 
   function addTrigger() {
+    const pending = draftTriggers.findIndex((t) => t.trim().length === 0);
+    if (pending >= 0) {
+      setSelectedIdx(pending);
+      setRecording(true);
+      return;
+    }
     setDraftTriggers((prev) => [...prev, "F9"]);
     setSelectedIdx(draftTriggers.length);
     setRecording(true);
@@ -213,7 +219,9 @@ export default function Workspace() {
 
   async function save() {
     if (!active) return;
-    const cleanTriggers = draftTriggers.map((t) => t.trim()).filter((t) => t.length > 0);
+    const cleanTriggers = Array.from(
+      new Set(draftTriggers.map((t) => t.trim()).filter((t) => t.length > 0)),
+    );
     setSaving(true);
     try {
       const updated: Profile = {
