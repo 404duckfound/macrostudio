@@ -25,7 +25,7 @@ Tauri v2 + React 19 + Zustand + Vite 8 desktop app (Windows-first). Design token
 - Saving a profile rewrites its `.ahk` but does NOT restart an already-running AHK process — re-run via overlay (Ctrl+Alt+M) after trigger/action edits.
 - `tools/AutoHotkey64.exe` **is in the repo** and bundled (`bundle.resources: ["../tools/*"]`); `ahk_manager.rs` spawns it with the **relative path** `tools/AutoHotkey64.exe` (works because cwd is the project root in dev).
 - Profiles/scripts are stored under raw `%APPDATA%/macro-studio/profiles` (JSON + `.ahk`) via `commands/profile.rs` — plain `std::env::var("APPDATA")`, not the Tauri path API. Windows-only assumption. `profile_save` always writes both `{id}.json` and the compiled `{id}.ahk`; `profile_list` backfills a missing `.ahk` for older profiles.
-- `tauri.conf.json` declares an `overlay` window at `/overlay.html`, but **that HTML file does not exist**; `OverlayPanel.tsx` and `AhkEditor.tsx` are currently unwired (not imported by `App.tsx`).
+- `tauri.conf.json` declares an `overlay` window at `/overlay.html`, but **that HTML file does not exist**; `OverlayPanel.tsx` is currently unwired (not imported by `App.tsx`). The Monaco-based `AhkEditor.tsx` was removed (dead code) along with the `@monaco-editor/react` dep.
 - `capabilities/default.json` grants permissions to windows `["main", "overlay"]`; a new window label needs adding there.
 - `tsconfig` is strict with `noUnusedLocals`/`noUnusedParameters` — unused imports fail `pnpm build`.
 
