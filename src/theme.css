@@ -540,6 +540,7 @@ select { appearance: none; }
   box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.45);
 }
 .trigger-card:hover { border-color: var(--accent-primary); }
+.trigger-card-selected { box-shadow: 0 0 0 1px var(--accent-primary); }
 .trigger-card-recording { border-color: var(--accent-primary); box-shadow: 0 0 0 1px var(--accent-primary); }
 .trigger-card-left { display: flex; align-items: center; gap: 14px; }
 .trigger-icon {
@@ -713,3 +714,51 @@ select { appearance: none; }
 }
 .btn-trigger-save:hover:not(:disabled) { background: #aac7ff; }
 .btn-trigger-save:disabled { opacity: 0.5; cursor: default; }
+
+.flow-actions-head { margin-top: 24px; }
+.action-card {
+  width: 100%;
+  background: #10141b;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+.action-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.action-kind { font-size: 12px; font-weight: 600; color: var(--accent-primary); text-transform: uppercase; letter-spacing: 0.05em; }
+.action-delete { border: none; background: none; min-height: 0; padding: 4px; font-size: 11px; color: #8e98a8; border-radius: 4px; }
+.action-delete:hover { color: var(--status-danger); }
+.action-add-row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.action-add-row button {
+  flex: 1;
+  min-height: 40px;
+  border: 1px dashed #283241;
+  border-radius: 8px;
+  background: transparent;
+  color: #c3c6d2;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.action-add-row button:hover { border-color: rgba(122, 162, 232, 0.7); color: var(--text-primary); }
+.action-input { font-family: "JetBrains Mono", monospace; font-size: 13px; }
+.action-textarea {
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  width: 100%;
+  border-radius: 12px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  min-height: 88px;
+  resize: vertical;
+  padding: 8px 12px;
+}
+.action-textarea:focus { border-color: var(--accent-primary); outline: 2px solid var(--accent-primary); }
+.action-grid { display: flex; gap: 8px; }
+.action-grid > * { flex: 1; min-width: 0; }
