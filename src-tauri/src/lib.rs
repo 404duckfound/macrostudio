@@ -30,6 +30,7 @@ pub fn run() {
             ahk_start_profile,
             ahk_stop_profile,
             ahk_compile_preview,
+            ahk_running_profiles,
             profile_list,
             profile_save,
             profile_delete,

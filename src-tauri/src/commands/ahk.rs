@@ -71,6 +71,11 @@ pub fn ahk_compile_preview(triggers: Vec<Trigger>, block_key: bool) -> String {
     compile_to_ahk_v2(&triggers, block_key)
 }
 
+#[tauri::command]
+pub fn ahk_running_profiles(state: State<'_, AppState>) -> Vec<(String, u32)> {
+    state.ahk_manager.list()
+}
+
 fn dirs_config_dir() -> Result<String, String> {
     std::env::var("APPDATA").map_err(|_| "APPDATA bulunamadi".to_string())
 }
