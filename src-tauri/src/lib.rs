@@ -6,6 +6,7 @@ pub mod state;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
+    Manager,
 };
 
 use crate::commands::{ahk::*, profile::*, system::*};
@@ -13,6 +14,13 @@ use crate::state::AppState;
 
 pub fn run() {
     tauri::Builder::default()
+        // Tek ornek plugin'i digerlerinden ONCE kaydedilmelidir; aksi halde
+        // ikinci acilisa odak devri calismaz.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_fs::init())

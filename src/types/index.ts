@@ -18,7 +18,7 @@ export interface Profile {
   id: string;
   name: string;
   triggers: Trigger[];
-  target_exe?: string | null;
+  target_exe: string | null;
   enabled: boolean;
   block_key: boolean;
 }

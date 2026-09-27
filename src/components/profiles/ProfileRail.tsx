@@ -5,7 +5,6 @@ import { AppWindow, Crosshair, Ellipsis, FolderOpen, Plus } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import Modal from "../common/Modal";
 import type { Profile } from "../../types";
-import { newId } from "../../utils/id";
 
 type ModalState =
   | { kind: "add" }
@@ -265,7 +264,7 @@ export default function ProfileRail() {
         setModal(null);
       } else {
         const profile: Profile = {
-          id: newId(),
+          id: crypto.randomUUID(),
           name: cleanName,
           triggers: [],
           target_exe: cleanTarget || null,
@@ -317,7 +316,7 @@ export default function ProfileRail() {
   async function duplicateProfile(p: Profile) {
     const copy: Profile = {
       ...p,
-      id: newId(),
+      id: crypto.randomUUID(),
       name: `${p.name} (copy)`,
       triggers: p.triggers.map((t) => ({
         shortcut: t.shortcut,
