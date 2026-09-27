@@ -119,7 +119,9 @@ mod tests {
 
     #[test]
     fn resolve_ignores_directories() {
-        let dir = std::env::temp_dir().join("macro-studio-ahk-manager-tests");
+        let dir = std::env::temp_dir().join("macro-studio-ahk-manager-tests-dir");
+        std::fs::create_dir_all(&dir).unwrap();
+        assert!(dir.is_dir());
         assert_eq!(resolve_ahk_exe(&[dir]), None);
     }
 
