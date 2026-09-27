@@ -30,7 +30,17 @@ pub struct AhkProcessManager {
 }
 
 impl AhkProcessManager {
-    pub fn start_profile(&self, profile_id: &str, script_path: &str) -> Result<u32, String> {
+    pub fn start_profile(
+        &self,
+        profile_id: &str,
+        script_path: &str,
+        ahk_exe: &str,
+    ) -> Result<u32, String> {
+        let ahk_exe = Path::new(ahk_exe);
+        if !ahk_exe.is_file() {
+            return Err(format!("{} bulunamadi: {}", AHK_EXE_FILE, ahk_exe.display()));
+        }
+
         let mut processes = self.active_processes.lock().map_err(|e| e.to_string())?;
 
         if let Some(&existing_pid) = processes.get(profile_id) {
@@ -38,7 +48,7 @@ impl AhkProcessManager {
         }
 
         #[cfg(windows)]
-        let child = Command::new("tools/AutoHotkey64.exe")
+        let child = Command::new(ahk_exe)
             .arg("/force")
             .arg(script_path)
             .creation_flags(CREATE_NO_WINDOW)
@@ -46,7 +56,7 @@ impl AhkProcessManager {
             .map_err(|e| format!("AHK baslatma hatasi: {e}"))?;
 
         #[cfg(not(windows))]
-        let child = Command::new("AutoHotkey64")
+        let child = Command::new(ahk_exe)
             .arg(script_path)
             .spawn()
             .map_err(|e| format!("AHK baslatma hatasi: {e}"))?;
