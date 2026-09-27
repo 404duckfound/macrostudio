@@ -31,3 +31,5 @@ stitch/
 *.njsproj
 *.sln
 *.sw?
+
+docs/
