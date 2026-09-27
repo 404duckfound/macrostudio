@@ -506,6 +506,9 @@ export default function Workspace() {
       case "script":
         fresh = { type: "script", code: "" };
         break;
+      case "key":
+        fresh = { type: "key", key: "", behavior: "tap", pre_delay_ms: 0, repeat: 1 };
+        break;
     }
     setSingleAction(fresh);
   }
