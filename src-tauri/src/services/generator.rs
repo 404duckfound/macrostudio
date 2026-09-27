@@ -41,8 +41,9 @@ pub struct Trigger {
 
 pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool) -> String {
     let mut script = String::from("#Requires AutoHotkey v2.0\n\n");
-    // Block acikken `*` tuusu tamamen yutar, kapaliyken `~` ile OS'a gecer.
-    let prefix = if block_key { "*" } else { "~" };
+    // Yutmak icin `~` koymamak yeterli. `*` hook modifier'idir: tetiklenme
+    // zamanini degistirir (key-up'i da yakalar, ek modifier ile de tetiklenir).
+    let prefix = if block_key { "" } else { "~" };
     let mut seen = std::collections::HashSet::new();
     let blocks: Vec<(String, &Trigger)> = triggers
         .iter()
@@ -214,9 +215,10 @@ mod tests {
     }
 
     #[test]
-    fn suppress_on_blocks_with_asterisk() {
+    fn suppress_on_emits_bare_hotkey() {
         let out = compile_to_ahk_v2(&[trig("F9", vec![])], true);
-        assert!(out.contains("*F9::"));
+        assert!(out.contains("\nF9::"));
+        assert!(!out.contains("*F9::"));
         assert!(!out.contains("~F9::"));
     }
 

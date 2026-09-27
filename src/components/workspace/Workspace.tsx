@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Keyboard, Plus, Save, Trash2 } from "lucide-react";
+import { Ban, Eye, Keyboard, Plus, Save, Trash2 } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import type { ActionBlock, MacroAction, Profile, Trigger } from "../../types";
 import ActionTypeSelect from "./ActionTypeSelect";
@@ -50,7 +50,7 @@ function mouseEventToTrigger(e: MouseEvent): string | null {
   return [...heldModifiers(e), btn].join("+");
 }
 
-function Chips({ parts, box }: { parts: string[]; box: boolean }) {
+function Chips({ parts }: { parts: string[] }) {
   if (parts.length === 0)
     return <span className="trigger-recording-hint">No shortcut set</span>;
   return (
@@ -59,7 +59,7 @@ function Chips({ parts, box }: { parts: string[]; box: boolean }) {
         <span key={`${c}-${i}`} className="kbd-row">
           {i > 0 && <span className="kbd-plus">+</span>}
           <kbd
-            className={`kbd ${box ? "kbd-box" : ""} ${i === parts.length - 1 ? "kbd-last" : ""}`}
+            className={`kbd ${i === parts.length - 1 ? "kbd-last" : ""}`}
           >
             {c}
           </kbd>
@@ -392,7 +392,7 @@ export default function Workspace() {
     active?.triggers ?? [],
   );
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const [draftBlockKey, setDraftBlockKey] = useState(active?.block_key ?? true);
+  const [draftBlockKey, setDraftBlockKey] = useState(active?.block_key ?? false);
   const [recording, setRecording] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -412,7 +412,7 @@ export default function Workspace() {
         : [],
     );
     setSelectedIdx(0);
-    setDraftBlockKey(active?.block_key ?? true);
+    setDraftBlockKey(active?.block_key ?? false);
     setRecording(false);
   }, [active?.id, active?.triggers, active?.block_key]);
 
@@ -606,112 +606,126 @@ export default function Workspace() {
                       Press a key or click… (Esc to cancel)
                     </span>
                   ) : (
-                    <Chips parts={parseTrigger(t.shortcut)} box={false} />
+                    <Chips parts={parseTrigger(t.shortcut)} />
                   )}
                 </div>
               </div>
+              <span
+                className={`trigger-pass ${draftBlockKey ? "trigger-pass-block" : ""}`}
+                title={
+                  draftBlockKey
+                    ? "Original keypress is blocked"
+                    : "Original keypress passes through (~)"
+                }
+              >
+                {draftBlockKey ? (
+                  <Ban aria-hidden="true" />
+                ) : (
+                  <Eye aria-hidden="true" />
+                )}
+              </span>
             </div>
           ))}
         </div>
       </div>
 
-      <aside className="inspector">
-        <div className="inspector-head">
-          <div className="inspector-head-left">
-            <h3>Trigger Inspector</h3>
+      {selected && (
+        <aside className="inspector">
+          <div className="inspector-head">
+            <div className="inspector-head-left">
+              <h3>Trigger Inspector</h3>
+            </div>
           </div>
-        </div>
 
-        <div className="inspector-body">
-          <div className="field">
-            <div className="field-row">
+          <div className="inspector-body">
+            <div className="field">
               <label>Shortcut</label>
-              <button
-                type="button"
-                className="link-btn"
-                onClick={() => setRecording(true)}
-              >
-                {recording ? "Recording…" : "Record Key"}
-              </button>
+              <div className="field-row">
+                <div className="trigger-chips">
+                  {recording ? (
+                    <span className="trigger-recording-hint">
+                      Press a key or click in this window…
+                    </span>
+                  ) : (
+                    <Chips parts={selectedChips} />
+                  )}
+                </div>
+                <div className="field-row-actions">
+                  {selectedChips.length > 0 && (
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={() =>
+                        setDraftTriggers((prev) =>
+                          prev.map((x, i) =>
+                            i === sel ? { ...x, shortcut: "" } : x,
+                          ),
+                        )
+                      }
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={`btn-record ${recording ? "btn-record-on" : ""}`}
+                    onClick={() => setRecording(true)}
+                  >
+                    {recording ? "Recording…" : "Record Key"}
+                  </button>
+                </div>
+              </div>
             </div>
-            <div
-              className={`shortcut-box ${recording ? "shortcut-box-recording" : ""}`}
-            >
-              <div className="trigger-chips">
-                {recording ? (
-                  <span className="trigger-recording-hint">
-                    Press a key or click in this window…
+
+            <div className="toggles">
+              <div className="toggle-row">
+                <div>
+                  <span className="toggle-title">Block Original Keypress</span>
+                  <span className="toggle-sub">
+                    Suppress OS key event pass-through
                   </span>
-                ) : (
-                  <Chips parts={selectedChips} box />
-                )}
-              </div>
-              <button
-                type="button"
-                className="clear-btn"
-                onClick={() =>
-                  setDraftTriggers((prev) =>
-                    prev.map((x, i) =>
-                      i === sel ? { ...x, shortcut: "" } : x,
-                    ),
-                  )
-                }
-                title="Clear Hotkey"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-
-          <div className="toggles">
-            <div className="toggle-row">
-              <div>
-                <span className="toggle-title">Block Original Keypress</span>
-                <span className="toggle-sub">
-                  Suppress OS key event pass-through
-                </span>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={draftBlockKey}
-                className={`switch ${draftBlockKey ? "switch-on" : ""}`}
-                onClick={() => setDraftBlockKey((v) => !v)}
-              >
-                <span className="switch-thumb" />
-              </button>
-            </div>
-          </div>
-
-          <div className="field">
-            <div className="field-row">
-              <label>Action</label>
-              {single && (
+                </div>
                 <button
                   type="button"
-                  className="link-btn"
-                  onClick={() => setSingleAction(null)}
+                  role="switch"
+                  aria-checked={draftBlockKey}
+                  className={`switch ${draftBlockKey ? "switch-on" : ""}`}
+                  onClick={() => setDraftBlockKey((v) => !v)}
                 >
-                  Clear
+                  <span className="switch-thumb" />
                 </button>
+              </div>
+            </div>
+
+            <div className="field">
+              <div className="field-row">
+                <label>Action</label>
+                {single && (
+                  <button
+                    type="button"
+                    className="link-btn"
+                    onClick={() => setSingleAction(null)}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="action-add-controls">
+                <ActionTypeSelect
+                  value={single?.type ?? ""}
+                  onSelect={(kind) => {
+                    if (kind === "") setSingleAction(null);
+                    else selectActionType(kind);
+                  }}
+                />
+              </div>
+              {single && (
+                <ActionEditor action={single} onChange={setSingleAction} />
               )}
             </div>
-            <div className="action-add-controls">
-              <ActionTypeSelect
-                value={single?.type ?? ""}
-                disabled={!selected}
-                onSelect={(kind) => {
-                  if (kind === "") setSingleAction(null);
-                  else selectActionType(kind);
-                }}
-              />
-            </div>
-            {single && (
-              <ActionEditor action={single} onChange={setSingleAction} />
-            )}
           </div>
-        </div>
-      </aside>
+        </aside>
+      )}
     </main>
   );
 }

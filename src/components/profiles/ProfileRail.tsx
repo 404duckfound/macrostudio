@@ -269,7 +269,7 @@ export default function ProfileRail() {
           triggers: [],
           target_exe: cleanTarget || null,
           enabled: true,
-          block_key: true,
+          block_key: false,
         };
         await invoke("profile_save", { profile });
         await refresh();
