@@ -1,74 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Ban, Eye, Keyboard, Play, Plus, Save, Square, Trash2 } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import { useRunningProfiles } from "../../hooks/useRunningProfiles";
+import { useKeyCapture } from "../../hooks/useKeyCapture";
+import { parseTrigger } from "../../lib/keys";
 import type { ActionBlock, MacroAction, Profile, Trigger } from "../../types";
 import ActionTypeSelect from "./ActionTypeSelect";
-
-function parseTrigger(trigger: string): string[] {
-  return trigger
-    .split("+")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-}
-
-function heldModifiers(e: {
-  ctrlKey: boolean;
-  shiftKey: boolean;
-  altKey: boolean;
-  metaKey: boolean;
-}): string[] {
-  const parts: string[] = [];
-  if (e.ctrlKey) parts.push("Ctrl");
-  if (e.shiftKey) parts.push("Shift");
-  if (e.altKey) parts.push("Alt");
-  if (e.metaKey) parts.push("Meta");
-  return parts;
-}
-
-function keyEventToTrigger(e: KeyboardEvent): string | null {
-  if (e.key === "Escape") return null;
-  if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return null;
-  let key = e.key;
-  if (key === " ") key = "Space";
-  else if (key.length === 1) key = key.toUpperCase();
-  else key = key.charAt(0).toUpperCase() + key.slice(1);
-  return [...heldModifiers(e), key].join("+");
-}
-
-const MOUSE_EVENT_BUTTONS = [
-  "MouseLeft",
-  "MouseMiddle",
-  "MouseRight",
-  "MouseX1",
-  "MouseX2",
-];
-
-function mouseEventToTrigger(e: MouseEvent): string | null {
-  const btn = MOUSE_EVENT_BUTTONS[e.button] ?? null;
-  if (!btn) return null;
-  return [...heldModifiers(e), btn].join("+");
-}
-
-function Chips({ parts }: { parts: string[] }) {
-  if (parts.length === 0)
-    return <span className="trigger-recording-hint">No shortcut set</span>;
-  return (
-    <>
-      {parts.map((c, i) => (
-        <span key={`${c}-${i}`} className="kbd-row">
-          {i > 0 && <span className="kbd-plus">+</span>}
-          <kbd
-            className={`kbd ${i === parts.length - 1 ? "kbd-last" : ""}`}
-          >
-            {c}
-          </kbd>
-        </span>
-      ))}
-    </>
-  );
-}
+import Chips from "./Chips";
 
 const BLOCK_LABELS: Record<ActionBlock["kind"], string> = {
   keys: "Keys",
@@ -423,39 +362,19 @@ export default function Workspace() {
   const sel = Math.min(selectedIdx, Math.max(0, draftTriggers.length - 1));
   const selected = draftTriggers[sel] ?? null;
 
-  useEffect(() => {
-    if (!recording) return;
-    function onKey(e: KeyboardEvent) {
-      e.preventDefault();
-      if (e.key === "Escape") {
-        setRecording(false);
-        return;
-      }
-      const t = keyEventToTrigger(e);
-      if (t) {
-        setDraftTriggers((prev) =>
-          prev.map((x, i) => (i === sel ? { ...x, shortcut: t } : x)),
-        );
-        setRecording(false);
-      }
-    }
-    function onMouse(e: MouseEvent) {
-      e.preventDefault();
-      const t = mouseEventToTrigger(e);
-      if (t) {
-        setDraftTriggers((prev) =>
-          prev.map((x, i) => (i === sel ? { ...x, shortcut: t } : x)),
-        );
-        setRecording(false);
-      }
-    }
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("mousedown", onMouse);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onMouse);
-    };
-  }, [recording, sel]);
+  const captureShortcut = useCallback(
+    (combo: string) => {
+      setDraftTriggers((prev) =>
+        prev.map((x, i) => (i === sel ? { ...x, shortcut: combo } : x)),
+      );
+      setRecording(false);
+    },
+    [sel],
+  );
+
+  const cancelCapture = useCallback(() => setRecording(false), []);
+
+  useKeyCapture(recording, captureShortcut, cancelCapture);
 
   const selectedChips = parseTrigger(selected?.shortcut ?? "");
   const single = selected?.actions[0] ?? null;
