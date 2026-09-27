@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+﻿use serde::{Deserialize, Serialize};
 
 /// RESEARCH.md bolum 5: Tip-guvenli sablon / metin uretimi (AST yok).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -13,6 +13,15 @@ pub enum Action {
     },
     Custom { #[serde(default)] blocks: Vec<Block> },
     Script { #[serde(default)] code: String },
+    Key {
+        key: String,
+        #[serde(default = "default_behavior")]
+        behavior: KeyBehavior,
+        #[serde(default)]
+        pre_delay_ms: u32,
+        #[serde(default = "default_repeat")]
+        repeat: u32,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,6 +35,22 @@ pub enum Block {
         #[serde(default)] y: i32,
     },
     Delay { #[serde(default)] ms: u32 },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum KeyBehavior {
+    Tap,
+    HoldDown,
+    Release,
+}
+
+fn default_behavior() -> KeyBehavior {
+    KeyBehavior::Tap
+}
+
+fn default_repeat() -> u32 {
+    1
 }
 
 fn default_mouse_button() -> String {
@@ -81,6 +106,14 @@ pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool) -> String {
                         script.push_str(&format!("    {line}\n"));
                     }
                 }
+                Action::Key {
+                    key,
+                    behavior,
+                    pre_delay_ms,
+                    repeat,
+                } => {
+                    script.push_str(&key_action_lines(key, *behavior, *pre_delay_ms, *repeat));
+                }
             }
         }
         script.push_str("}\n");
@@ -91,6 +124,96 @@ pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool) -> String {
 fn send_line(keys: &str) -> String {
     let escaped = keys.replace('"', "`\"");
     format!("    Send(\"{escaped}\")\n")
+}
+
+fn brace_key_name(part: &str) -> String {
+    match part {
+        "Ctrl" => "Ctrl".to_string(),
+        "Shift" => "Shift".to_string(),
+        "Alt" => "Alt".to_string(),
+        "Win" | "Meta" => "LWin".to_string(),
+        "MouseLeft" => "LButton".to_string(),
+        "MouseRight" => "RButton".to_string(),
+        "MouseMiddle" => "MButton".to_string(),
+        "MouseX1" => "XButton1".to_string(),
+        "MouseX2" => "XButton2".to_string(),
+        other => other.to_string(),
+    }
+}
+
+fn native_key_name(part: &str) -> String {
+    match part {
+        "Ctrl" => "LCtrl".to_string(),
+        "Shift" => "LShift".to_string(),
+        "Alt" => "LAlt".to_string(),
+        "Win" | "Meta" => "LWin".to_string(),
+        "MouseLeft" => "LButton".to_string(),
+        "MouseRight" => "RButton".to_string(),
+        "MouseMiddle" => "MButton".to_string(),
+        "MouseX1" => "XButton1".to_string(),
+        "MouseX2" => "XButton2".to_string(),
+        "Escape" => "Esc".to_string(),
+        other => other.to_string(),
+    }
+}
+
+fn key_parts(key: &str) -> Vec<&str> {
+    key.split('+')
+        .map(str::trim)
+        .filter(|p| !p.is_empty())
+        .collect()
+}
+
+fn wrap_in_repeat(body: &str, repeat: u32) -> String {
+    if repeat <= 1 {
+        return body.to_string();
+    }
+    let indented: String = body
+        .lines()
+        .map(|l| {
+            if l.is_empty() {
+                "\n".to_string()
+            } else {
+                format!("    {l}\n")
+            }
+        })
+        .collect();
+    format!("    Loop {repeat}\n    {{\n{indented}    }}\n")
+}
+
+fn key_action_lines(key: &str, behavior: KeyBehavior, pre_delay_ms: u32, repeat: u32) -> String {
+    let parts = key_parts(key);
+    if parts.is_empty() {
+        return String::new();
+    }
+
+    let body = match behavior {
+        KeyBehavior::Tap => {
+            let braces = parts
+                .iter()
+                .map(|p| format!("{{{}}}", brace_key_name(p)))
+                .collect::<Vec<_>>()
+                .join("");
+            wrap_in_repeat(&format!("    Send(\"{braces}\")\n"), repeat)
+        }
+        KeyBehavior::HoldDown | KeyBehavior::Release => {
+            let call = if behavior == KeyBehavior::HoldDown {
+                "KeyDown"
+            } else {
+                "KeyUp"
+            };
+            parts
+                .iter()
+                .map(|p| format!("    {call}(\"{}\")\n", native_key_name(p)))
+                .collect()
+        }
+    };
+
+    if pre_delay_ms == 0 {
+        body
+    } else {
+        format!("    Sleep({pre_delay_ms})\n{body}")
+    }
 }
 
 fn mouse_click_line(button: &str, x: i32, y: i32) -> String {
@@ -289,5 +412,105 @@ mod tests {
         assert!(out.contains("MButton::"));
         assert!(out.contains("XButton1::"));
         assert!(out.contains("^LButton::"));
+    }
+
+    fn key_action(key: &str, behavior: KeyBehavior, pre_delay_ms: u32, repeat: u32) -> Action {
+        Action::Key {
+            key: key.to_string(),
+            behavior,
+            pre_delay_ms,
+            repeat,
+        }
+    }
+
+    #[test]
+    fn key_tap_emits_send() {
+        let out = compile_to_ahk_v2(
+            &[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 0, 1)])],
+            true,
+        );
+        assert!(out.contains("F9::\n{\n    Send(\"{Enter}\")\n}\n"));
+        assert!(!out.contains("KeyDown"));
+        assert!(!out.contains("Loop"));
+    }
+
+    #[test]
+    fn key_hold_down_and_release_emit_key_events() {
+        let down = compile_to_ahk_v2(
+            &[trig("F9", vec![key_action("Ctrl+Alt", KeyBehavior::HoldDown, 0, 1)])],
+            true,
+        );
+        assert!(down.contains("    KeyDown(\"LCtrl\")\n    KeyDown(\"LAlt\")\n"));
+        assert!(!down.contains("Send("));
+
+        let up = compile_to_ahk_v2(
+            &[trig("F9", vec![key_action("Ctrl+Alt", KeyBehavior::Release, 0, 1)])],
+            true,
+        );
+        assert!(up.contains("    KeyUp(\"LCtrl\")\n    KeyUp(\"LAlt\")\n"));
+    }
+
+    #[test]
+    fn key_combo_expands_to_braces() {
+        let out = compile_to_ahk_v2(
+            &[trig("F9", vec![key_action("Ctrl+Shift+Enter", KeyBehavior::Tap, 0, 1)])],
+            true,
+        );
+        assert!(out.contains("    Send(\"{Ctrl}{Shift}{Enter}\")\n"));
+    }
+
+    #[test]
+    fn key_pre_delay_and_repeat_wrap_in_loop() {
+        let out = compile_to_ahk_v2(
+            &[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 200, 4)])],
+            true,
+        );
+        assert!(out.contains("    Sleep(200)\n    Loop 4\n    {\n        Send(\"{Enter}\")\n    }\n"));
+        assert_eq!(out.matches("Sleep(200)").count(), 1);
+    }
+
+    #[test]
+    fn key_repeat_is_normalized_and_ignored_for_hold() {
+        let zero = compile_to_ahk_v2(
+            &[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 0, 0)])],
+            true,
+        );
+        assert!(zero.contains("    Send(\"{Enter}\")\n"));
+        assert!(!zero.contains("Loop"));
+
+        let held = compile_to_ahk_v2(
+            &[trig("F9", vec![key_action("A", KeyBehavior::HoldDown, 0, 9)])],
+            true,
+        );
+        assert!(held.contains("    KeyDown(\"A\")\n"));
+        assert!(!held.contains("Loop"));
+    }
+
+    #[test]
+    fn key_action_with_empty_target_emits_nothing() {
+        let out = compile_to_ahk_v2(
+            &[trig("F9", vec![key_action("", KeyBehavior::Tap, 0, 1)])],
+            true,
+        );
+        assert!(out.contains("F9::\n{\n}\n"));
+        assert!(!out.contains("Send("));
+    }
+
+    #[test]
+    fn key_action_deserializes_with_defaults() {
+        let parsed: Action = serde_json::from_str(r#"{"type":"key","key":"Enter"}"#).unwrap();
+        match parsed {
+            Action::Key {
+                behavior,
+                pre_delay_ms,
+                repeat,
+                ..
+            } => {
+                assert_eq!(behavior, KeyBehavior::Tap);
+                assert_eq!(pre_delay_ms, 0);
+                assert_eq!(repeat, 1);
+            }
+            other => panic!("beklenen Key, gelen {other:?}"),
+        }
     }
 }
