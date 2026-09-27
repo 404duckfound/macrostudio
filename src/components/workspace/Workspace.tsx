@@ -8,6 +8,7 @@ import { parseTrigger } from "../../lib/keys";
 import type { ActionBlock, MacroAction, Profile, Trigger } from "../../types";
 import ActionTypeSelect from "./ActionTypeSelect";
 import Chips from "./Chips";
+import KeyActionEditor from "./KeyActionEditor";
 
 const BLOCK_LABELS: Record<ActionBlock["kind"], string> = {
   keys: "Keys",
@@ -273,6 +274,9 @@ function ActionEditor({
 
   return (
     <div className="action-card">
+      {action.type === "key" && (
+        <KeyActionEditor action={action} onChange={onChange} />
+      )}
       {action.type === "keys" && (
         <KeysInput
           keys={action.keys}
