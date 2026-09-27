@@ -6,9 +6,11 @@ import { useRunningProfiles } from "../../hooks/useRunningProfiles";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
 import type { ActionBlock, MacroAction, Profile, Trigger } from "../../types";
-import ActionTypeSelect from "./ActionTypeSelect";
+import ActionTypeCard from "./ActionTypeCard";
+import BlockKeyToggle from "./BlockKeyToggle";
 import Chips from "./Chips";
 import KeyActionEditor from "./KeyActionEditor";
+import ShortcutField from "./ShortcutField";
 
 const BLOCK_LABELS: Record<ActionBlock["kind"], string> = {
   keys: "Keys",
@@ -612,68 +614,44 @@ export default function Workspace() {
           </div>
 
           <div className="inspector-body">
-            <div className="field">
-              <label>Shortcut</label>
-              <div className="field-row">
-                <div className="trigger-chips">
-                  {recording ? (
-                    <span className="trigger-recording-hint">
-                      Press a key or click in this window…
-                    </span>
-                  ) : (
-                    <Chips parts={selectedChips} />
-                  )}
-                </div>
-                <div className="field-row-actions">
-                  {selectedChips.length > 0 && (
-                    <button
-                      type="button"
-                      className="link-btn"
-                      onClick={() =>
-                        setDraftTriggers((prev) =>
-                          prev.map((x, i) =>
-                            i === sel ? { ...x, shortcut: "" } : x,
-                          ),
-                        )
-                      }
-                    >
-                      Clear
-                    </button>
-                  )}
+            <section className="inspector-section">
+              <div className="section-head">
+                <span className="section-label">Shortcut</span>
+                {selectedChips.length > 0 && (
                   <button
                     type="button"
-                    className={`btn-record ${recording ? "btn-record-on" : ""}`}
-                    onClick={() => setRecording(true)}
+                    className="link-btn"
+                    onClick={() =>
+                      setDraftTriggers((prev) =>
+                        prev.map((x, i) =>
+                          i === sel ? { ...x, shortcut: "" } : x,
+                        ),
+                      )
+                    }
                   >
-                    {recording ? "Recording…" : "Record Key"}
+                    Clear
                   </button>
-                </div>
+                )}
               </div>
-            </div>
+              <ShortcutField
+                parts={selectedChips}
+                recording={recording}
+                onRecord={() => setRecording(true)}
+                onClear={() =>
+                  setDraftTriggers((prev) =>
+                    prev.map((x, i) => (i === sel ? { ...x, shortcut: "" } : x)),
+                  )
+                }
+              />
+              <BlockKeyToggle
+                value={draftBlockKey}
+                onChange={setDraftBlockKey}
+              />
+            </section>
 
-            <div className="toggles">
-              <div className="toggle-row">
-                <div>
-                  <span className="toggle-title">Block Original Keypress</span>
-                  <span className="toggle-sub">
-                    Suppress OS key event pass-through
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={draftBlockKey}
-                  className={`switch ${draftBlockKey ? "switch-on" : ""}`}
-                  onClick={() => setDraftBlockKey((v) => !v)}
-                >
-                  <span className="switch-thumb" />
-                </button>
-              </div>
-            </div>
-
-            <div className="field">
-              <div className="field-row">
-                <label>Action</label>
+            <section className="inspector-section">
+              <div className="section-head">
+                <span className="section-label">Action</span>
                 {single && (
                   <button
                     type="button"
@@ -684,19 +662,22 @@ export default function Workspace() {
                   </button>
                 )}
               </div>
-              <div className="action-add-controls">
-                <ActionTypeSelect
-                  value={single?.type ?? ""}
-                  onSelect={(kind) => {
-                    if (kind === "") setSingleAction(null);
-                    else selectActionType(kind);
-                  }}
-                />
-              </div>
+              <ActionTypeCard
+                value={single?.type ?? ""}
+                onSelect={(kind) => {
+                  if (kind === "") setSingleAction(null);
+                  else selectActionType(kind);
+                }}
+              />
+              {single?.type === "key" && single.key.length === 0 && (
+                <div className="inline-warn">
+                  Pick a key target, otherwise this trigger does nothing.
+                </div>
+              )}
               {single && (
                 <ActionEditor action={single} onChange={setSingleAction} />
               )}
-            </div>
+            </section>
           </div>
         </aside>
       )}

@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronUp, CodeXml, Keyboard, Mouse, Play, Search } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  CodeXml,
+  Keyboard,
+  Mouse,
+  Play,
+  Search,
+  Type,
+} from "lucide-react";
 import type { MacroAction } from "../../types";
 
 export type ActionTypeValue = MacroAction["type"];
@@ -13,10 +23,16 @@ interface ActionTypeMeta {
 
 export const ACTION_TYPES: ActionTypeMeta[] = [
   {
-    value: "keys",
+    value: "key",
     title: "Keyboard Press",
     badge: "Input",
-    desc: "Send keys or keystroke block",
+    desc: "Emulate physical keystroke or key combo",
+  },
+  {
+    value: "keys",
+    title: "Type Text",
+    badge: "Input",
+    desc: "Send a literal string of text",
   },
   {
     value: "mouse",
@@ -39,7 +55,8 @@ export const ACTION_TYPES: ActionTypeMeta[] = [
 ];
 
 function TypeIcon({ value }: { value: ActionTypeValue }) {
-  if (value === "keys") return <Keyboard aria-hidden="true" />;
+  if (value === "key") return <Keyboard aria-hidden="true" />;
+  if (value === "keys") return <Type aria-hidden="true" />;
   if (value === "mouse") return <Mouse aria-hidden="true" />;
   if (value === "custom") return <Play aria-hidden="true" />;
   return <CodeXml aria-hidden="true" />;
