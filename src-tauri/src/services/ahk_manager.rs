@@ -23,6 +23,37 @@ pub fn resolve_ahk_exe(candidates: &[PathBuf]) -> Option<PathBuf> {
     candidates.iter().find(|p| p.is_file()).cloned()
 }
 
+#[cfg(windows)]
+fn is_process_alive(pid: u32) -> bool {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Threading::{
+        GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+
+    const STILL_ACTIVE_CODE: u32 = 259;
+
+    unsafe {
+        let Ok(handle) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) else {
+            return false;
+        };
+        let mut code = 0u32;
+        let read_ok = GetExitCodeProcess(handle, &mut code).is_ok();
+        let _ = CloseHandle(handle);
+        read_ok && code == STILL_ACTIVE_CODE
+    }
+}
+
+#[cfg(not(windows))]
+fn is_process_alive(_pid: u32) -> bool {
+    true
+}
+
+pub fn prune_dead<F: Fn(u32) -> bool>(processes: &mut HashMap<String, u32>, is_alive: F) -> usize {
+    let before = processes.len();
+    processes.retain(|_, pid| is_alive(*pid));
+    before - processes.len()
+}
+
 /// Her profil ID'sini bir AHK PID'i ile eslestiren thread-safe yonetici.
 #[derive(Default, Clone)]
 pub struct AhkProcessManager {
@@ -76,10 +107,12 @@ impl AhkProcessManager {
     }
 
     pub fn list(&self) -> Vec<(String, u32)> {
-        self.active_processes
-            .lock()
-            .map(|m| m.iter().map(|(k, v)| (k.clone(), *v)).collect())
-            .unwrap_or_default()
+        let mut processes = match self.active_processes.lock() {
+            Ok(m) => m,
+            Err(_) => return Vec::new(),
+        };
+        prune_dead(&mut processes, is_process_alive);
+        processes.iter().map(|(k, v)| (k.clone(), *v)).collect()
     }
 
     pub fn stop_process_by_pid(pid: u32) -> Result<(), String> {
@@ -150,5 +183,45 @@ mod tests {
         assert_eq!(names[1], "C:/app/bin/../../tools/AutoHotkey64.exe");
         assert_eq!(names[2], "C:/repo/tools/AutoHotkey64.exe");
         assert_eq!(out.len(), 3);
+    }
+
+    fn seeded() -> (AhkProcessManager, Vec<(&'static str, u32)>) {
+        let mgr = AhkProcessManager::default();
+        {
+            let mut processes = mgr.active_processes.lock().unwrap();
+            processes.insert("a".to_string(), 111);
+            processes.insert("b".to_string(), 222);
+        }
+        (mgr, vec![("a", 111), ("b", 222)])
+    }
+
+    #[test]
+    fn prune_dead_removes_stale_pids() {
+        let (mgr, _) = seeded();
+        let mut processes = mgr.active_processes.lock().unwrap();
+        assert_eq!(prune_dead(&mut processes, |pid| pid == 111), 1);
+        assert_eq!(processes.len(), 1);
+        assert!(processes.contains_key("a"));
+        assert!(!processes.contains_key("b"));
+    }
+
+    #[test]
+    fn prune_dead_keeps_everything_when_all_alive() {
+        let (mgr, _) = seeded();
+        let mut processes = mgr.active_processes.lock().unwrap();
+        assert_eq!(prune_dead(&mut processes, |_| true), 0);
+        assert_eq!(processes.len(), 2);
+    }
+
+    #[test]
+    fn list_drops_process_that_already_exited() {
+        let mgr = AhkProcessManager::default();
+        {
+            let mut processes = mgr.active_processes.lock().unwrap();
+            processes.insert("ghost".to_string(), 2147483632);
+        }
+        assert!(mgr.list().is_empty());
+        let processes = mgr.active_processes.lock().unwrap();
+        assert!(processes.is_empty());
     }
 }
