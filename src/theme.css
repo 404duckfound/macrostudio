@@ -208,7 +208,7 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
 .navbar-btn:disabled { opacity: 0.45; cursor: default; }
 
 .rail {
-  width: 264px;
+  width: 228px;
   flex-shrink: 0;
   background: var(--bg-base);
   display: flex;
@@ -669,7 +669,7 @@ select { appearance: none; }
 .kbd-last { color: var(--accent-primary); }
 .trigger-recording-hint { font-size: 12px; color: var(--accent-primary); }
 .inspector {
-  width: 340px;
+  width: 400px;
   flex-shrink: 0;
   background: var(--bg-surface);
   border-left: 1px solid #232d3b;

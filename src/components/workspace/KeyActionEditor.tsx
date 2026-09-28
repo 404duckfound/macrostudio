@@ -34,7 +34,7 @@ export default function KeyActionEditor({
   );
   const cancel = useCallback(() => setPicking(false), []);
 
-  useKeyCapture(picking, pick, cancel);
+  useKeyCapture(picking, pick, cancel, true);
 
   function setBehavior(behavior: KeyBehavior) {
     onChange({

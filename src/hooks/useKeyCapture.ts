@@ -5,6 +5,7 @@ export function useKeyCapture(
   active: boolean,
   onCapture: (combo: string) => void,
   onCancel: () => void,
+  preserveCase = false,
 ) {
   useEffect(() => {
     if (!active) return;
@@ -14,7 +15,7 @@ export function useKeyCapture(
         onCancel();
         return;
       }
-      const combo = keyEventToTrigger(e);
+      const combo = keyEventToTrigger(e, preserveCase);
       if (combo) onCapture(combo);
     }
     function onMouse(e: MouseEvent) {
@@ -28,5 +29,5 @@ export function useKeyCapture(
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onMouse);
     };
-  }, [active, onCapture, onCancel]);
+  }, [active, onCapture, onCancel, preserveCase]);
 }

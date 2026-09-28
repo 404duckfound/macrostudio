@@ -471,6 +471,31 @@ mod tests {
     }
 
     #[test]
+    fn key_letter_case_survives_compilation() {
+        // AHK'de `{a}` shift'siz, `{A}` shift'li gonderir; buyuk harfe cevirmek
+        // tap hedefinin anlamini bozardi.
+        let lower = compile_to_ahk_v2(
+            &[trig("F9", vec![key_action("a", KeyBehavior::Tap, 0, 1)])],
+            true,
+        );
+        assert!(lower.contains("    Send(\"{a}\")\n"));
+        assert!(!lower.contains("    Send(\"{A}\")\n"));
+
+        let upper = compile_to_ahk_v2(
+            &[trig("F9", vec![key_action("A", KeyBehavior::Tap, 0, 1)])],
+            true,
+        );
+        assert!(upper.contains("    Send(\"{A}\")\n"));
+
+        // Hold/release fiziksel tus adidir; AHK'ta case duyarsiz.
+        let held = compile_to_ahk_v2(
+            &[trig("F9", vec![key_action("a", KeyBehavior::HoldDown, 0, 1)])],
+            true,
+        );
+        assert!(held.contains("    KeyDown(\"a\")\n"));
+    }
+
+    #[test]
     fn key_pre_delay_and_repeat_wrap_in_loop() {
         let out = compile_to_ahk_v2(
             &[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 200, 4)])],

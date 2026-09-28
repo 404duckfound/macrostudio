@@ -19,13 +19,21 @@ function heldModifiers(e: {
   return parts;
 }
 
-export function keyEventToTrigger(e: KeyboardEvent): string | null {
+export function keyEventToTrigger(
+  e: KeyboardEvent,
+  preserveCase = false,
+): string | null {
   if (e.key === "Escape") return null;
   if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return null;
   let key = e.key;
   if (key === " ") key = "Space";
-  else if (key.length === 1) key = key.toUpperCase();
-  else key = key.charAt(0).toUpperCase() + key.slice(1);
+  else if (!preserveCase) {
+    // Hotkey'lerde buyuk harf gosterimi standardi ve AHK'da anlamsiz (hotkey
+    // buyuk/kucuk ayirt etmez). Tus hedefinde ise case anlamli: AHK `{a}`'yi
+    // shift'siz, `{A}`'yi shift'li gonderir.
+    if (key.length === 1) key = key.toUpperCase();
+    else key = key.charAt(0).toUpperCase() + key.slice(1);
+  }
   return [...heldModifiers(e), key].join("+");
 }
 

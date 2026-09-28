@@ -54,8 +54,14 @@ function meta(part: string): KeyMeta {
   const known = TABLE[part];
   if (known) return known;
   if (/^F\d{1,2}$/.test(part)) return { vk: `VK_${part}`, glyph: "" };
-  if (/^[A-Z]$/.test(part)) {
-    const hex = part.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0");
+  if (/^[A-Za-z]$/.test(part)) {
+    // Buyuk harfe cevirmeden charCode alinirsa "a" icin VK_61 cikar, yanlis.
+    const hex = part
+      .toUpperCase()
+      .charCodeAt(0)
+      .toString(16)
+      .toUpperCase()
+      .padStart(2, "0");
     return { vk: `VK_${hex}`, glyph: "" };
   }
   return { vk: `VK_${part.toUpperCase()}`, glyph: "" };
