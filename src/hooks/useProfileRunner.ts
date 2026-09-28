@@ -32,7 +32,7 @@ export function useProfileRunner() {
       }
       if (cancelled || !shouldRun || !active) return;
       try {
-        await start(active.id, active.triggers, active.block_key);
+        await start(active.id, active.name, active.triggers, active.block_key);
       } catch {
         /* hata useRunningProfiles icinde state'e yazildi */
       }

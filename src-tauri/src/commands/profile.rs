@@ -127,7 +127,7 @@ fn profiles_dir() -> Result<std::path::PathBuf, String> {
 }
 
 fn write_ahk_file(dir: &std::path::Path, profile: &Profile) {
-    let script = compile_to_ahk_v2(&profile.triggers, profile.block_key);
+    let script = compile_to_ahk_v2(&profile.triggers, profile.block_key, &profile.name);
     let path = dir.join(format!("{}.ahk", profile.id));
     let _ = std::fs::write(path, script);
 }

@@ -1,4 +1,4 @@
-﻿use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 /// RESEARCH.md bolum 5: Tip-guvenli sablon / metin uretimi (AST yok).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,10 +64,29 @@ pub struct Trigger {
     pub actions: Vec<Action>,
 }
 
-pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool) -> String {
+/// AHK cift tirnakli dizi literali icine guvenle yerlestirir: tirnak ve
+/// backtick kacirilir, satir sonlari bosluga cevrilir. Profil adi kullanici
+/// girdisi oldugu icin kacislar; kacilmazsa satir sonu kodu sonlandirip yeni
+/// satir uretirdi.
+fn ahk_string_literal(value: &str) -> String {
+    let escaped: String = value
+        .replace(['\r', '\n'], " ")
+        .replace('`', "``")
+        .replace('"', "`\"");
+    format!("\"{escaped}\"")
+}
+
+pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool, script_title: &str) -> String {
     // #NoTrayIcon: AHK'nin kendi tray ikonu hic olusmasin. Macro Studio
     // penceresi tek gosterge; sistem tray'inde iki ikon birden durmasin.
-    let mut script = String::from("#Requires AutoHotkey v2.0\n#NoTrayIcon\n\n");
+    //
+    // A_ScriptName: MsgBox/InputBox/FileSelect/DirSelect/Gui basligi varsayilan
+    // olarak script dosya adini alir; profiller {uuid}.ahk olarak kaydedildigi
+    // icin kutu basliginda UUID cikiyordu.
+    let mut script = format!(
+        "#Requires AutoHotkey v2.0\n#NoTrayIcon\nA_ScriptName := {}\n\n",
+        ahk_string_literal(script_title)
+    );
     // Yutmak icin `~` koymamak yeterli. `*` hook modifier'idir: tetiklenme
     // zamanini degistirir (key-up'i da yakalar, ek modifier ile de tetiklenir).
     let prefix = if block_key { "" } else { "~" };
@@ -256,14 +275,15 @@ mod tests {
         }
     }
 
+    const TEST_TITLE: &str = "Test Profile";
+
     fn custom(blocks: Vec<Block>) -> Action {
         Action::Custom { blocks }
     }
 
     #[test]
     fn each_trigger_gets_own_body() {
-        let out = compile_to_ahk_v2(
-            &[
+        let out = compile_to_ahk_v2(&[
                 trig(
                     "Ctrl+Shift+F1",
                     vec![Action::Keys { keys: "hi".to_string() }],
@@ -274,6 +294,7 @@ mod tests {
                 ),
             ],
             true,
+            TEST_TITLE,
         );
         assert!(out.contains("^+F1::\n{\n    Send(\"hi\")\n}\n"));
         assert!(out.contains("F9::\n{\n    Sleep(10)\n}\n"));
@@ -281,8 +302,7 @@ mod tests {
 
     #[test]
     fn mouse_action_clicks_pointer_or_coords() {
-        let out = compile_to_ahk_v2(
-            &[trig(
+        let out = compile_to_ahk_v2(&[trig(
                 "F9",
                 vec![
                     Action::Mouse {
@@ -298,14 +318,14 @@ mod tests {
                 ],
             )],
             true,
+            TEST_TITLE,
         );
         assert!(out.contains("    Click(\"Right\")\n    Click(5, 6, \"Left\")\n"));
     }
 
     #[test]
     fn custom_blocks_mix_keys_mouse_delay() {
-        let out = compile_to_ahk_v2(
-            &[trig(
+        let out = compile_to_ahk_v2(&[trig(
                 "F9",
                 vec![custom(vec![
                     Block::Keys { keys: "ab".to_string() },
@@ -318,14 +338,14 @@ mod tests {
                 ])],
             )],
             true,
+            TEST_TITLE,
         );
         assert!(out.contains("    Send(\"ab\")\n    Sleep(50)\n    Click(10, 20, \"Left\")\n"));
     }
 
     #[test]
     fn zero_coords_click_current_pointer() {
-        let out = compile_to_ahk_v2(
-            &[trig(
+        let out = compile_to_ahk_v2(&[trig(
                 "F9",
                 vec![custom(vec![Block::Mouse {
                     button: "Right".to_string(),
@@ -334,6 +354,7 @@ mod tests {
                 }])],
             )],
             true,
+            TEST_TITLE,
         );
         assert!(out.contains("    Click(\"Right\")\n"));
         assert!(!out.contains("Click(0, 0,"));
@@ -341,7 +362,7 @@ mod tests {
 
     #[test]
     fn suppress_on_emits_bare_hotkey() {
-        let out = compile_to_ahk_v2(&[trig("F9", vec![])], true);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![])], true, TEST_TITLE);
         assert!(out.contains("\nF9::"));
         assert!(!out.contains("*F9::"));
         assert!(!out.contains("~F9::"));
@@ -349,21 +370,38 @@ mod tests {
 
     #[test]
     fn suppress_off_prefixes_tilde() {
-        let out = compile_to_ahk_v2(&[trig("F9", vec![])], false);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![])], false, TEST_TITLE);
         assert!(out.contains("~F9::"));
         assert!(!out.contains("*F9::"));
     }
 
     #[test]
     fn empty_triggers_emit_no_hotkey() {
-        let out = compile_to_ahk_v2(&[], true);
+        let out = compile_to_ahk_v2(&[], true, TEST_TITLE);
         assert!(!out.contains("::"));
         assert!(out.starts_with("#Requires AutoHotkey v2.0"));
     }
 
     #[test]
+    fn script_sets_dialog_title_to_profile_name() {
+        let out = compile_to_ahk_v2(&[trig("F9", vec![])], true, "Render Farm");
+        assert!(out.contains("\nA_ScriptName := \"Render Farm\"\n"));
+    }
+
+    #[test]
+    fn script_title_is_escaped_for_ahk_literal() {
+        // Tirnak ve backtick kacirilir; satir sonu kod uretmemeli.
+        assert_eq!(ahk_string_literal("a\"b"), "\"a`\"b\"");
+        assert_eq!(ahk_string_literal("a`b"), "\"a``b\"");
+        assert_eq!(ahk_string_literal("a\r\nb"), "\"a  b\"");
+        let out = compile_to_ahk_v2(&[], true, "Say \"hi\"\r\nExitApp");
+        assert!(out.contains("A_ScriptName := \"Say `\"hi`\"  ExitApp\"\n"));
+        assert!(!out.contains("ExitApp\n"));
+    }
+
+    #[test]
     fn script_suppresses_autohotkey_tray_icon() {
-        let out = compile_to_ahk_v2(&[trig("F9", vec![])], true);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![])], true, TEST_TITLE);
         // Direktif `#` sigiliyle yazilir; prefixesiz hali AHK tarafindan
         // taninmaz ve tray ikonu yine gorunur.
         assert!(out.contains("\n#NoTrayIcon\n"));
@@ -372,9 +410,9 @@ mod tests {
 
     #[test]
     fn shortcutless_triggers_emit_nothing() {
-        let out = compile_to_ahk_v2(
-            &[trig("", vec![custom(vec![Block::Delay { ms: 5 }])]), trig("F9", vec![])],
+        let out = compile_to_ahk_v2(&[trig("", vec![custom(vec![Block::Delay { ms: 5 }])]), trig("F9", vec![])],
             true,
+            TEST_TITLE,
         );
         assert_eq!(out.matches("::").count(), 1);
         assert!(!out.contains("Sleep(5)"));
@@ -382,34 +420,33 @@ mod tests {
 
     #[test]
     fn script_action_emitted_verbatim() {
-        let out = compile_to_ahk_v2(
-            &[trig(
+        let out = compile_to_ahk_v2(&[trig(
                 "F9",
                 vec![Action::Script {
                     code: "MsgBox(\"a\")\nSleep(10)".to_string(),
                 }],
             )],
             true,
+            TEST_TITLE,
         );
         assert!(out.contains("    MsgBox(\"a\")\n    Sleep(10)\n"));
     }
 
     #[test]
     fn blank_trigger_strings_are_skipped() {
-        let out = compile_to_ahk_v2(&[trig("", vec![]), trig("   ", vec![])], true);
+        let out = compile_to_ahk_v2(&[trig("", vec![]), trig("   ", vec![])], true, TEST_TITLE);
         assert!(!out.contains("::"));
     }
 
     #[test]
     fn duplicate_triggers_emit_single_hotkey() {
-        let out = compile_to_ahk_v2(&[trig("F9", vec![]), trig("F9", vec![])], true);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![]), trig("F9", vec![])], true, TEST_TITLE);
         assert_eq!(out.matches("F9::").count(), 1);
     }
 
     #[test]
     fn mouse_buttons_map_to_ahk_names() {
-        let out = compile_to_ahk_v2(
-            &[
+        let out = compile_to_ahk_v2(&[
                 trig("MouseLeft", vec![]),
                 trig("MouseRight", vec![]),
                 trig("MouseMiddle", vec![]),
@@ -417,6 +454,7 @@ mod tests {
                 trig("Ctrl+MouseLeft", vec![]),
             ],
             true,
+            TEST_TITLE,
         );
         assert!(out.contains("LButton::"));
         assert!(out.contains("RButton::"));
@@ -436,9 +474,9 @@ mod tests {
 
     #[test]
     fn key_tap_emits_send() {
-        let out = compile_to_ahk_v2(
-            &[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 0, 1)])],
+        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 0, 1)])],
             true,
+            TEST_TITLE,
         );
         assert!(out.contains("F9::\n{\n    Send(\"{Enter}\")\n}\n"));
         assert!(!out.contains("KeyDown"));
@@ -447,25 +485,25 @@ mod tests {
 
     #[test]
     fn key_hold_down_and_release_emit_key_events() {
-        let down = compile_to_ahk_v2(
-            &[trig("F9", vec![key_action("Ctrl+Alt", KeyBehavior::HoldDown, 0, 1)])],
+        let down = compile_to_ahk_v2(&[trig("F9", vec![key_action("Ctrl+Alt", KeyBehavior::HoldDown, 0, 1)])],
             true,
+            TEST_TITLE,
         );
         assert!(down.contains("    KeyDown(\"LCtrl\")\n    KeyDown(\"LAlt\")\n"));
         assert!(!down.contains("Send("));
 
-        let up = compile_to_ahk_v2(
-            &[trig("F9", vec![key_action("Ctrl+Alt", KeyBehavior::Release, 0, 1)])],
+        let up = compile_to_ahk_v2(&[trig("F9", vec![key_action("Ctrl+Alt", KeyBehavior::Release, 0, 1)])],
             true,
+            TEST_TITLE,
         );
         assert!(up.contains("    KeyUp(\"LCtrl\")\n    KeyUp(\"LAlt\")\n"));
     }
 
     #[test]
     fn key_combo_expands_to_braces() {
-        let out = compile_to_ahk_v2(
-            &[trig("F9", vec![key_action("Ctrl+Shift+Enter", KeyBehavior::Tap, 0, 1)])],
+        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("Ctrl+Shift+Enter", KeyBehavior::Tap, 0, 1)])],
             true,
+            TEST_TITLE,
         );
         assert!(out.contains("    Send(\"{Ctrl}{Shift}{Enter}\")\n"));
     }
@@ -474,32 +512,32 @@ mod tests {
     fn key_letter_case_survives_compilation() {
         // AHK'de `{a}` shift'siz, `{A}` shift'li gonderir; buyuk harfe cevirmek
         // tap hedefinin anlamini bozardi.
-        let lower = compile_to_ahk_v2(
-            &[trig("F9", vec![key_action("a", KeyBehavior::Tap, 0, 1)])],
+        let lower = compile_to_ahk_v2(&[trig("F9", vec![key_action("a", KeyBehavior::Tap, 0, 1)])],
             true,
+            TEST_TITLE,
         );
         assert!(lower.contains("    Send(\"{a}\")\n"));
         assert!(!lower.contains("    Send(\"{A}\")\n"));
 
-        let upper = compile_to_ahk_v2(
-            &[trig("F9", vec![key_action("A", KeyBehavior::Tap, 0, 1)])],
+        let upper = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::Tap, 0, 1)])],
             true,
+            TEST_TITLE,
         );
         assert!(upper.contains("    Send(\"{A}\")\n"));
 
         // Hold/release fiziksel tus adidir; AHK'ta case duyarsiz.
-        let held = compile_to_ahk_v2(
-            &[trig("F9", vec![key_action("a", KeyBehavior::HoldDown, 0, 1)])],
+        let held = compile_to_ahk_v2(&[trig("F9", vec![key_action("a", KeyBehavior::HoldDown, 0, 1)])],
             true,
+            TEST_TITLE,
         );
         assert!(held.contains("    KeyDown(\"a\")\n"));
     }
 
     #[test]
     fn key_pre_delay_and_repeat_wrap_in_loop() {
-        let out = compile_to_ahk_v2(
-            &[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 200, 4)])],
+        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 200, 4)])],
             true,
+            TEST_TITLE,
         );
         assert!(out.contains("    Sleep(200)\n    Loop 4\n    {\n        Send(\"{Enter}\")\n    }\n"));
         assert_eq!(out.matches("Sleep(200)").count(), 1);
@@ -507,16 +545,16 @@ mod tests {
 
     #[test]
     fn key_repeat_is_normalized_and_ignored_for_hold() {
-        let zero = compile_to_ahk_v2(
-            &[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 0, 0)])],
+        let zero = compile_to_ahk_v2(&[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 0, 0)])],
             true,
+            TEST_TITLE,
         );
         assert!(zero.contains("    Send(\"{Enter}\")\n"));
         assert!(!zero.contains("Loop"));
 
-        let held = compile_to_ahk_v2(
-            &[trig("F9", vec![key_action("A", KeyBehavior::HoldDown, 0, 9)])],
+        let held = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::HoldDown, 0, 9)])],
             true,
+            TEST_TITLE,
         );
         assert!(held.contains("    KeyDown(\"A\")\n"));
         assert!(!held.contains("Loop"));
@@ -524,9 +562,9 @@ mod tests {
 
     #[test]
     fn key_action_with_empty_target_emits_nothing() {
-        let out = compile_to_ahk_v2(
-            &[trig("F9", vec![key_action("", KeyBehavior::Tap, 0, 1)])],
+        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("", KeyBehavior::Tap, 0, 1)])],
             true,
+            TEST_TITLE,
         );
         assert!(out.contains("F9::\n{\n}\n"));
         assert!(!out.contains("Send("));

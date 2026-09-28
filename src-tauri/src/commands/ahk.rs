@@ -14,10 +14,11 @@ pub async fn ahk_start_profile(
     app: AppHandle,
     state: State<'_, AppState>,
     profile_id: String,
+    profile_name: String,
     triggers: Vec<Trigger>,
     block_key: bool,
 ) -> Result<u32, String> {
-    let script = compile_to_ahk_v2(&triggers, block_key);
+    let script = compile_to_ahk_v2(&triggers, block_key, &profile_name);
 
     let config_dir = dirs_config_dir()?;
     let profiles_dir = std::path::Path::new(&config_dir).join("macro-studio/profiles");
@@ -68,7 +69,7 @@ pub async fn ahk_stop_profile(state: State<'_, AppState>, profile_id: String) ->
 /// Sadece derle, calistirmadan AHK v2 kodu dondur (editor onizleme icin).
 #[tauri::command]
 pub fn ahk_compile_preview(triggers: Vec<Trigger>, block_key: bool) -> String {
-    compile_to_ahk_v2(&triggers, block_key)
+    compile_to_ahk_v2(&triggers, block_key, "Preview")
 }
 
 #[tauri::command]

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Ban, Eye, Keyboard, Plus, Save, Trash2 } from "lucide-react";
+import { Ban, Eye, Keyboard, Save, Trash2 } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
@@ -73,6 +73,29 @@ const KEY_PRESETS = [
 ];
 
 const MOUSE_BUTTONS = ["Left", "Right", "Middle"];
+
+/// Bos shortcut'i ve yinelenen kaydi kirpar; sonuc profilde saklanan haliyle
+/// birebir ayni olmali, yoksa `dirty` her zaman true doner.
+function cleanDraft(drafts: Trigger[]): Trigger[] {
+  const seen = new Set<string>();
+  const out: Trigger[] = [];
+  for (const t of drafts) {
+    const shortcut = t.shortcut.trim();
+    if (!shortcut || seen.has(shortcut)) continue;
+    seen.add(shortcut);
+    out.push({ shortcut, actions: t.actions });
+  }
+  return out;
+}
+
+/// Sondaki bos kart hep gorunur; doldukça yeni bir tane belirir. `+` butonu
+/// bunun yerini aldi, o yuzden ayrica ekleme yolu yok.
+function withTrailingEmpty(drafts: Trigger[]): Trigger[] {
+  const last = drafts[drafts.length - 1];
+  return last && last.shortcut.trim().length > 0
+    ? [...drafts, { shortcut: "", actions: [] }]
+    : drafts;
+}
 
 function KeysInput({
   keys,
@@ -343,18 +366,20 @@ export default function Workspace() {
 
   useEffect(() => {
     setDraftTriggers(
-      active?.triggers.length
-        ? active.triggers.map((t) => ({
-            shortcut: t.shortcut,
-            actions: t.actions
-              .slice(0, 1)
-              .map((a) =>
-                a.type === "custom"
-                  ? { type: "custom", blocks: a.blocks.map((b) => ({ ...b })) }
-                  : { ...a },
-              ),
-          }))
-        : [],
+      withTrailingEmpty(
+        active?.triggers.length
+          ? active.triggers.map((t) => ({
+              shortcut: t.shortcut,
+              actions: t.actions
+                .slice(0, 1)
+                .map((a) =>
+                  a.type === "custom"
+                    ? { type: "custom", blocks: a.blocks.map((b) => ({ ...b })) }
+                    : { ...a },
+                ),
+            }))
+          : [{ shortcut: "", actions: [] }],
+      ),
     );
     setSelectedIdx(0);
     setDraftBlockKey(active?.block_key ?? false);
@@ -366,9 +391,16 @@ export default function Workspace() {
 
   const captureShortcut = useCallback(
     (combo: string) => {
-      setDraftTriggers((prev) =>
-        prev.map((x, i) => (i === sel ? { ...x, shortcut: combo } : x)),
-      );
+      // Kaydedilen kart dolunca yerine yeni bos kart belirir ve secim ona gecer,
+      // boylece Record Key akisi ardisik kisa yollarla tekrar edilebilir.
+      setDraftTriggers((prev) => {
+        const next = prev.map((x, i) =>
+          i === sel ? { ...x, shortcut: combo } : x,
+        );
+        const filled = withTrailingEmpty(next);
+        setSelectedIdx(filled.length - 1);
+        return filled;
+      });
       setRecording(false);
     },
     [sel],
@@ -380,26 +412,25 @@ export default function Workspace() {
 
   const selectedChips = parseTrigger(selected?.shortcut ?? "");
   const single = selected?.actions[0] ?? null;
+  // Sondaki bos kart hicbir zaman kaydedilmez; kirpma hem `save` hem `dirty`
+  // icin ayni sonuc vermeli, yoksa Kalici bos kart butonu hep aktif ederdi.
+  const cleanTriggers = useMemo(() => cleanDraft(draftTriggers), [draftTriggers]);
+  // Sondaki bos kartta meslemis trigger varsa kayit sirasinda kaybolacak;
+  // inspector'da gorunur bir uyari veriyoruz.
+  const touchesTrailingEmpty =
+    sel === draftTriggers.length - 1 &&
+    draftTriggers.length > cleanTriggers.length;
   const dirty =
     active != null &&
-    (JSON.stringify(draftTriggers) !== JSON.stringify(active.triggers) ||
+    (JSON.stringify(cleanTriggers) !== JSON.stringify(active.triggers) ||
       draftBlockKey !== active.block_key);
 
-  function addTrigger() {
-    const pending = draftTriggers.findIndex(
-      (t) => t.shortcut.trim().length === 0,
-    );
-    if (pending >= 0) {
-      setSelectedIdx(pending);
-      return;
-    }
-    setDraftTriggers((prev) => [...prev, { shortcut: "", actions: [] }]);
-    setSelectedIdx(draftTriggers.length);
-  }
-
   function removeSelected() {
-    setDraftTriggers((prev) => prev.filter((_, i) => i !== sel));
-    setSelectedIdx(Math.max(0, sel - 1));
+    setDraftTriggers((prev) => {
+      const next = withTrailingEmpty(prev.filter((_, i) => i !== sel));
+      setSelectedIdx(Math.min(Math.max(0, sel - 1), next.length - 1));
+      return next;
+    });
     setRecording(false);
   }
 
@@ -435,14 +466,6 @@ export default function Workspace() {
 
   async function save() {
     if (!active) return;
-    const seen = new Set<string>();
-    const cleanTriggers: Trigger[] = [];
-    for (const t of draftTriggers) {
-      const shortcut = t.shortcut.trim();
-      if (!shortcut || seen.has(shortcut)) continue;
-      seen.add(shortcut);
-      cleanTriggers.push({ shortcut, actions: t.actions });
-    }
     setSaving(true);
     try {
       const updated: Profile = {
@@ -473,47 +496,9 @@ export default function Workspace() {
       <div className="flow-canvas">
         <div className="flow-inner">
           <div className="flow-head">
-            <div>
-              <h3 className="flow-title">Triggers ({draftTriggers.length})</h3>
-            </div>
-            <div className="flow-head-actions">
-              <button
-                type="button"
-                className="btn-trigger-add"
-                onClick={addTrigger}
-                title="Add New Trigger"
-                aria-label="Add New Trigger"
-              >
-                <Plus aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="btn-trigger-delete"
-                onClick={removeSelected}
-                disabled={!selected}
-                title="Remove Trigger"
-                aria-label="Remove Trigger"
-              >
-                <Trash2 aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="btn-trigger-save"
-                onClick={save}
-                disabled={saving || !dirty}
-                title="Save Changes"
-              >
-                <Save aria-hidden="true" />
-              </button>
-            </div>
+            <h3 className="flow-title">Triggers ({cleanTriggers.length})</h3>
           </div>
 
-          {draftTriggers.length === 0 && (
-            <div className="flow-empty">
-              <span>No triggers yet.</span>
-              <span>Use + to add one, then record a shortcut.</span>
-            </div>
-          )}
           {draftTriggers.map((t, i) => (
             <div
               key={`${i}-${t.shortcut}`}
@@ -595,6 +580,11 @@ export default function Workspace() {
                   )
                 }
               />
+              {touchesTrailingEmpty && (
+                <div className="inline-warn">
+                  This card has no shortcut, so it will be dropped on save.
+                </div>
+              )}
               <BlockKeyToggle
                 value={draftBlockKey}
                 onChange={setDraftBlockKey}
@@ -630,6 +620,29 @@ export default function Workspace() {
                 <ActionEditor action={single} onChange={setSingleAction} />
               )}
             </section>
+          </div>
+
+          <div className="inspector-foot">
+            <button
+              type="button"
+              className="btn-trigger-delete"
+              onClick={removeSelected}
+              disabled={!selected}
+              title="Remove Trigger"
+              aria-label="Remove Trigger"
+            >
+              <Trash2 aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="btn-trigger-save"
+              onClick={save}
+              disabled={saving || !dirty}
+              title={dirty ? "Save Changes" : "No changes to save"}
+            >
+              <Save aria-hidden="true" />
+              <span>Save</span>
+            </button>
           </div>
         </aside>
       )}

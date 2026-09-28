@@ -580,7 +580,6 @@ select { appearance: none; }
   padding-bottom: 14px;
   margin-bottom: 4px;
 }
-.flow-head > div:first-child { flex: 1; min-width: 0; }
 
 .flow-title {
   font-size: 13px;
@@ -690,6 +689,36 @@ select { appearance: none; }
 .inspector-head-left { display: flex; align-items: center; gap: 8px; }
 .inspector-head-left h3 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
 .inspector-body { padding: 16px; display: flex; flex-direction: column; gap: 16px; flex: 1; overflow-y: auto; }
+.inspector-foot {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid #232d3b;
+  background: var(--bg-surface);
+}
+.inspector-foot .btn-trigger-delete {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.inspector-foot .btn-trigger-save {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  min-height: 32px;
+  font-size: 12px;
+  font-weight: 500;
+}
 .field-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .link-btn {
   border: none;
@@ -742,23 +771,7 @@ select { appearance: none; }
   transition: left 0.15s ease;
 }
 .switch-on .switch-thumb { left: 22px; background: var(--bg-base); }
-.flow-head-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.flow-head-actions button {
-  width: 32px;
-  height: 32px;
-  min-height: 32px;
-  padding: 0;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.flow-head-actions svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
+.inspector-foot svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
 .run-error {
   margin: 8px 12px 0;
   padding: 8px 10px;
@@ -769,13 +782,6 @@ select { appearance: none; }
   background: #2e1215;
   word-break: break-word;
 }
-.btn-trigger-add {
-  border: 1px solid var(--border-default);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-.btn-trigger-add:hover { border-color: #384558; background: var(--bg-interactive); color: var(--text-primary); }
 .btn-trigger-delete {
   border: 1px solid var(--border-default);
   background: transparent;
