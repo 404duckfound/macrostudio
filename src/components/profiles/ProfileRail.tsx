@@ -196,7 +196,11 @@ function ModalFooter({
   );
 }
 
-export default function ProfileRail() {
+export default function ProfileRail({
+  activeRun,
+}: {
+  activeRun: { id: string; ok: boolean } | null;
+}) {
   const { profiles, activeId, defaultId, setActiveId, setDefaultId } = useProfileStore();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalState>(null);
@@ -352,6 +356,12 @@ export default function ProfileRail() {
             }}
           >
             <span className="rail-row-name">
+              {activeRun?.id === p.id && (
+                <span
+                  className={`rail-run-dot ${activeRun.ok ? "" : "rail-run-dot-error"}`}
+                  title={activeRun.ok ? "Calisiyor" : "Calistirilamadi"}
+                />
+              )}
               {p.name}
               {defaultId === p.id && <span className="rail-default-badge">Default</span>}
             </span>

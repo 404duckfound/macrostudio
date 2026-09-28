@@ -287,6 +287,15 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
   white-space: nowrap;
 }
 
+.rail-run-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--status-success);
+}
+.rail-run-dot-error { background: var(--status-danger); }
+
 .rail-default-badge {
   font-size: 10px;
   font-weight: 500;
@@ -750,31 +759,8 @@ select { appearance: none; }
   justify-content: center;
 }
 .flow-head-actions svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
-.btn-run {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-default);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-}
-.btn-run svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
-.btn-run:hover:not(:disabled) { border-color: #384558; background: var(--bg-interactive); color: var(--text-primary); }
-.btn-run:disabled { opacity: 0.5; cursor: default; }
-.btn-run-on { border-color: #3d181b; background: #2e1215; color: var(--status-danger); }
-.run-warning {
-  margin: 10px 0 0;
-  font-size: 12px;
-  color: var(--status-danger);
-}
 .run-error {
-  margin: 10px 0 0;
+  margin: 8px 12px 0;
   padding: 8px 10px;
   font-size: 11px;
   color: var(--status-danger);

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Ban, Eye, Keyboard, Play, Plus, Save, Square, Trash2 } from "lucide-react";
+import { Ban, Eye, Keyboard, Plus, Save, Trash2 } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
-import { useRunningProfiles } from "../../hooks/useRunningProfiles";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
 import type { ActionBlock, MacroAction, Profile, Trigger } from "../../types";
@@ -341,9 +340,6 @@ export default function Workspace() {
   const [draftBlockKey, setDraftBlockKey] = useState(active?.block_key ?? false);
   const [recording, setRecording] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [starting, setStarting] = useState(false);
-  const { isRunning, othersRunning, start, stop, error: runError } =
-    useRunningProfiles();
 
   useEffect(() => {
     setDraftTriggers(
@@ -388,7 +384,6 @@ export default function Workspace() {
     active != null &&
     (JSON.stringify(draftTriggers) !== JSON.stringify(active.triggers) ||
       draftBlockKey !== active.block_key);
-  const otherCount = active ? othersRunning(active.id) : 0;
 
   function addTrigger() {
     const pending = draftTriggers.findIndex(
@@ -458,31 +453,9 @@ export default function Workspace() {
       await invoke("profile_save", { profile: updated });
       const list = await invoke<Profile[]>("profile_list");
       useProfileStore.getState().setProfiles(list);
-      if (isRunning(active.id)) {
-        await start(active.id, cleanTriggers, draftBlockKey);
-      }
     } finally {
       setSaving(false);
     }
-  }
-
-  async function run() {
-    if (!active) return;
-    setStarting(true);
-    try {
-      if (dirty) await save();
-      const list = await invoke<Profile[]>("profile_list");
-      const fresh = list.find((p) => p.id === active.id) ?? active;
-      await start(fresh.id, fresh.triggers, fresh.block_key);
-    } finally {
-      setStarting(false);
-    }
-  }
-
-  async function toggleRun() {
-    if (!active) return;
-    if (isRunning(active.id)) await stop(active.id);
-    else await run();
   }
 
   if (!active) {
@@ -504,20 +477,6 @@ export default function Workspace() {
               <h3 className="flow-title">Triggers ({draftTriggers.length})</h3>
             </div>
             <div className="flow-head-actions">
-              <button
-                type="button"
-                className={`btn-run ${isRunning(active.id) ? "btn-run-on" : ""}`}
-                onClick={toggleRun}
-                disabled={starting}
-                title={isRunning(active.id) ? "Stop Profile" : "Run Profile"}
-              >
-                {isRunning(active.id) ? (
-                  <Square aria-hidden="true" />
-                ) : (
-                  <Play aria-hidden="true" />
-                )}
-                <span>{isRunning(active.id) ? "Durdur" : "Calistir"}</span>
-              </button>
               <button
                 type="button"
                 className="btn-trigger-add"
@@ -548,13 +507,6 @@ export default function Workspace() {
               </button>
             </div>
           </div>
-
-          {otherCount > 0 && (
-            <div className="run-warning">
-              {otherCount} profil calisiyor, hotkey'ler cakisabilir
-            </div>
-          )}
-          {runError && <div className="run-error">{runError}</div>}
 
           {draftTriggers.length === 0 && (
             <div className="flow-empty">

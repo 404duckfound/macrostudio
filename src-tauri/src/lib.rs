@@ -13,7 +13,7 @@ use crate::commands::{ahk::*, profile::*, system::*};
 use crate::state::AppState;
 
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         // Tek ornek plugin'i digerlerinden ONCE kaydedilmelidir; aksi halde
         // ikinci acilisa odak devri calismaz.
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
@@ -42,8 +42,16 @@ pub fn run() {
             crate::services::watcher::start_foreground_watcher(app.handle().clone());
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    // AHK surecleri detached (`std::mem::forget`); cikista temizlenmezse
+    // hotkey'ler uygulama kapandiktan sonra da calismaya devam eder.
+    app.run(|app_handle, event| {
+        if let tauri::RunEvent::Exit = event {
+            app_handle.state::<AppState>().ahk_manager.stop_all();
+        }
+    });
 }
 
 fn init_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {

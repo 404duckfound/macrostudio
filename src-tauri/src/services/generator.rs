@@ -65,7 +65,9 @@ pub struct Trigger {
 }
 
 pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool) -> String {
-    let mut script = String::from("#Requires AutoHotkey v2.0\n\n");
+    // #NoTrayIcon: AHK'nin kendi tray ikonu hic olusmasin. Macro Studio
+    // penceresi tek gosterge; sistem tray'inde iki ikon birden durmasin.
+    let mut script = String::from("#Requires AutoHotkey v2.0\n#NoTrayIcon\n\n");
     // Yutmak icin `~` koymamak yeterli. `*` hook modifier'idir: tetiklenme
     // zamanini degistirir (key-up'i da yakalar, ek modifier ile de tetiklenir).
     let prefix = if block_key { "" } else { "~" };
@@ -357,6 +359,15 @@ mod tests {
         let out = compile_to_ahk_v2(&[], true);
         assert!(!out.contains("::"));
         assert!(out.starts_with("#Requires AutoHotkey v2.0"));
+    }
+
+    #[test]
+    fn script_suppresses_autohotkey_tray_icon() {
+        let out = compile_to_ahk_v2(&[trig("F9", vec![])], true);
+        // Direktif `#` sigiliyle yazilir; prefixesiz hali AHK tarafindan
+        // taninmaz ve tray ikonu yine gorunur.
+        assert!(out.contains("\n#NoTrayIcon\n"));
+        assert!(!out.contains("\nNoTrayIcon\n"));
     }
 
     #[test]

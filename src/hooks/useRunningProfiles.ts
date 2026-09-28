@@ -17,10 +17,11 @@ export function useRunningProfiles() {
   const [running, setRunning] = useState<RunningProfile[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Hatayi burada temizlemiyoruz: polling ve focus `refresh` cagirir, hata
+  // bir sonraki baslat/durdur'a kadar ekranda kalmali.
   const refresh = useCallback(async () => {
     try {
       setRunning(toRunning(await invoke<[string, number][]>("ahk_running_profiles")));
-      setError(null);
     } catch (e) {
       setError(String(e));
     }
@@ -69,15 +70,5 @@ export function useRunningProfiles() {
     return () => window.clearInterval(t);
   }, [running.length, refresh]);
 
-  const isRunning = useCallback(
-    (profileId: string) => running.some((r) => r.id === profileId),
-    [running],
-  );
-
-  const othersRunning = useCallback(
-    (profileId: string) => running.filter((r) => r.id !== profileId).length,
-    [running],
-  );
-
-  return { running, isRunning, othersRunning, start, stop, refresh, error };
+  return { running, start, stop, error };
 }

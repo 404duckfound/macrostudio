@@ -106,6 +106,23 @@ impl AhkProcessManager {
         Ok(())
     }
 
+    pub fn stop_all(&self) {
+        self.stop_all_with(|pid| {
+            let _ = Self::stop_process_by_pid(pid);
+        });
+    }
+
+    /// Haritadaki her pid'i cikarip `kill`e gecirir. Gercek `taskkill` cagrisini
+    /// testlerden ayirmak icin callback alir; `prune_dead` ile ayni desen.
+    pub fn stop_all_with<F: FnMut(u32)>(&self, mut kill: F) {
+        let Ok(mut processes) = self.active_processes.lock() else {
+            return;
+        };
+        for (_, pid) in processes.drain() {
+            kill(pid);
+        }
+    }
+
     pub fn list(&self) -> Vec<(String, u32)> {
         let mut processes = match self.active_processes.lock() {
             Ok(m) => m,
@@ -223,5 +240,25 @@ mod tests {
         assert!(mgr.list().is_empty());
         let processes = mgr.active_processes.lock().unwrap();
         assert!(processes.is_empty());
+    }
+
+    #[test]
+    fn stop_all_kills_every_pid_and_empties_map() {
+        let (mgr, seeded_pids) = seeded();
+        let mut killed = Vec::new();
+        mgr.stop_all_with(|pid| killed.push(pid));
+        killed.sort_unstable();
+        let mut expected: Vec<u32> = seeded_pids.iter().map(|(_, pid)| *pid).collect();
+        expected.sort_unstable();
+        assert_eq!(killed, expected);
+        assert!(mgr.active_processes.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn stop_all_on_empty_manager_is_a_noop() {
+        let mgr = AhkProcessManager::default();
+        let mut called = 0;
+        mgr.stop_all_with(|_| called += 1);
+        assert_eq!(called, 0);
     }
 }
