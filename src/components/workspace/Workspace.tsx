@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Ban, Eye, Keyboard, Plus, Save, Trash2 } from "lucide-react";
+import { Ban, Eye, Keyboard, Plus, Save, Trash2, Undo2 } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
@@ -342,6 +342,11 @@ function ActionEditor({
   );
 }
 
+interface UndoEntry {
+  triggers: Trigger[];
+  block_key: boolean;
+}
+
 export default function Workspace() {
   const activeId = useProfileStore((s) => s.activeId);
   const profiles = useProfileStore((s) => s.profiles);
@@ -354,6 +359,8 @@ export default function Workspace() {
   const [draftBlockKey, setDraftBlockKey] = useState(active?.block_key ?? false);
   const [recording, setRecording] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Son kayittan onceki kayitli hal. Tek adim: geri alindiktan sonra gecer.
+  const [undo, setUndo] = useState<UndoEntry | null>(null);
 
   useEffect(() => {
     setDraftTriggers(
@@ -374,6 +381,9 @@ export default function Workspace() {
     setDraftBlockKey(active?.block_key ?? false);
     setRecording(false);
   }, [active?.id, active?.triggers, active?.block_key]);
+
+  // Gecmis profille eslesmesin; yeni profilde undo eski kaydi geri getirirdi.
+  useEffect(() => setUndo(null), [active?.id]);
 
   const sel = Math.min(selectedIdx, Math.max(0, draftTriggers.length - 1));
   const selected = draftTriggers[sel] ?? null;
@@ -446,14 +456,17 @@ export default function Workspace() {
     setSingleAction(fresh);
   }
 
-  async function save() {
+  /// `next` verilmezse inspector'daki (kirpilmis) taslak yazilir. Yazma
+  /// basarili olmadan cikis yapmaz; gecmis ancak o zaman yazilir, boylece
+  /// geri alma butonu hicbir zaman kaybolmus bir kaydi gostermez.
+  async function persist(next: UndoEntry) {
     if (!active) return;
     setSaving(true);
     try {
       const updated: Profile = {
         ...active,
-        triggers: cleanTriggers,
-        block_key: draftBlockKey,
+        triggers: next.triggers,
+        block_key: next.block_key,
       };
       await invoke("profile_save", { profile: updated });
       const list = await invoke<Profile[]>("profile_list");
@@ -461,6 +474,19 @@ export default function Workspace() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function save() {
+    if (!active) return;
+    const before = { triggers: active.triggers, block_key: active.block_key };
+    await persist({ triggers: cleanTriggers, block_key: draftBlockKey });
+    setUndo(before);
+  }
+
+  async function undoLastSave() {
+    if (!undo) return;
+    await persist(undo);
+    setUndo(null);
   }
 
   if (!active) {
@@ -624,6 +650,20 @@ export default function Workspace() {
               aria-label="Remove Trigger"
             >
               <Trash2 aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="btn-trigger-undo"
+              onClick={undoLastSave}
+              disabled={!undo || saving}
+              title={
+                undo
+                  ? "Undo last save"
+                  : "Nothing saved in this session to undo"
+              }
+              aria-label="Undo last save"
+            >
+              <Undo2 aria-hidden="true" />
             </button>
             <button
               type="button"

@@ -820,6 +820,15 @@ select { appearance: none; }
 }
 .btn-trigger-delete:hover:not(:disabled) { border-color: #3d181b; background: #2e1215; color: var(--status-danger); }
 .btn-trigger-delete:disabled { opacity: 0.4; cursor: default; }
+/* Undo, silmeden daha nötr bir ikon; aynı ölçüde durur ama kırmızıya dönmez. */
+.btn-trigger-undo {
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.btn-trigger-undo:hover:not(:disabled) { border-color: #384558; background: var(--bg-interactive); color: var(--text-primary); }
+.btn-trigger-undo:disabled { opacity: 0.4; cursor: default; }
 .btn-trigger-save {
   border: none;
   background: var(--accent-primary);
