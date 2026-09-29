@@ -88,6 +88,24 @@ function cleanDraft(drafts: Trigger[]): Trigger[] {
   return out;
 }
 
+/// Kayitli trigger'lari duzenlenebilir taslaga cevirir. Her trigger ilk
+/// aksiyonunu korur (coklu aksiyon eski profillerde kalmis olabilir) ve
+/// `custom` bloklari kopyalanir, boylece taslak kaydettigimiz profili
+/// yanlislikla degistirmez.
+function toDrafts(triggers: Trigger[] | undefined): Trigger[] {
+  if (!triggers?.length) return [];
+  return triggers.map((t) => ({
+    shortcut: t.shortcut,
+    actions: t.actions
+      .slice(0, 1)
+      .map((a) =>
+        a.type === "custom"
+          ? { type: "custom", blocks: a.blocks.map((b) => ({ ...b })) }
+          : { ...a },
+      ),
+  }));
+}
+
 function KeysInput({
   keys,
   onKeys,
@@ -363,20 +381,7 @@ export default function Workspace() {
   const [undo, setUndo] = useState<UndoEntry | null>(null);
 
   useEffect(() => {
-    setDraftTriggers(
-      active?.triggers.length
-        ? active.triggers.map((t) => ({
-            shortcut: t.shortcut,
-            actions: t.actions
-              .slice(0, 1)
-              .map((a) =>
-                a.type === "custom"
-                  ? { type: "custom", blocks: a.blocks.map((b) => ({ ...b })) }
-                  : { ...a },
-              ),
-          }))
-        : [],
-    );
+    setDraftTriggers(toDrafts(active?.triggers));
     setSelectedIdx(0);
     setDraftBlockKey(active?.block_key ?? false);
     setRecording(false);
@@ -409,7 +414,7 @@ export default function Workspace() {
   const cleanTriggers = useMemo(() => cleanDraft(draftTriggers), [draftTriggers]);
   // Bos shortcut'li ya da yinelenen bir kart varsa kayit oncesi kaybolacak;
   // inspector'da gorunur bir uyari veriyoruz.
-  const hasDroppableCard = cleanTriggers.length !== draftTriggers.length;
+  const willDropCard = cleanTriggers.length !== draftTriggers.length;
   const dirty =
     active != null &&
     (JSON.stringify(cleanTriggers) !== JSON.stringify(active.triggers) ||
@@ -428,9 +433,15 @@ export default function Workspace() {
 
   function setSingleAction(next: MacroAction | null) {
     setDraftTriggers((prev) =>
-      prev.map((x, i) =>
-        i === sel ? { ...x, actions: next ? [next] : [] } : x,
-      ),
+      prev.map((x, i) => (i === sel ? { ...x, actions: next ? [next] : [] } : x)),
+    );
+  }
+
+  /// Shortcut alanindaki iki "Clear" yolu (bolum basligindaki baglanti ve
+  /// ShortcutField'in kendi butonu) ayni eslemeyi yapiyor.
+  function clearSelectedShortcut() {
+    setDraftTriggers((prev) =>
+      prev.map((x, i) => (i === sel ? { ...x, shortcut: "" } : x)),
     );
   }
 
@@ -456,9 +467,9 @@ export default function Workspace() {
     setSingleAction(fresh);
   }
 
-  /// `next` verilmezse inspector'daki (kirpilmis) taslak yazilir. Yazma
-  /// basarili olmadan cikis yapmaz; gecmis ancak o zaman yazilir, boylece
-  /// geri alma butonu hicbir zaman kaybolmus bir kaydi gostermez.
+  /// Verilen trigger/block_key ciftini profile yazar. Hata halinde
+  /// `throw` eder, boylece cagiran taraf gecmisi yalnizca gercekten
+  /// yazilmis bir kaydin ardindan gunceller.
   async function persist(next: UndoEntry) {
     if (!active) return;
     setSaving(true);
@@ -575,13 +586,7 @@ export default function Workspace() {
                   <button
                     type="button"
                     className="link-btn"
-                    onClick={() =>
-                      setDraftTriggers((prev) =>
-                        prev.map((x, i) =>
-                          i === sel ? { ...x, shortcut: "" } : x,
-                        ),
-                      )
-                    }
+                    onClick={clearSelectedShortcut}
                   >
                     Clear
                   </button>
@@ -591,13 +596,9 @@ export default function Workspace() {
                 parts={selectedChips}
                 recording={recording}
                 onRecord={() => setRecording(true)}
-                onClear={() =>
-                  setDraftTriggers((prev) =>
-                    prev.map((x, i) => (i === sel ? { ...x, shortcut: "" } : x)),
-                  )
-                }
+                onClear={clearSelectedShortcut}
               />
-              {hasDroppableCard && (
+              {willDropCard && (
                 <div className="inline-warn">
                   A card has no shortcut or a duplicate one. It will be dropped
                   on save.
@@ -643,13 +644,13 @@ export default function Workspace() {
           <div className="inspector-foot">
             <button
               type="button"
-              className="btn-trigger-delete"
-              onClick={removeSelected}
-              disabled={!selected}
-              title="Remove Trigger"
-              aria-label="Remove Trigger"
+              className="btn-trigger-save"
+              onClick={save}
+              disabled={saving || !dirty}
+              title={dirty ? "Save Changes" : "No changes to save"}
             >
-              <Trash2 aria-hidden="true" />
+              <Save aria-hidden="true" />
+              <span>Save</span>
             </button>
             <button
               type="button"
@@ -667,13 +668,13 @@ export default function Workspace() {
             </button>
             <button
               type="button"
-              className="btn-trigger-save"
-              onClick={save}
-              disabled={saving || !dirty}
-              title={dirty ? "Save Changes" : "No changes to save"}
+              className="btn-trigger-delete"
+              onClick={removeSelected}
+              disabled={!selected}
+              title="Remove Trigger"
+              aria-label="Remove Trigger"
             >
-              <Save aria-hidden="true" />
-              <span>Save</span>
+              <Trash2 aria-hidden="true" />
             </button>
           </div>
         </aside>
