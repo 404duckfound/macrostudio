@@ -1,11 +1,18 @@
 import { useEffect } from "react";
 import { keyEventToTrigger, mouseEventToTrigger } from "../lib/keys";
 
+interface KeyCaptureOptions {
+  preserveCase?: boolean;
+  // Sol tusu trigger olarak secmeyi engeller: block_key acikken `LButton::`
+  // uretilir ve tıklama yutulur, yani fare tiklamak tamamen kaybolur.
+  ignoreLeftClick?: boolean;
+}
+
 export function useKeyCapture(
   active: boolean,
   onCapture: (combo: string) => void,
   onCancel: () => void,
-  preserveCase = false,
+  { preserveCase = false, ignoreLeftClick = false }: KeyCaptureOptions = {},
 ) {
   useEffect(() => {
     if (!active) return;
@@ -19,6 +26,7 @@ export function useKeyCapture(
       if (combo) onCapture(combo);
     }
     function onMouse(e: MouseEvent) {
+      if (ignoreLeftClick && e.button === 0) return;
       e.preventDefault();
       const combo = mouseEventToTrigger(e);
       if (combo) onCapture(combo);
@@ -29,5 +37,5 @@ export function useKeyCapture(
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onMouse);
     };
-  }, [active, onCapture, onCancel, preserveCase]);
+  }, [active, onCapture, onCancel, preserveCase, ignoreLeftClick]);
 }

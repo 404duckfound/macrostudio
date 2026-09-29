@@ -16,7 +16,7 @@ export default function ShortcutField({
       <div className="trigger-chips">
         {recording ? (
           <span className="trigger-recording-hint">
-            Press a key or click in this window…
+            Press a key… (Esc to cancel)
           </span>
         ) : (
           <Chips parts={parts} />

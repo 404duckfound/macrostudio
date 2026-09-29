@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Ban, Eye, Keyboard, Save, Trash2 } from "lucide-react";
+import { Ban, Eye, Keyboard, Plus, Save, Trash2 } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
@@ -86,15 +86,6 @@ function cleanDraft(drafts: Trigger[]): Trigger[] {
     out.push({ shortcut, actions: t.actions });
   }
   return out;
-}
-
-/// Sondaki bos kart hep gorunur; doldukça yeni bir tane belirir. `+` butonu
-/// bunun yerini aldi, o yuzden ayrica ekleme yolu yok.
-function withTrailingEmpty(drafts: Trigger[]): Trigger[] {
-  const last = drafts[drafts.length - 1];
-  return last && last.shortcut.trim().length > 0
-    ? [...drafts, { shortcut: "", actions: [] }]
-    : drafts;
 }
 
 function KeysInput({
@@ -366,20 +357,18 @@ export default function Workspace() {
 
   useEffect(() => {
     setDraftTriggers(
-      withTrailingEmpty(
-        active?.triggers.length
-          ? active.triggers.map((t) => ({
-              shortcut: t.shortcut,
-              actions: t.actions
-                .slice(0, 1)
-                .map((a) =>
-                  a.type === "custom"
-                    ? { type: "custom", blocks: a.blocks.map((b) => ({ ...b })) }
-                    : { ...a },
-                ),
-            }))
-          : [{ shortcut: "", actions: [] }],
-      ),
+      active?.triggers.length
+        ? active.triggers.map((t) => ({
+            shortcut: t.shortcut,
+            actions: t.actions
+              .slice(0, 1)
+              .map((a) =>
+                a.type === "custom"
+                  ? { type: "custom", blocks: a.blocks.map((b) => ({ ...b })) }
+                  : { ...a },
+              ),
+          }))
+        : [],
     );
     setSelectedIdx(0);
     setDraftBlockKey(active?.block_key ?? false);
@@ -391,16 +380,9 @@ export default function Workspace() {
 
   const captureShortcut = useCallback(
     (combo: string) => {
-      // Kaydedilen kart dolunca yerine yeni bos kart belirir ve secim ona gecer,
-      // boylece Record Key akisi ardisik kisa yollarla tekrar edilebilir.
-      setDraftTriggers((prev) => {
-        const next = prev.map((x, i) =>
-          i === sel ? { ...x, shortcut: combo } : x,
-        );
-        const filled = withTrailingEmpty(next);
-        setSelectedIdx(filled.length - 1);
-        return filled;
-      });
+      setDraftTriggers((prev) =>
+        prev.map((x, i) => (i === sel ? { ...x, shortcut: combo } : x)),
+      );
       setRecording(false);
     },
     [sel],
@@ -408,29 +390,29 @@ export default function Workspace() {
 
   const cancelCapture = useCallback(() => setRecording(false), []);
 
-  useKeyCapture(recording, captureShortcut, cancelCapture);
+  useKeyCapture(recording, captureShortcut, cancelCapture, {
+    ignoreLeftClick: true,
+  });
 
   const selectedChips = parseTrigger(selected?.shortcut ?? "");
   const single = selected?.actions[0] ?? null;
-  // Sondaki bos kart hicbir zaman kaydedilmez; kirpma hem `save` hem `dirty`
-  // icin ayni sonuc vermeli, yoksa Kalici bos kart butonu hep aktif ederdi.
   const cleanTriggers = useMemo(() => cleanDraft(draftTriggers), [draftTriggers]);
-  // Sondaki bos kartta meslemis trigger varsa kayit sirasinda kaybolacak;
+  // Bos shortcut'li ya da yinelenen bir kart varsa kayit oncesi kaybolacak;
   // inspector'da gorunur bir uyari veriyoruz.
-  const touchesTrailingEmpty =
-    sel === draftTriggers.length - 1 &&
-    draftTriggers.length > cleanTriggers.length;
+  const hasDroppableCard = cleanTriggers.length !== draftTriggers.length;
   const dirty =
     active != null &&
     (JSON.stringify(cleanTriggers) !== JSON.stringify(active.triggers) ||
       draftBlockKey !== active.block_key);
 
+  function addTrigger() {
+    setDraftTriggers((prev) => [...prev, { shortcut: "", actions: [] }]);
+    setSelectedIdx(draftTriggers.length);
+  }
+
   function removeSelected() {
-    setDraftTriggers((prev) => {
-      const next = withTrailingEmpty(prev.filter((_, i) => i !== sel));
-      setSelectedIdx(Math.min(Math.max(0, sel - 1), next.length - 1));
-      return next;
-    });
+    setDraftTriggers((prev) => prev.filter((_, i) => i !== sel));
+    setSelectedIdx(Math.max(0, sel - 1));
     setRecording(false);
   }
 
@@ -516,7 +498,7 @@ export default function Workspace() {
                 <div className="trigger-chips">
                   {recording && i === sel ? (
                     <span className="trigger-recording-hint">
-                      Press a key or click… (Esc to cancel)
+                      Press a key… (Esc to cancel)
                     </span>
                   ) : (
                     <Chips parts={parseTrigger(t.shortcut)} />
@@ -539,6 +521,15 @@ export default function Workspace() {
               </span>
             </div>
           ))}
+
+          <button
+            type="button"
+            className="trigger-add-placeholder"
+            onClick={addTrigger}
+          >
+            <Plus aria-hidden="true" />
+            <span>Add trigger</span>
+          </button>
         </div>
       </div>
 
@@ -580,9 +571,10 @@ export default function Workspace() {
                   )
                 }
               />
-              {touchesTrailingEmpty && (
+              {hasDroppableCard && (
                 <div className="inline-warn">
-                  This card has no shortcut, so it will be dropped on save.
+                  A card has no shortcut or a duplicate one. It will be dropped
+                  on save.
                 </div>
               )}
               <BlockKeyToggle

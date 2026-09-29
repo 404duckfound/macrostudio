@@ -34,7 +34,7 @@ export default function KeyActionEditor({
   );
   const cancel = useCallback(() => setPicking(false), []);
 
-  useKeyCapture(picking, pick, cancel, true);
+  useKeyCapture(picking, pick, cancel, { preserveCase: true });
 
   function setBehavior(behavior: KeyBehavior) {
     onChange({
@@ -53,7 +53,9 @@ export default function KeyActionEditor({
         <div className="key-target-text">
           <div className="key-target-chips">
             {parts.length === 0 ? (
-              <span className="trigger-recording-hint">No key target</span>
+              <span className="trigger-recording-hint">
+                {picking ? "Press a key…" : "No key target"}
+              </span>
             ) : (
               parts.map((p, i) => (
                 <span key={`${p}-${i}`} className="kbd-row">
