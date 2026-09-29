@@ -4,367 +4,17 @@ import { Ban, Eye, Keyboard, Plus, Save, Trash2, Undo2 } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
-import type { ActionBlock, MacroAction, Profile, Trigger } from "../../types";
+import type { MacroAction, Profile, Trigger } from "../../types";
+import ActionEditor from "./ActionEditor";
 import ActionTypeCard from "./ActionTypeCard";
 import BlockKeyToggle from "./BlockKeyToggle";
 import Chips from "./Chips";
-import KeyActionEditor from "./KeyActionEditor";
 import ShortcutField from "./ShortcutField";
+import { cleanDraft, toDrafts, type UndoEntry } from "./triggerDraft";
 
-const BLOCK_LABELS: Record<ActionBlock["kind"], string> = {
-  keys: "Keys",
-  mouse: "Mouse",
-  delay: "Delay",
-};
-
-const KEY_PRESETS = [
-  "Enter",
-  "Tab",
-  "Escape",
-  "Space",
-  "Backspace",
-  "Delete",
-  "Up",
-  "Down",
-  "Left",
-  "Right",
-  "Home",
-  "End",
-  "PageUp",
-  "PageDown",
-  "F1",
-  "F2",
-  "F3",
-  "F4",
-  "F5",
-  "F6",
-  "F7",
-  "F8",
-  "F9",
-  "F10",
-  "F11",
-  "F12",
-  "a",
-  "b",
-  "c",
-  "d",
-  "e",
-  "f",
-  "g",
-  "h",
-  "i",
-  "j",
-  "k",
-  "l",
-  "m",
-  "n",
-  "o",
-  "p",
-  "q",
-  "r",
-  "s",
-  "t",
-  "u",
-  "v",
-  "w",
-  "x",
-  "y",
-  "z",
-];
-
-const MOUSE_BUTTONS = ["Left", "Right", "Middle"];
-
-/// Bos shortcut'i ve yinelenen kaydi kirpar; sonuc profilde saklanan haliyle
-/// birebir ayni olmali, yoksa `dirty` her zaman true doner.
-function cleanDraft(drafts: Trigger[]): Trigger[] {
-  const seen = new Set<string>();
-  const out: Trigger[] = [];
-  for (const t of drafts) {
-    const shortcut = t.shortcut.trim();
-    if (!shortcut || seen.has(shortcut)) continue;
-    seen.add(shortcut);
-    out.push({ shortcut, actions: t.actions });
-  }
-  return out;
-}
-
-/// Kayitli trigger'lari duzenlenebilir taslaga cevirir. Her trigger ilk
-/// aksiyonunu korur (coklu aksiyon eski profillerde kalmis olabilir) ve
-/// `custom` bloklari kopyalanir, boylece taslak kaydettigimiz profili
-/// yanlislikla degistirmez.
-function toDrafts(triggers: Trigger[] | undefined): Trigger[] {
-  if (!triggers?.length) return [];
-  return triggers.map((t) => ({
-    shortcut: t.shortcut,
-    actions: t.actions
-      .slice(0, 1)
-      .map((a) =>
-        a.type === "custom"
-          ? { type: "custom", blocks: a.blocks.map((b) => ({ ...b })) }
-          : { ...a },
-      ),
-  }));
-}
-
-function KeysInput({
-  keys,
-  onKeys,
-}: {
-  keys: string;
-  onKeys: (keys: string) => void;
-}) {
-  const [mode, setMode] = useState<"preset" | "custom">(
-    KEY_PRESETS.includes(keys) || keys === "" ? "preset" : "custom",
-  );
-  return (
-    <>
-      <select
-        value={mode}
-        aria-label="Keys input mode"
-        onChange={(e) => {
-          const next = e.target.value as "preset" | "custom";
-          setMode(next);
-          onKeys(next === "preset" ? keys || "Enter" : "");
-        }}
-      >
-        <option value="preset">Pick key</option>
-        <option value="custom">Type keys</option>
-      </select>
-      {mode === "preset" ? (
-        <select
-          value={KEY_PRESETS.includes(keys) ? keys : ""}
-          aria-label="Key"
-          onChange={(e) => onKeys(e.target.value)}
-        >
-          {keys !== "" && !KEY_PRESETS.includes(keys) && (
-            <option value={keys}>{keys}</option>
-          )}
-          {KEY_PRESETS.map((k) => (
-            <option key={k} value={k}>
-              {k}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <input
-          className="action-input"
-          value={keys}
-          placeholder="Keys to send"
-          onChange={(e) => onKeys(e.target.value)}
-        />
-      )}
-    </>
-  );
-}
-
-function MouseInput({
-  button,
-  x,
-  y,
-  onPatch,
-}: {
-  button: string;
-  x: number;
-  y: number;
-  onPatch: (patch: { button?: string; x?: number; y?: number }) => void;
-}) {
-  const [useCoords, setUseCoords] = useState(x !== 0 || y !== 0);
-  return (
-    <div className="action-grid">
-      <select
-        value={button}
-        aria-label="Mouse button"
-        onChange={(e) => onPatch({ button: e.target.value })}
-      >
-        {MOUSE_BUTTONS.map((b) => (
-          <option key={b} value={b}>
-            {b}
-          </option>
-        ))}
-      </select>
-      <label
-        className="coord-toggle"
-        title="Use fixed coordinates instead of current pointer"
-      >
-        <input
-          type="checkbox"
-          checked={useCoords}
-          onChange={(e) => {
-            setUseCoords(e.target.checked);
-            onPatch({ x: 0, y: 0 });
-          }}
-        />
-        <span>X/Y</span>
-      </label>
-      {useCoords && (
-        <>
-          <input
-            type="number"
-            value={x}
-            aria-label="Click X"
-            onChange={(e) => onPatch({ x: Number(e.target.value) || 0 })}
-          />
-          <input
-            type="number"
-            value={y}
-            aria-label="Click Y"
-            onChange={(e) => onPatch({ y: Number(e.target.value) || 0 })}
-          />
-        </>
-      )}
-    </div>
-  );
-}
-
-function BlockRow({
-  block,
-  onChange,
-  onDelete,
-}: {
-  block: ActionBlock;
-  onChange: (b: ActionBlock) => void;
-  onDelete: () => void;
-}) {
-  return (
-    <div className="block-row">
-      <span className="block-kind">{BLOCK_LABELS[block.kind]}</span>
-      {block.kind === "keys" && (
-        <KeysInput
-          keys={block.keys}
-          onKeys={(keys) => onChange({ kind: "keys", keys })}
-        />
-      )}
-      {block.kind === "delay" && (
-        <input
-          type="number"
-          min={0}
-          value={block.ms}
-          aria-label="Delay milliseconds"
-          onChange={(e) =>
-            onChange({ kind: "delay", ms: Number(e.target.value) || 0 })
-          }
-        />
-      )}
-      {block.kind === "mouse" && (
-        <MouseInput
-          button={block.button}
-          x={block.x}
-          y={block.y}
-          onPatch={(patch) => onChange({ ...block, ...patch })}
-        />
-      )}
-      <button
-        type="button"
-        className="action-delete"
-        onClick={onDelete}
-        title="Delete block"
-      >
-        ×
-      </button>
-    </div>
-  );
-}
-
-function ActionEditor({
-  action,
-  onChange,
-}: {
-  action: MacroAction;
-  onChange: (a: MacroAction) => void;
-}) {
-  function addBlock(kind: ActionBlock["kind"]) {
-    if (action.type !== "custom") return;
-    let fresh: ActionBlock;
-    switch (kind) {
-      case "keys":
-        fresh = { kind: "keys", keys: "" };
-        break;
-      case "mouse":
-        fresh = { kind: "mouse", button: "Left", x: 0, y: 0 };
-        break;
-      case "delay":
-        fresh = { kind: "delay", ms: 500 };
-        break;
-    }
-    onChange({ type: "custom", blocks: [...action.blocks, fresh] });
-  }
-
-  function updateBlock(i: number, next: ActionBlock) {
-    if (action.type !== "custom") return;
-    onChange({
-      type: "custom",
-      blocks: action.blocks.map((b, j) => (j === i ? next : b)),
-    });
-  }
-
-  function deleteBlock(i: number) {
-    if (action.type !== "custom") return;
-    onChange({
-      type: "custom",
-      blocks: action.blocks.filter((_, j) => j !== i),
-    });
-  }
-
-  return (
-    <div className="action-card">
-      {action.type === "key" && (
-        <KeyActionEditor action={action} onChange={onChange} />
-      )}
-      {action.type === "keys" && (
-        <KeysInput
-          keys={action.keys}
-          onKeys={(keys) => onChange({ type: "keys", keys })}
-        />
-      )}
-      {action.type === "mouse" && (
-        <MouseInput
-          button={action.button}
-          x={action.x}
-          y={action.y}
-          onPatch={(patch) => onChange({ ...action, ...patch })}
-        />
-      )}
-      {action.type === "script" && (
-        <textarea
-          className="action-textarea"
-          value={action.code}
-          placeholder={'Raw AHK v2, e.g.\nSend("hello")'}
-          spellCheck={false}
-          onChange={(e) => onChange({ type: "script", code: e.target.value })}
-        />
-      )}
-      {action.type === "custom" && (
-        <>
-          {action.blocks.map((b, i) => (
-            <BlockRow
-              key={i}
-              block={b}
-              onChange={(next) => updateBlock(i, next)}
-              onDelete={() => deleteBlock(i)}
-            />
-          ))}
-          <div className="block-add-row">
-            <button type="button" onClick={() => addBlock("keys")}>
-              + Keys
-            </button>
-            <button type="button" onClick={() => addBlock("mouse")}>
-              + Mouse
-            </button>
-            <button type="button" onClick={() => addBlock("delay")}>
-              + Delay
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-interface UndoEntry {
-  triggers: Trigger[];
-  block_key: boolean;
-}
-
+/// Tek bir profilin trigger listesi (sol) ve secili trigger'in duzenleyicisi
+/// (sag). Kaydetme/geri alma yalnizca bu ekrandadır; profil ekleme, silme
+/// veya hedef-uygulama secimi `ProfileRail` tarafinda.
 export default function Workspace() {
   const activeId = useProfileStore((s) => s.activeId);
   const profiles = useProfileStore((s) => s.profiles);
@@ -420,6 +70,12 @@ export default function Workspace() {
     (JSON.stringify(cleanTriggers) !== JSON.stringify(active.triggers) ||
       draftBlockKey !== active.block_key);
 
+  function patchSelected(patch: (t: Trigger) => Trigger) {
+    setDraftTriggers((prev) =>
+      prev.map((x, i) => (i === sel ? patch(x) : x)),
+    );
+  }
+
   function addTrigger() {
     setDraftTriggers((prev) => [...prev, { shortcut: "", actions: [] }]);
     setSelectedIdx(draftTriggers.length);
@@ -432,17 +88,13 @@ export default function Workspace() {
   }
 
   function setSingleAction(next: MacroAction | null) {
-    setDraftTriggers((prev) =>
-      prev.map((x, i) => (i === sel ? { ...x, actions: next ? [next] : [] } : x)),
-    );
+    patchSelected((x) => ({ ...x, actions: next ? [next] : [] }));
   }
 
   /// Shortcut alanindaki iki "Clear" yolu (bolum basligindaki baglanti ve
   /// ShortcutField'in kendi butonu) ayni eslemeyi yapiyor.
   function clearSelectedShortcut() {
-    setDraftTriggers((prev) =>
-      prev.map((x, i) => (i === sel ? { ...x, shortcut: "" } : x)),
-    );
+    patchSelected((x) => ({ ...x, shortcut: "" }));
   }
 
   function selectActionType(type: MacroAction["type"]) {
@@ -461,7 +113,13 @@ export default function Workspace() {
         fresh = { type: "script", code: "" };
         break;
       case "key":
-        fresh = { type: "key", key: "", behavior: "tap", pre_delay_ms: 0, repeat: 1 };
+        fresh = {
+          type: "key",
+          key: "",
+          behavior: "tap",
+          pre_delay_ms: 0,
+          repeat: 1,
+        };
         break;
     }
     setSingleAction(fresh);
