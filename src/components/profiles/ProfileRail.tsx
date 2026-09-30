@@ -2,8 +2,8 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Ellipsis, Plus } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
-import ProfileDeleteModal from "./ProfileDeleteModal";
-import ProfileFormModal from "./ProfileFormModal";
+import ProfileDeleteModal from "./modals/ProfileDeleteModal";
+import ProfileFormModal from "./modals/ProfileFormModal";
 import type { Profile, Trigger } from "../../types";
 
 type ModalState =

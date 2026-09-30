@@ -30,9 +30,6 @@ const KEY_PRESETS = [
   ..."abcdefghijklmnopqrstuvwxyz",
 ];
 
-/// Iki kisimli tus alani: onceden secilmisse hazir listeden, degilse serbest
-/// metin. `keys` bos string'i de "preset" sayilir, cunku yeni bir `keys`
-/// aksiyonu hicbir sey secmeden baslar.
 export function KeysInput({
   keys,
   onKeys,

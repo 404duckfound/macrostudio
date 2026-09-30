@@ -1,6 +1,6 @@
-import type { ActionBlock } from "../../types";
-import { KeysInput } from "./keysInput";
-import { MouseInput } from "./mouseInput";
+import type { ActionBlock } from "../../../types";
+import { KeysInput } from "./KeysInput";
+import { MouseInput } from "./MouseInput";
 
 const BLOCK_LABELS: Record<ActionBlock["kind"], string> = {
   keys: "Keys",

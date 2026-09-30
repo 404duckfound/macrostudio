@@ -10,7 +10,7 @@ import {
   Search,
   Type,
 } from "lucide-react";
-import type { MacroAction } from "../../types";
+import type { MacroAction } from "../../../types";
 
 export type ActionTypeValue = MacroAction["type"];
 

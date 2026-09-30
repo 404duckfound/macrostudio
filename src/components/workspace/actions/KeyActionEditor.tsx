@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import { KeyRound } from "lucide-react";
-import { useKeyCapture } from "../../hooks/useKeyCapture";
-import { keyChipLabel, keyParts, keyVkSubtitle } from "../../lib/keymap";
-import type { KeyBehavior, MacroAction } from "../../types";
+import { useKeyCapture } from "../../../hooks/useKeyCapture";
+import { keyChipLabel, keyParts, keyVkSubtitle } from "../../../lib/keymap";
+import type { KeyBehavior, MacroAction } from "../../../types";
 import NumberStepper from "./NumberStepper";
 
 type KeyAction = Extract<MacroAction, { type: "key" }>;

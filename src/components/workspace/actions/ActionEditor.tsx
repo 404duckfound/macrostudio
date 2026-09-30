@@ -1,11 +1,9 @@
-import type { MacroAction } from "../../types";
+import type { MacroAction } from "../../../types";
 import KeyActionEditor from "./KeyActionEditor";
 import { KeysInput } from "./keysInput";
 import { MouseInput } from "./mouseInput";
 import BlockRow from "./BlockRow";
 
-/// Secili aksiyon turunun duzenleyicisi. `keys`/`mouse`/`key` tek alanlilar,
-/// `custom` bir blok listesi, `script` serbest metin.
 export default function ActionEditor({
   action,
   onChange,
@@ -66,8 +64,6 @@ export default function ActionEditor({
   );
 }
 
-/// `custom` turunun blok listesi. Butun `action.type === "custom"` daraltmasi
-/// burada toplanir, boylece blok ekleme/guncelleme/silme tek yerde durur.
 function CustomBlocks({
   action,
   onChange,
@@ -75,7 +71,9 @@ function CustomBlocks({
   action: Extract<MacroAction, { type: "custom" }>;
   onChange: (a: MacroAction) => void;
 }) {
-  function setBlocks(blocks: Extract<MacroAction, { type: "custom" }>["blocks"]) {
+  function setBlocks(
+    blocks: Extract<MacroAction, { type: "custom" }>["blocks"],
+  ) {
     onChange({ type: "custom", blocks });
   }
 
@@ -88,19 +86,35 @@ function CustomBlocks({
           onChange={(next) =>
             setBlocks(action.blocks.map((old, j) => (j === i ? next : old)))
           }
-          onDelete={() =>
-            setBlocks(action.blocks.filter((_, j) => j !== i))
-          }
+          onDelete={() => setBlocks(action.blocks.filter((_, j) => j !== i))}
         />
       ))}
       <div className="block-add-row">
-        <button type="button" onClick={() => setBlocks([...action.blocks, { kind: "keys", keys: "" }])}>
+        <button
+          type="button"
+          onClick={() =>
+            setBlocks([...action.blocks, { kind: "keys", keys: "" }])
+          }
+        >
           + Keys
         </button>
-        <button type="button" onClick={() => setBlocks([...action.blocks, { kind: "mouse", button: "Left", x: 0, y: 0 }])}>
+        <button
+          type="button"
+          onClick={() =>
+            setBlocks([
+              ...action.blocks,
+              { kind: "mouse", button: "Left", x: 0, y: 0 },
+            ])
+          }
+        >
           + Mouse
         </button>
-        <button type="button" onClick={() => setBlocks([...action.blocks, { kind: "delay", ms: 500 }])}>
+        <button
+          type="button"
+          onClick={() =>
+            setBlocks([...action.blocks, { kind: "delay", ms: 500 }])
+          }
+        >
           + Delay
         </button>
       </div>

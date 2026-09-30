@@ -2,9 +2,6 @@ import { useState } from "react";
 
 const MOUSE_BUTTONS = ["Left", "Right", "Middle"];
 
-/// X/Y kutusu yalnizca acikca secildiginde gorunur; kapatmak koordinatlari
-/// sifirlar, boylece "imleci nereye tiklayayim" modundan sabit koordinat
-/// moduna gecis yanlis bir degerle baslamaz.
 export function MouseInput({
   button,
   x,
