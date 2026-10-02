@@ -19,13 +19,23 @@ function heldModifiers(e: {
   return parts;
 }
 
+// BrowserKeyEvent.key reports arrows as ArrowUp/ArrowDown/... but AHK spells
+// them Up/Down/... in both hotkey position and {Key} braces. Normalising here
+// keeps keymap.ts and the generator in agreement.
+const KEY_EVENT_ALIASES: Record<string, string> = {
+  ArrowUp: "Up",
+  ArrowDown: "Down",
+  ArrowLeft: "Left",
+  ArrowRight: "Right",
+};
+
 export function keyEventToTrigger(
   e: KeyboardEvent,
   preserveCase = false,
 ): string | null {
   if (e.key === "Escape") return null;
   if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return null;
-  let key = e.key;
+  let key = KEY_EVENT_ALIASES[e.key] ?? e.key;
   if (key === " ") key = "Space";
   else if (!preserveCase) {
     // Hotkey'lerde buyuk harf gosterimi standardi ve AHK'da anlamsiz (hotkey
