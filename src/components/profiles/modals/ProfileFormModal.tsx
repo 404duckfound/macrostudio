@@ -115,7 +115,6 @@ export default function ProfileFormModal({
             <label className="modal-label" htmlFor="profile-name">
               Profile Name <span className="modal-required">*</span>
             </label>
-            <span className="modal-side">Identifier</span>
           </div>
           <input
             id="profile-name"

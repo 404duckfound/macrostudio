@@ -1,7 +1,7 @@
 import type { MacroAction } from "../../../types";
 import KeyActionEditor from "./KeyActionEditor";
-import { KeysInput } from "./keysInput";
-import { MouseInput } from "./mouseInput";
+import { KeysInput } from "./KeysInput";
+import { MouseInput } from "./MouseInput";
 import BlockRow from "./BlockRow";
 
 export default function ActionEditor({

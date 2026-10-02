@@ -17,8 +17,6 @@ const MAIN_WINDOW: &str = "main";
 
 pub fn run() {
     let app = tauri::Builder::default()
-        // Tek ornek plugin'i digerlerinden ONCE kaydedilmelidir; aksi halde
-        // ikinci acilisa odak devri calismaz.
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             show_main_window(app);
         }))
@@ -26,6 +24,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             ahk_start_profile,
@@ -42,8 +41,6 @@ pub fn run() {
             if window.label() != MAIN_WINDOW {
                 return;
             }
-            // Pencere kapatilince uygulama tray'e gizlenir; makrolar ayakta
-            // kalir. Tamamen kapatmak icin tray'deki Exit kullanilir.
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = window.hide();
@@ -56,9 +53,6 @@ pub fn run() {
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
-
-    // AHK surecleri detached (`std::mem::forget`); cikista temizlenmezse
-    // hotkey'ler uygulama kapandiktan sonra da calismaya devam eder.
     app.run(|app_handle, event| {
         if let tauri::RunEvent::Exit = event {
             app_handle.state::<AppState>().ahk_manager.stop_all();

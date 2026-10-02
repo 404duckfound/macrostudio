@@ -40,9 +40,18 @@ export default function ProfileRail({
     defaultId,
     activeWindow,
     setActiveId,
+    setPinnedId,
     setDefaultId,
   } = useProfileStore();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  // Rail secimi pinnedId'yi de gunceller; otomatik pencere eslesmesi
+  // yalnizca activeId'yi degistirir, boylece odak bosaldiginda secim
+  // geri gelir.
+  function selectProfile(id: string | null) {
+    setActiveId(id);
+    setPinnedId(id);
+  }
   const [modal, setModal] = useState<ModalState>(null);
   const [saving, setSaving] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -55,7 +64,7 @@ export default function ProfileRail({
   async function saveProfile(profile: Profile, isNew: boolean) {
     await invoke("profile_save", { profile });
     await refresh();
-    if (isNew) setActiveId(profile.id);
+    if (isNew) selectProfile(profile.id);
     setModal(null);
   }
 
@@ -74,7 +83,7 @@ export default function ProfileRail({
           state.defaultId !== null && state.defaultId !== deleted
             ? state.defaultId
             : firstId;
-        state.setActiveId(nextActive);
+        selectProfile(nextActive);
       }
       if (state.defaultId === deleted) state.setDefaultId(firstId);
       setModal(null);
@@ -94,7 +103,7 @@ export default function ProfileRail({
     };
     await invoke("profile_save", { profile: copy });
     await refresh();
-    setActiveId(copy.id);
+    selectProfile(copy.id);
   }
 
   return (
@@ -117,7 +126,7 @@ export default function ProfileRail({
             key={p.id}
             className={`rail-row ${activeId === p.id ? "active" : ""}`}
             onClick={() => {
-              setActiveId(p.id);
+              selectProfile(p.id);
               setOpenMenuId(null);
             }}
           >
@@ -182,7 +191,7 @@ export default function ProfileRail({
                   disabled={defaultId === p.id}
                   onClick={() => {
                     setDefaultId(p.id);
-                    setActiveId(p.id);
+                    selectProfile(p.id);
                   }}
                 >
                   Make default

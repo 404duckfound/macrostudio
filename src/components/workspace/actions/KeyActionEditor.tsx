@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { KeyRound } from "lucide-react";
 import { useKeyCapture } from "../../../hooks/useKeyCapture";
-import { keyChipLabel, keyParts, keyVkSubtitle } from "../../../lib/keymap";
+import { keyChipLabel, keyParts } from "../../../lib/keymap";
 import type { KeyBehavior, MacroAction } from "../../../types";
 import NumberStepper from "./NumberStepper";
 
@@ -9,7 +9,11 @@ type KeyAction = Extract<MacroAction, { type: "key" }>;
 
 const BEHAVIORS: { value: KeyBehavior; label: string; desc: string }[] = [
   { value: "tap", label: "Tap", desc: "Standard press" },
-  { value: "hold_down", label: "Hold Down", desc: "Stays pressed until released" },
+  {
+    value: "hold_down",
+    label: "Hold Down",
+    desc: "Stays pressed until released",
+  },
   { value: "release", label: "Release", desc: "Releases a held key" },
 ];
 
@@ -22,7 +26,8 @@ export default function KeyActionEditor({
 }) {
   const [picking, setPicking] = useState(false);
   const parts = keyParts(action.key);
-  const current = BEHAVIORS.find((b) => b.value === action.behavior) ?? BEHAVIORS[0];
+  const current =
+    BEHAVIORS.find((b) => b.value === action.behavior) ?? BEHAVIORS[0];
   const repeatEnabled = action.behavior === "tap";
 
   const pick = useCallback(
@@ -65,7 +70,6 @@ export default function KeyActionEditor({
               ))
             )}
           </div>
-          <span className="key-target-sub">{keyVkSubtitle(action.key)}</span>
         </div>
         <button
           type="button"

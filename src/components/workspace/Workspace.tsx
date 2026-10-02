@@ -12,9 +12,6 @@ import Chips from "./Chips";
 import ShortcutField from "./ShortcutField";
 import { cleanDraft, toDrafts, type UndoEntry } from "./triggerDraft";
 
-/// Tek bir profilin trigger listesi (sol) ve secili trigger'in duzenleyicisi
-/// (sag). Kaydetme/geri alma yalnizca bu ekrandadır; profil ekleme, silme
-/// veya hedef-uygulama secimi `ProfileRail` tarafinda.
 export default function Workspace() {
   const activeId = useProfileStore((s) => s.activeId);
   const profiles = useProfileStore((s) => s.profiles);
@@ -24,10 +21,11 @@ export default function Workspace() {
     active?.triggers ?? [],
   );
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const [draftBlockKey, setDraftBlockKey] = useState(active?.block_key ?? false);
+  const [draftBlockKey, setDraftBlockKey] = useState(
+    active?.block_key ?? false,
+  );
   const [recording, setRecording] = useState(false);
   const [saving, setSaving] = useState(false);
-  // Son kayittan onceki kayitli hal. Tek adim: geri alindiktan sonra gecer.
   const [undo, setUndo] = useState<UndoEntry | null>(null);
 
   useEffect(() => {
@@ -37,7 +35,6 @@ export default function Workspace() {
     setRecording(false);
   }, [active?.id, active?.triggers, active?.block_key]);
 
-  // Gecmis profille eslesmesin; yeni profilde undo eski kaydi geri getirirdi.
   useEffect(() => setUndo(null), [active?.id]);
 
   const sel = Math.min(selectedIdx, Math.max(0, draftTriggers.length - 1));
@@ -61,9 +58,10 @@ export default function Workspace() {
 
   const selectedChips = parseTrigger(selected?.shortcut ?? "");
   const single = selected?.actions[0] ?? null;
-  const cleanTriggers = useMemo(() => cleanDraft(draftTriggers), [draftTriggers]);
-  // Bos shortcut'li ya da yinelenen bir kart varsa kayit oncesi kaybolacak;
-  // inspector'da gorunur bir uyari veriyoruz.
+  const cleanTriggers = useMemo(
+    () => cleanDraft(draftTriggers),
+    [draftTriggers],
+  );
   const willDropCard = cleanTriggers.length !== draftTriggers.length;
   const dirty =
     active != null &&
@@ -71,9 +69,7 @@ export default function Workspace() {
       draftBlockKey !== active.block_key);
 
   function patchSelected(patch: (t: Trigger) => Trigger) {
-    setDraftTriggers((prev) =>
-      prev.map((x, i) => (i === sel ? patch(x) : x)),
-    );
+    setDraftTriggers((prev) => prev.map((x, i) => (i === sel ? patch(x) : x)));
   }
 
   function addTrigger() {
@@ -91,8 +87,6 @@ export default function Workspace() {
     patchSelected((x) => ({ ...x, actions: next ? [next] : [] }));
   }
 
-  /// Shortcut alanindaki iki "Clear" yolu (bolum basligindaki baglanti ve
-  /// ShortcutField'in kendi butonu) ayni eslemeyi yapiyor.
   function clearSelectedShortcut() {
     patchSelected((x) => ({ ...x, shortcut: "" }));
   }
@@ -125,9 +119,6 @@ export default function Workspace() {
     setSingleAction(fresh);
   }
 
-  /// Verilen trigger/block_key ciftini profile yazar. Hata halinde
-  /// `throw` eder, boylece cagiran taraf gecmisi yalnizca gercekten
-  /// yazilmis bir kaydin ardindan gunceller.
   async function persist(next: UndoEntry) {
     if (!active) return;
     setSaving(true);
