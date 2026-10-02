@@ -12,9 +12,6 @@ import type { Profile } from "../types";
 const DEFAULT_NAME = "Default";
 
 function notifyProfileSwitch(profile: Profile) {
-  const detail = profile.target_exe
-    ? `${profile.name} · ${profile.target_exe}`
-    : profile.name;
   isPermissionGranted()
     .then(async (granted) => {
       if (granted) return true;
@@ -23,8 +20,8 @@ function notifyProfileSwitch(profile: Profile) {
     .then((granted) => {
       if (!granted) return;
       sendNotification({
-        title: "Macro Studio",
-        body: detail,
+        title: "Profile changed to",
+        body: profile.name,
       });
     })
     .catch(() => {

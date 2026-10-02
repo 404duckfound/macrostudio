@@ -162,6 +162,9 @@ fn brace_key_name(part: &str) -> String {
     }
 }
 
+/// Key name for `Send "{name down}"`. These are the names the Send key table
+/// accepts; `{ArrowUp}` is not one of them, so callers must hand us a mapped
+/// name (see keymap.ts) rather than a raw `KeyboardEvent.key`.
 fn native_key_name(part: &str) -> String {
     match part {
         "Ctrl" => "LCtrl".to_string(),
@@ -218,14 +221,17 @@ fn key_action_lines(key: &str, behavior: KeyBehavior, pre_delay_ms: u32, repeat:
             wrap_in_repeat(&format!("    Send(\"{braces}\")\n"), repeat)
         }
         KeyBehavior::HoldDown | KeyBehavior::Release => {
-            let call = if behavior == KeyBehavior::HoldDown {
-                "KeyDown"
+            // AHK v2 has no KeyDown/KeyUp functions; holding a key is
+            // Send "{name down}". Using the v1 spelling made AHK parse the
+            // name as an unassigned local variable and warn instead of run.
+            let word = if behavior == KeyBehavior::HoldDown {
+                "down"
             } else {
-                "KeyUp"
+                "up"
             };
             parts
                 .iter()
-                .map(|p| format!("    {call}(\"{}\")\n", native_key_name(p)))
+                .map(|p| format!("    Send(\"{{{} {word}}}\")\n", native_key_name(p)))
                 .collect()
         }
     };
@@ -489,14 +495,13 @@ mod tests {
             true,
             TEST_TITLE,
         );
-        assert!(down.contains("    KeyDown(\"LCtrl\")\n    KeyDown(\"LAlt\")\n"));
-        assert!(!down.contains("Send("));
+        assert!(down.contains("    Send(\"{LCtrl down}\")\n    Send(\"{LAlt down}\")\n"));
 
         let up = compile_to_ahk_v2(&[trig("F9", vec![key_action("Ctrl+Alt", KeyBehavior::Release, 0, 1)])],
             true,
             TEST_TITLE,
         );
-        assert!(up.contains("    KeyUp(\"LCtrl\")\n    KeyUp(\"LAlt\")\n"));
+        assert!(up.contains("    Send(\"{LCtrl up}\")\n    Send(\"{LAlt up}\")\n"));
     }
 
     #[test]
@@ -530,7 +535,7 @@ mod tests {
             true,
             TEST_TITLE,
         );
-        assert!(held.contains("    KeyDown(\"a\")\n"));
+        assert!(held.contains("    Send(\"{a down}\")\n"));
     }
 
     #[test]
@@ -556,7 +561,7 @@ mod tests {
             true,
             TEST_TITLE,
         );
-        assert!(held.contains("    KeyDown(\"A\")\n"));
+        assert!(held.contains("    Send(\"{A down}\")\n"));
         assert!(!held.contains("Loop"));
     }
 

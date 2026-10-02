@@ -206,6 +206,7 @@ export default function ProfileRail({
         <ProfileFormModal
           mode={modal.mode}
           editing={modal.mode === "edit" ? modal.profile : null}
+          profiles={profiles}
           activeWindow={activeWindow}
           onClose={closeModal}
           onSubmit={saveProfile}

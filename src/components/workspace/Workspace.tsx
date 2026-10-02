@@ -27,6 +27,7 @@ export default function Workspace() {
   const [recording, setRecording] = useState(false);
   const [saving, setSaving] = useState(false);
   const [undo, setUndo] = useState<UndoEntry | null>(null);
+  const [shortcutError, setShortcutError] = useState<string | null>(null);
 
   useEffect(() => {
     setDraftTriggers(toDrafts(active?.triggers));
@@ -42,12 +43,23 @@ export default function Workspace() {
 
   const captureShortcut = useCallback(
     (combo: string) => {
+      // Ayni kisa yol iki kartta birden kullanilamaz: AHK ayni hotkey'i iki
+      // kez tanimlamaz, ikinci trigger sessizce calismaz. Kaydi reddet.
+      const clash = draftTriggers.some(
+        (x, i) => i !== sel && x.shortcut.trim() === combo.trim(),
+      );
+      if (clash) {
+        setShortcutError(`"${combo.trim()}" is already used by another trigger.`);
+        setRecording(false);
+        return;
+      }
+      setShortcutError(null);
       setDraftTriggers((prev) =>
         prev.map((x, i) => (i === sel ? { ...x, shortcut: combo } : x)),
       );
       setRecording(false);
     },
-    [sel],
+    [draftTriggers, sel],
   );
 
   const cancelCapture = useCallback(() => setRecording(false), []);
@@ -244,8 +256,12 @@ export default function Workspace() {
               <ShortcutField
                 parts={selectedChips}
                 recording={recording}
-                onRecord={() => setRecording(true)}
+                onRecord={() => {
+                  setShortcutError(null);
+                  setRecording(true);
+                }}
                 onClear={clearSelectedShortcut}
+                error={shortcutError}
               />
               {willDropCard && (
                 <div className="inline-warn">

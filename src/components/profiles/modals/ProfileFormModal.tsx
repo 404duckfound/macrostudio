@@ -44,6 +44,7 @@ function buildExeOptions(
 interface ProfileFormModalProps {
   mode: FormMode;
   editing: Profile | null;
+  profiles: Profile[];
   activeWindow: string;
   onClose: () => void;
   onSubmit: (profile: Profile, isNew: boolean) => Promise<void>;
@@ -52,6 +53,7 @@ interface ProfileFormModalProps {
 export default function ProfileFormModal({
   mode,
   editing,
+  profiles,
   activeWindow,
   onClose,
   onSubmit,
@@ -78,10 +80,23 @@ export default function ProfileFormModal({
       setError("Name is required.");
       return;
     }
+    const cleanTarget = targetExe.trim() || null;
+    // Auto-switch uses `profiles.find(...)`, so a second profile with the same
+    // target would never activate. One app, one profile.
+    const takenBy = cleanTarget
+      ? profiles.find(
+          (p) =>
+            p.id !== editing?.id &&
+            p.target_exe?.toLowerCase() === cleanTarget.toLowerCase(),
+        )
+      : undefined;
+    if (takenBy) {
+      setError(`"${takenBy.name}" is already linked to this application.`);
+      return;
+    }
     setSaving(true);
     setError("");
     try {
-      const cleanTarget = targetExe.trim() || null;
       await onSubmit(
         editing
           ? { ...editing, name: cleanName, target_exe: cleanTarget }

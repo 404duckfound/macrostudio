@@ -5,11 +5,13 @@ export default function ShortcutField({
   recording,
   onRecord,
   onClear,
+  error,
 }: {
   parts: string[];
   recording: boolean;
   onRecord: () => void;
   onClear: () => void;
+  error?: string | null;
 }) {
   return (
     <div className="shortcut-card">
@@ -36,6 +38,7 @@ export default function ShortcutField({
           {recording ? "Recording…" : "Record Key"}
         </button>
       </div>
+      {error && <span className="trigger-shortcut-error">{error}</span>}
     </div>
   );
 }

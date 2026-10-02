@@ -1703,3 +1703,8 @@ select {
   border-radius: 6px;
   background: #2e1215;
 }
+
+.trigger-shortcut-error {
+  font-size: 11px;
+  color: var(--status-danger);
+}
