@@ -1,12 +1,5 @@
 import type { Trigger } from "../../types";
 
-/// Bir profilin trigger + block_key cifti. Kaydetmede ve geri almada ayni
-/// sekilde kullanilir.
-export interface UndoEntry {
-  triggers: Trigger[];
-  block_key: boolean;
-}
-
 /// Bos shortcut'i ve yinelenen kaydi kirpar; sonuc profilde saklanan haliyle
 /// birebir ayni olmali, yoksa `dirty` her zaman true doner.
 export function cleanDraft(drafts: Trigger[]): Trigger[] {

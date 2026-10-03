@@ -10,7 +10,7 @@ import ActionTypeCard from "./actions/ActionTypeCard";
 import BlockKeyToggle from "./BlockKeyToggle";
 import Chips from "./Chips";
 import ShortcutField from "./ShortcutField";
-import { cleanDraft, toDrafts, type UndoEntry } from "./triggerDraft";
+import { cleanDraft, toDrafts } from "./triggerDraft";
 
 export default function Workspace() {
   const activeId = useProfileStore((s) => s.activeId);
@@ -26,7 +26,6 @@ export default function Workspace() {
   );
   const [recording, setRecording] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [undo, setUndo] = useState<UndoEntry | null>(null);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,8 +34,6 @@ export default function Workspace() {
     setDraftBlockKey(active?.block_key ?? false);
     setRecording(false);
   }, [active?.id, active?.triggers, active?.block_key]);
-
-  useEffect(() => setUndo(null), [active?.id]);
 
   const sel = Math.min(selectedIdx, Math.max(0, draftTriggers.length - 1));
   const selected = draftTriggers[sel] ?? null;
@@ -131,14 +128,14 @@ export default function Workspace() {
     setSingleAction(fresh);
   }
 
-  async function persist(next: UndoEntry) {
+  async function persist(triggers: Trigger[], blockKey: boolean) {
     if (!active) return;
     setSaving(true);
     try {
       const updated: Profile = {
         ...active,
-        triggers: next.triggers,
-        block_key: next.block_key,
+        triggers,
+        block_key: blockKey,
       };
       await invoke("profile_save", { profile: updated });
       const list = await invoke<Profile[]>("profile_list");
@@ -150,15 +147,16 @@ export default function Workspace() {
 
   async function save() {
     if (!active) return;
-    const before = { triggers: active.triggers, block_key: active.block_key };
-    await persist({ triggers: cleanTriggers, block_key: draftBlockKey });
-    setUndo(before);
+    await persist(cleanTriggers, draftBlockKey);
   }
 
-  async function undoLastSave() {
-    if (!undo) return;
-    await persist(undo);
-    setUndo(null);
+  // Taslagi kayitli halinden turet. Profil degisim efektiyle ayni is.
+  function discardChanges() {
+    setDraftTriggers(toDrafts(active?.triggers));
+    setSelectedIdx(0);
+    setDraftBlockKey(active?.block_key ?? false);
+    setRecording(false);
+    setShortcutError(null);
   }
 
   if (!active) {
@@ -320,14 +318,14 @@ export default function Workspace() {
             <button
               type="button"
               className="btn-trigger-undo"
-              onClick={undoLastSave}
-              disabled={!undo || saving}
+              onClick={discardChanges}
+              disabled={!dirty || saving}
               title={
-                undo
-                  ? "Undo last save"
-                  : "Nothing saved in this session to undo"
+                dirty
+                  ? "Discard unsaved changes"
+                  : "No unsaved changes"
               }
-              aria-label="Undo last save"
+              aria-label="Discard unsaved changes"
             >
               <Undo2 aria-hidden="true" />
             </button>

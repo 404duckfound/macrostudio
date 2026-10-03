@@ -1533,13 +1533,7 @@ select {
   gap: 4px;
   flex-wrap: wrap;
 }
-.key-target-sub {
-  display: block;
-  margin-top: 3px;
-  font-size: 10px;
-  color: var(--text-disabled);
-  font-family: "JetBrains Mono", monospace;
-}
+
 .behavior-head {
   display: flex;
   align-items: center;
