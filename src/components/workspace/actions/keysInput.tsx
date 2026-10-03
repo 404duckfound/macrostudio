@@ -1,10 +1,10 @@
 import { useState } from "react";
 
-const KEY_PRESETS = [
+const COMMON_KEYS = [
   "Enter",
   "Tab",
-  "Escape",
   "Space",
+  "Escape",
   "Backspace",
   "Delete",
   "Up",
@@ -27,7 +27,6 @@ const KEY_PRESETS = [
   "F10",
   "F11",
   "F12",
-  ..."abcdefghijklmnopqrstuvwxyz",
 ];
 
 export function KeysInput({
@@ -37,46 +36,74 @@ export function KeysInput({
   keys: string;
   onKeys: (keys: string) => void;
 }) {
+  const isPreset = COMMON_KEYS.includes(keys);
   const [mode, setMode] = useState<"preset" | "custom">(
-    KEY_PRESETS.includes(keys) || keys === "" ? "preset" : "custom",
+    isPreset || keys === "" ? "preset" : "custom",
   );
+
   return (
-    <>
-      <select
-        value={mode}
-        aria-label="Keys input mode"
-        onChange={(e) => {
-          const next = e.target.value as "preset" | "custom";
-          setMode(next);
-          onKeys(next === "preset" ? keys || "Enter" : "");
-        }}
-      >
-        <option value="preset">Pick key</option>
-        <option value="custom">Type keys</option>
-      </select>
-      {mode === "preset" ? (
-        <select
-          value={KEY_PRESETS.includes(keys) ? keys : ""}
-          aria-label="Key"
-          onChange={(e) => onKeys(e.target.value)}
+    <div className="keys-input-wrap">
+      <div className="keys-mode-bar">
+        <button
+          type="button"
+          className={`keys-mode-btn ${mode === "preset" ? "active" : ""}`}
+          onClick={() => {
+            setMode("preset");
+            if (!COMMON_KEYS.includes(keys)) {
+              onKeys(keys || "Enter");
+            }
+          }}
         >
-          {keys !== "" && !KEY_PRESETS.includes(keys) && (
-            <option value={keys}>{keys}</option>
-          )}
-          {KEY_PRESETS.map((k) => (
-            <option key={k} value={k}>
-              {k}
-            </option>
-          ))}
-        </select>
+          Preset Key
+        </button>
+        <button
+          type="button"
+          className={`keys-mode-btn ${mode === "custom" ? "active" : ""}`}
+          onClick={() => setMode("custom")}
+        >
+          Custom Text
+        </button>
+      </div>
+
+      {mode === "preset" ? (
+        <div className="custom-select-wrap">
+          <select
+            className="custom-select"
+            value={COMMON_KEYS.includes(keys) ? keys : "Enter"}
+            aria-label="Preset key selection"
+            onChange={(e) => onKeys(e.target.value)}
+          >
+            {COMMON_KEYS.map((k) => (
+              <option key={k} value={k}>
+                {k}
+              </option>
+            ))}
+          </select>
+        </div>
       ) : (
-        <input
-          className="action-input"
-          value={keys}
-          placeholder="Keys to send"
-          onChange={(e) => onKeys(e.target.value)}
-        />
+        <div className="keys-custom-box">
+          <input
+            className="action-input"
+            value={keys}
+            placeholder="Type text or keys to send..."
+            aria-label="Keys to send"
+            onChange={(e) => onKeys(e.target.value)}
+          />
+          <div className="keys-quick-tokens">
+            <span className="keys-tokens-label">Insert:</span>
+            {["{Enter}", "{Tab}", "{Space}", "{Esc}"].map((token) => (
+              <button
+                key={token}
+                type="button"
+                className="keys-token-btn"
+                onClick={() => onKeys(`${keys}${token}`)}
+              >
+                +{token}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
-    </>
+    </div>
   );
 }

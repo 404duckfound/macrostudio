@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Ban, Eye, Keyboard, Plus, Save, Trash2, Undo2 } from "lucide-react";
+import {
+  AlertCircle,
+  AppWindow,
+  Ban,
+  Eye,
+  Keyboard,
+  Layers,
+  Plus,
+  Save,
+  SlidersHorizontal,
+  Trash2,
+  Undo2,
+} from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
@@ -12,7 +24,27 @@ import Chips from "./Chips";
 import ShortcutField from "./ShortcutField";
 import { cleanDraft, toDrafts } from "./triggerDraft";
 
-export default function Workspace() {
+function actionPreviewLabel(action?: MacroAction | null): string | null {
+  if (!action) return null;
+  switch (action.type) {
+    case "key":
+      return action.key ? `Key: ${action.key}` : "Key: (empty)";
+    case "keys":
+      return action.keys ? `Text: "${action.keys}"` : "Text: (empty)";
+    case "mouse":
+      return `Mouse: ${action.button}`;
+    case "custom":
+      return `Custom: ${action.blocks.length} ${action.blocks.length === 1 ? "block" : "blocks"}`;
+    case "script":
+      return "AHK Script";
+  }
+}
+
+export default function Workspace({
+  activeRun,
+}: {
+  activeRun?: { id: string; ok: boolean } | null;
+}) {
   const activeId = useProfileStore((s) => s.activeId);
   const profiles = useProfileStore((s) => s.profiles);
   const active = profiles.find((p) => p.id === activeId) ?? null;
@@ -40,8 +72,6 @@ export default function Workspace() {
 
   const captureShortcut = useCallback(
     (combo: string) => {
-      // Ayni kisa yol iki kartta birden kullanilamaz: AHK ayni hotkey'i iki
-      // kez tanimlamaz, ikinci trigger sessizce calismaz. Kaydi reddet.
       const clash = draftTriggers.some(
         (x, i) => i !== sel && x.shortcut.trim() === combo.trim(),
       );
@@ -150,7 +180,6 @@ export default function Workspace() {
     await persist(cleanTriggers, draftBlockKey);
   }
 
-  // Taslagi kayitli halinden turet. Profil degisim efektiyle ayni is.
   function discardChanges() {
     setDraftTriggers(toDrafts(active?.triggers));
     setSelectedIdx(0);
@@ -162,8 +191,16 @@ export default function Workspace() {
   if (!active) {
     return (
       <main className="workspace">
-        <div className="flow-canvas">
-          <div className="flow-empty">No profile selected.</div>
+        <div className="flow-canvas flow-canvas-empty">
+          <div className="workspace-empty-state">
+            <div className="workspace-empty-icon">
+              <Layers aria-hidden="true" />
+            </div>
+            <h3>No Profile Selected</h3>
+            <p>
+              Choose a profile from the sidebar to inspect its hotkeys and automation flow, or create a new profile to get started.
+            </p>
+          </div>
         </div>
       </main>
     );
@@ -174,49 +211,97 @@ export default function Workspace() {
       <div className="flow-canvas">
         <div className="flow-inner">
           <div className="flow-head">
-            <h3 className="flow-title">Triggers ({cleanTriggers.length})</h3>
+            <div className="flow-profile-header">
+              <div className="flow-profile-title-row">
+                <h2 className="flow-profile-title">{active.name}</h2>
+                {active.target_exe ? (
+                  <span
+                    className="scope-badge scope-badge-linked"
+                    title={`Linked application: ${active.target_exe}`}
+                  >
+                    <AppWindow className="scope-badge-icon" aria-hidden="true" />
+                    {active.target_exe}
+                  </span>
+                ) : (
+                  <span className="scope-badge" title="Applies across all windows">
+                    Global (All Windows)
+                  </span>
+                )}
+                {activeRun?.id === active.id && (
+                  <span
+                    className={`telemetry-badge ${
+                      activeRun.ok ? "telemetry-active" : "telemetry-error"
+                    }`}
+                  >
+                    <span className="telemetry-dot" />
+                    {activeRun.ok ? "Engine Active" : "Engine Error"}
+                  </span>
+                )}
+              </div>
+              <div className="flow-profile-sub-row">
+                <span className="flow-trigger-counter">
+                  {cleanTriggers.length} {cleanTriggers.length === 1 ? "trigger" : "triggers"} configured
+                </span>
+                {dirty && (
+                  <span className="flow-dirty-indicator">
+                    <span className="dirty-dot" />
+                    Unsaved changes
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
 
-          {draftTriggers.map((t, i) => (
-            <div
-              key={`${i}-${t.shortcut}`}
-              className={`trigger-card ${i === sel ? "trigger-card-selected" : ""} ${recording && i === sel ? "trigger-card-recording" : ""}`}
-              onClick={() => {
-                setSelectedIdx(i);
-                setRecording(false);
-              }}
-              title="Click to select"
-            >
-              <div className="trigger-card-left">
-                <div className="trigger-icon">
-                  <Keyboard aria-hidden="true" />
+          <div className="trigger-card-list">
+            {draftTriggers.map((t, i) => {
+              const preview = actionPreviewLabel(t.actions[0]);
+              return (
+                <div
+                  key={`${i}-${t.shortcut}`}
+                  className={`trigger-card ${i === sel ? "trigger-card-selected" : ""} ${
+                    recording && i === sel ? "trigger-card-recording" : ""
+                  }`}
+                  onClick={() => {
+                    setSelectedIdx(i);
+                    setRecording(false);
+                  }}
+                  title="Click to select trigger"
+                >
+                  <div className="trigger-card-left">
+                    <div className="trigger-icon">
+                      <Keyboard aria-hidden="true" />
+                    </div>
+                    <div className="trigger-card-content">
+                      <div className="trigger-chips">
+                        {recording && i === sel ? (
+                          <span className="trigger-recording-hint">
+                            Press a key or shortcut… (Esc to cancel)
+                          </span>
+                        ) : (
+                          <Chips parts={parseTrigger(t.shortcut)} />
+                        )}
+                      </div>
+                      {preview && <span className="trigger-action-pill">{preview}</span>}
+                    </div>
+                  </div>
+                  <span
+                    className={`trigger-pass ${draftBlockKey ? "trigger-pass-block" : ""}`}
+                    title={
+                      draftBlockKey
+                        ? "Original keypress is blocked by Macro Studio"
+                        : "Original keypress passes through to active app (~)"
+                    }
+                  >
+                    {draftBlockKey ? (
+                      <Ban aria-hidden="true" />
+                    ) : (
+                      <Eye aria-hidden="true" />
+                    )}
+                  </span>
                 </div>
-                <div className="trigger-chips">
-                  {recording && i === sel ? (
-                    <span className="trigger-recording-hint">
-                      Press a key… (Esc to cancel)
-                    </span>
-                  ) : (
-                    <Chips parts={parseTrigger(t.shortcut)} />
-                  )}
-                </div>
-              </div>
-              <span
-                className={`trigger-pass ${draftBlockKey ? "trigger-pass-block" : ""}`}
-                title={
-                  draftBlockKey
-                    ? "Original keypress is blocked"
-                    : "Original keypress passes through (~)"
-                }
-              >
-                {draftBlockKey ? (
-                  <Ban aria-hidden="true" />
-                ) : (
-                  <Eye aria-hidden="true" />
-                )}
-              </span>
-            </div>
-          ))}
+              );
+            })}
+          </div>
 
           <button
             type="button"
@@ -224,124 +309,150 @@ export default function Workspace() {
             onClick={addTrigger}
           >
             <Plus aria-hidden="true" />
-            <span>Add trigger</span>
+            <span>Add new trigger</span>
           </button>
+          {draftTriggers.length === 1 && (
+            <div className="flow-canvas-tip" role="note">
+              <span className="flow-canvas-tip-mark" aria-hidden="true" />
+              <span>Use the inspector to edit this trigger’s shortcut and action.</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {selected && (
-        <aside className="inspector">
-          <div className="inspector-head">
-            <div className="inspector-head-left">
-              <h3>Trigger Inspector</h3>
-            </div>
+      <aside className="inspector">
+        <div className="inspector-head">
+          <div className="inspector-head-left">
+            <h3>Trigger Inspector</h3>
           </div>
+          {dirty && (
+            <span className="inspector-dirty-tag">Modified</span>
+          )}
+        </div>
 
-          <div className="inspector-body">
-            <section className="inspector-section">
-              <div className="section-head">
-                <span className="section-label">Shortcut</span>
-                {selectedChips.length > 0 && (
-                  <button
-                    type="button"
-                    className="link-btn"
-                    onClick={clearSelectedShortcut}
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-              <ShortcutField
-                parts={selectedChips}
-                recording={recording}
-                onRecord={() => {
-                  setShortcutError(null);
-                  setRecording(true);
-                }}
-                onClear={clearSelectedShortcut}
-                error={shortcutError}
-              />
-              {willDropCard && (
-                <div className="inline-warn">
-                  A card has no shortcut or a duplicate one. It will be dropped
-                  on save.
+        {selected ? (
+          <>
+            <div className="inspector-body">
+              <section className="inspector-section">
+                <div className="section-head">
+                  <span className="section-label">Shortcut Trigger</span>
+                  {selectedChips.length > 0 && (
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={clearSelectedShortcut}
+                    >
+                      Clear
+                    </button>
+                  )}
                 </div>
-              )}
-              <BlockKeyToggle
-                value={draftBlockKey}
-                onChange={setDraftBlockKey}
-              />
-            </section>
+                <ShortcutField
+                  parts={selectedChips}
+                  recording={recording}
+                  onRecord={() => {
+                    setShortcutError(null);
+                    setRecording(true);
+                  }}
+                  onClear={clearSelectedShortcut}
+                  error={shortcutError}
+                />
+                {willDropCard && (
+                  <div className="inline-warn" role="alert">
+                    <AlertCircle className="warn-icon" aria-hidden="true" />
+                    <span>A trigger has an empty or duplicated shortcut. It will be omitted on save.</span>
+                  </div>
+                )}
+                <BlockKeyToggle
+                  value={draftBlockKey}
+                  onChange={setDraftBlockKey}
+                />
+              </section>
 
-            <section className="inspector-section">
-              <div className="section-head">
-                <span className="section-label">Action</span>
+              <section className="inspector-section">
+                <div className="section-head">
+                  <span className="section-label">Automated Action</span>
+                  {single && (
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={() => setSingleAction(null)}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <ActionTypeCard
+                  value={single?.type ?? ""}
+                  onSelect={(kind) => {
+                    if (kind === "") setSingleAction(null);
+                    else selectActionType(kind);
+                  }}
+                />
+                {single?.type === "key" && single.key.length === 0 && (
+                  <div className="inline-warn">
+                    <AlertCircle className="warn-icon" aria-hidden="true" />
+                    <span>Pick a key target, otherwise this trigger will execute nothing.</span>
+                  </div>
+                )}
                 {single && (
-                  <button
-                    type="button"
-                    className="link-btn"
-                    onClick={() => setSingleAction(null)}
-                  >
-                    Clear
-                  </button>
+                  <ActionEditor action={single} onChange={setSingleAction} />
                 )}
-              </div>
-              <ActionTypeCard
-                value={single?.type ?? ""}
-                onSelect={(kind) => {
-                  if (kind === "") setSingleAction(null);
-                  else selectActionType(kind);
-                }}
-              />
-              {single?.type === "key" && single.key.length === 0 && (
-                <div className="inline-warn">
-                  Pick a key target, otherwise this trigger does nothing.
-                </div>
-              )}
-              {single && (
-                <ActionEditor action={single} onChange={setSingleAction} />
-              )}
-            </section>
-          </div>
+              </section>
+            </div>
 
-          <div className="inspector-foot">
+            <div className="inspector-foot">
+              <button
+                type="button"
+                className="btn-trigger-save"
+                onClick={save}
+                disabled={saving || !dirty}
+                title={dirty ? "Save changes to profile" : "No changes to save"}
+              >
+                <Save aria-hidden="true" />
+                <span>{saving ? "Saving…" : "Save Changes"}</span>
+              </button>
+              <button
+                type="button"
+                className="btn-trigger-undo"
+                onClick={discardChanges}
+                disabled={!dirty || saving}
+                title={dirty ? "Discard unsaved changes" : "No unsaved changes"}
+                aria-label="Discard unsaved changes"
+              >
+                <Undo2 aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="btn-trigger-delete"
+                onClick={removeSelected}
+                disabled={!selected}
+                title="Delete this trigger"
+                aria-label="Delete this trigger"
+              >
+                <Trash2 aria-hidden="true" />
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="inspector-empty-state">
+            <div className="inspector-empty-icon">
+              <SlidersHorizontal aria-hidden="true" />
+            </div>
+            <h4>No Trigger Selected</h4>
+            <p>
+              Select a trigger card from the canvas to edit its shortcut key and macro actions, or add a new trigger.
+            </p>
             <button
               type="button"
-              className="btn-trigger-save"
-              onClick={save}
-              disabled={saving || !dirty}
-              title={dirty ? "Save Changes" : "No changes to save"}
+              className="btn-secondary inspector-empty-btn"
+              onClick={addTrigger}
             >
-              <Save aria-hidden="true" />
-              <span>Save</span>
-            </button>
-            <button
-              type="button"
-              className="btn-trigger-undo"
-              onClick={discardChanges}
-              disabled={!dirty || saving}
-              title={
-                dirty
-                  ? "Discard unsaved changes"
-                  : "No unsaved changes"
-              }
-              aria-label="Discard unsaved changes"
-            >
-              <Undo2 aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="btn-trigger-delete"
-              onClick={removeSelected}
-              disabled={!selected}
-              title="Remove Trigger"
-              aria-label="Remove Trigger"
-            >
-              <Trash2 aria-hidden="true" />
+              <Plus aria-hidden="true" />
+              <span>Add Trigger</span>
             </button>
           </div>
-        </aside>
-      )}
+        )}
+      </aside>
     </main>
   );
 }

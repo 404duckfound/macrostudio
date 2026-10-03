@@ -49,18 +49,25 @@ export default function KeyActionEditor({
     });
   }
 
+  function clearKey() {
+    onChange({ ...action, key: "" });
+  }
+
   return (
     <div className="key-editor">
-      <div className="key-target">
+      <div className={`key-target ${picking ? "key-target-picking" : ""}`}>
         <span className="key-target-icon" aria-hidden="true">
           <KeyRound />
         </span>
         <div className="key-target-text">
+          <span className="action-group-label">Key target</span>
           <div className="key-target-chips">
-            {parts.length === 0 ? (
+            {picking ? (
               <span className="trigger-recording-hint">
-                {picking ? "Press a key…" : "No key target"}
+                Press a key on your keyboard… (Esc to cancel)
               </span>
+            ) : parts.length === 0 ? (
+              <span className="trigger-empty-hint">No key target selected</span>
             ) : (
               parts.map((p, i) => (
                 <span key={`${p}-${i}`} className="kbd-row">
@@ -71,13 +78,25 @@ export default function KeyActionEditor({
             )}
           </div>
         </div>
-        <button
-          type="button"
-          className={`btn-record ${picking ? "btn-record-on" : ""}`}
-          onClick={() => setPicking(true)}
-        >
-          {picking ? "Pick…" : "Pick Key"}
-        </button>
+        <div className="key-target-actions">
+          {parts.length > 0 && !picking && (
+            <button
+              type="button"
+              className="link-btn"
+              onClick={clearKey}
+              title="Clear key target"
+            >
+              Clear
+            </button>
+          )}
+          <button
+            type="button"
+            className={`btn-record ${picking ? "btn-record-on" : ""}`}
+            onClick={() => setPicking(true)}
+          >
+            {picking ? "Listening…" : parts.length > 0 ? "Change Key" : "Record Key"}
+          </button>
+        </div>
       </div>
 
       <div className="behavior-head">
@@ -104,24 +123,27 @@ export default function KeyActionEditor({
         ))}
       </div>
 
-      <div className="stepper-row-pair">
-        <NumberStepper
-          label="Pre-delay"
-          unit="ms"
-          value={action.pre_delay_ms}
-          max={60000}
-          step={10}
-          onChange={(pre_delay_ms) => onChange({ ...action, pre_delay_ms })}
-        />
-        <NumberStepper
-          label="Repeat"
-          unit="x"
-          value={action.repeat}
-          min={1}
-          max={999}
-          disabled={!repeatEnabled}
-          onChange={(repeat) => onChange({ ...action, repeat })}
-        />
+      <div className="action-field-group">
+        <span className="action-group-label">Timing</span>
+        <div className="stepper-row-pair">
+          <NumberStepper
+            label="Pre-delay"
+            unit="ms"
+            value={action.pre_delay_ms}
+            max={60000}
+            step={10}
+            onChange={(pre_delay_ms) => onChange({ ...action, pre_delay_ms })}
+          />
+          <NumberStepper
+            label="Repeat"
+            unit="x"
+            value={action.repeat}
+            min={1}
+            max={999}
+            disabled={!repeatEnabled}
+            onChange={(repeat) => onChange({ ...action, repeat })}
+          />
+        </div>
       </div>
     </div>
   );

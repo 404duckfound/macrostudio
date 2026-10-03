@@ -102,23 +102,26 @@ export default function ProfileScopeField({
       {specific && (
         <div className="scope-card scope-card-active scope-detail">
           <div className="exe-row">
-            <select
-              value={targetExe}
-              onChange={(e) => {
-                onTargetExe(e.target.value);
-                onBrowsePath("");
-              }}
-              aria-label="Target application"
-            >
-              {exeOptions.length === 0 && (
-                <option value="">No open windows found</option>
-              )}
-              {exeOptions.map((x) => (
-                <option key={x} value={x}>
-                  {x}
-                </option>
-              ))}
-            </select>
+            <div className="custom-select-wrap exe-select-wrap">
+              <select
+                className="custom-select"
+                value={targetExe}
+                onChange={(e) => {
+                  onTargetExe(e.target.value);
+                  onBrowsePath("");
+                }}
+                aria-label="Target application"
+              >
+                {exeOptions.length === 0 && (
+                  <option value="">No open windows found</option>
+                )}
+                {exeOptions.map((x) => (
+                  <option key={x} value={x}>
+                    {x}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button
               className="btn-secondary exe-btn"
               type="button"

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 
 export default function NumberStepper({
@@ -19,6 +20,18 @@ export default function NumberStepper({
   disabled?: boolean;
   onChange: (next: number) => void;
 }) {
+  const [text, setText] = useState(String(value));
+
+  useEffect(() => {
+    setText(String(value));
+  }, [value]);
+
+  function commit(val: number) {
+    const clamped = Math.max(min, Math.min(max, isNaN(val) ? min : val));
+    setText(String(clamped));
+    onChange(clamped);
+  }
+
   return (
     <div className={`stepper ${disabled ? "stepper-disabled" : ""}`}>
       <div className="stepper-head">
@@ -30,17 +43,40 @@ export default function NumberStepper({
           type="button"
           className="stepper-btn"
           disabled={disabled || value <= min}
-          onClick={() => onChange(Math.max(min, value - step))}
+          onClick={() => commit(value - step)}
           aria-label={`Decrease ${label}`}
         >
           <Minus aria-hidden="true" />
         </button>
-        <span className="stepper-value">{value}</span>
+        <input
+          type="number"
+          className="stepper-input"
+          value={text}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled}
+          aria-label={label}
+          onChange={(e) => {
+            setText(e.target.value);
+            const num = Number(e.target.value);
+            if (!isNaN(num)) {
+              onChange(Math.max(min, Math.min(max, num)));
+            }
+          }}
+          onBlur={() => commit(Number(text))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              commit(Number(text));
+              e.currentTarget.blur();
+            }
+          }}
+        />
         <button
           type="button"
           className="stepper-btn"
           disabled={disabled || value >= max}
-          onClick={() => onChange(Math.min(max, value + step))}
+          onClick={() => commit(value + step)}
           aria-label={`Increase ${label}`}
         >
           <Plus aria-hidden="true" />
