@@ -2130,37 +2130,7 @@ textarea:focus {
   line-height: 1.5;
 }
 
-/* Custom Blocks (Sequence Automation) */
-.custom-blocks-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.custom-blocks-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 18px 12px;
-  gap: 4px;
-  border: 1px dashed var(--border-default);
-  border-radius: 10px;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-.custom-blocks-empty-sub {
-  font-size: 11px;
-  color: var(--text-disabled);
-}
-
-.custom-blocks-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
+/* Block cards (Macro editor + trigger blocks) */
 .custom-block-card {
   display: flex;
   flex-direction: column;
@@ -2251,31 +2221,6 @@ textarea:focus {
   font-size: 11px;
   color: var(--text-disabled);
   margin-left: 6px;
-}
-
-.block-add-row {
-  display: flex;
-  gap: 8px;
-}
-.btn-add-block {
-  flex: 1;
-  min-height: 36px;
-  border: 1px dashed var(--border-default);
-  border-radius: 8px;
-  background: var(--bg-base);
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  gap: 6px;
-}
-.btn-add-block:hover {
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-  background: var(--bg-interactive);
-}
-.btn-add-icon {
-  width: 14px;
-  height: 14px;
 }
 
 /* ==========================================================================
