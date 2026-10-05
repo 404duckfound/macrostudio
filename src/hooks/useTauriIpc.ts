@@ -40,7 +40,6 @@ function buildDefaultProfile(): Profile {
     triggers: [],
     target_exe: null,
     enabled: true,
-    block_key: false,
   };
 }
 

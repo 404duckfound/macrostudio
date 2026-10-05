@@ -21,6 +21,7 @@ export type MacroAction =
 export interface Trigger {
   shortcut: string;
   actions: MacroAction[];
+  block_key: boolean;
 }
 
 export interface Profile {
@@ -29,5 +30,4 @@ export interface Profile {
   triggers: Trigger[];
   target_exe: string | null;
   enabled: boolean;
-  block_key: boolean;
 }

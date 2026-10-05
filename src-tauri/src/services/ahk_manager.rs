@@ -11,6 +11,20 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 pub const AHK_EXE_FILE: &str = "AutoHotkey64.exe";
 
+/// Where to look for AutoHotkey64.exe, in priority order.
+///
+/// `resolved` is the output of `app.path().resolve("../tools/...", Resource)`
+/// and is the only correct location: the bundler encodes each `..` segment as a
+/// literal `_up_` directory, so joining `resource_dir()` by hand always points
+/// at a folder that does not exist. `None` means resolution failed, leaving only
+/// the dev path.
+/// Where to look for AutoHotkey64.exe, in priority order.
+///
+/// `resolved` is the output of `app.path().resolve("../tools/...", Resource)` and
+/// is the only correct location: the bundler encodes each `..` segment as a
+/// literal `_up_` directory, so joining `resource_dir()` by hand always points at
+/// a folder that does not exist. `None` means resolution failed, leaving only the
+/// dev path.
 pub fn ahk_exe_candidates(resolved: Option<&Path>, cwd: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
     if let Some(p) = resolved {

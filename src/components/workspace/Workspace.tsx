@@ -53,9 +53,6 @@ export default function Workspace({
     active?.triggers ?? [],
   );
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const [draftBlockKey, setDraftBlockKey] = useState(
-    active?.block_key ?? false,
-  );
   const [recording, setRecording] = useState(false);
   const [saving, setSaving] = useState(false);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
@@ -63,9 +60,8 @@ export default function Workspace({
   useEffect(() => {
     setDraftTriggers(toDrafts(active?.triggers));
     setSelectedIdx(0);
-    setDraftBlockKey(active?.block_key ?? false);
     setRecording(false);
-  }, [active?.id, active?.triggers, active?.block_key]);
+  }, [active?.id, active?.triggers]);
 
   const sel = Math.min(selectedIdx, Math.max(0, draftTriggers.length - 1));
   const selected = draftTriggers[sel] ?? null;
@@ -103,16 +99,17 @@ export default function Workspace({
   );
   const willDropCard = cleanTriggers.length !== draftTriggers.length;
   const dirty =
-    active != null &&
-    (JSON.stringify(cleanTriggers) !== JSON.stringify(active.triggers) ||
-      draftBlockKey !== active.block_key);
+    active != null && JSON.stringify(cleanTriggers) !== JSON.stringify(active.triggers);
 
   function patchSelected(patch: (t: Trigger) => Trigger) {
     setDraftTriggers((prev) => prev.map((x, i) => (i === sel ? patch(x) : x)));
   }
 
   function addTrigger() {
-    setDraftTriggers((prev) => [...prev, { shortcut: "", actions: [] }]);
+    setDraftTriggers((prev) => [
+      ...prev,
+      { shortcut: "", actions: [], block_key: false },
+    ]);
     setSelectedIdx(draftTriggers.length);
   }
 
@@ -158,15 +155,11 @@ export default function Workspace({
     setSingleAction(fresh);
   }
 
-  async function persist(triggers: Trigger[], blockKey: boolean) {
+  async function persist(triggers: Trigger[]) {
     if (!active) return;
     setSaving(true);
     try {
-      const updated: Profile = {
-        ...active,
-        triggers,
-        block_key: blockKey,
-      };
+      const updated: Profile = { ...active, triggers };
       await invoke("profile_save", { profile: updated });
       const list = await invoke<Profile[]>("profile_list");
       useProfileStore.getState().setProfiles(list);
@@ -177,13 +170,12 @@ export default function Workspace({
 
   async function save() {
     if (!active) return;
-    await persist(cleanTriggers, draftBlockKey);
+    await persist(cleanTriggers);
   }
 
   function discardChanges() {
     setDraftTriggers(toDrafts(active?.triggers));
     setSelectedIdx(0);
-    setDraftBlockKey(active?.block_key ?? false);
     setRecording(false);
     setShortcutError(null);
   }
@@ -285,14 +277,14 @@ export default function Workspace({
                     </div>
                   </div>
                   <span
-                    className={`trigger-pass ${draftBlockKey ? "trigger-pass-block" : ""}`}
+                    className={`trigger-pass ${t.block_key ? "trigger-pass-block" : ""}`}
                     title={
-                      draftBlockKey
+                      t.block_key
                         ? "Original keypress is blocked by Macro Studio"
                         : "Original keypress passes through to active app (~)"
                     }
                   >
-                    {draftBlockKey ? (
+                    {t.block_key ? (
                       <Ban aria-hidden="true" />
                     ) : (
                       <Eye aria-hidden="true" />
@@ -363,8 +355,10 @@ export default function Workspace({
                   </div>
                 )}
                 <BlockKeyToggle
-                  value={draftBlockKey}
-                  onChange={setDraftBlockKey}
+                  value={selected.block_key}
+                  onChange={(block_key) =>
+                    patchSelected((x) => ({ ...x, block_key }))
+                  }
                 />
               </section>
 

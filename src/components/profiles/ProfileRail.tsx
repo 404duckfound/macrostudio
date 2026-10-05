@@ -21,6 +21,7 @@ async function refresh(): Promise<Profile[]> {
 function cloneTriggers(triggers: Trigger[]): Trigger[] {
   return triggers.map((t) => ({
     shortcut: t.shortcut,
+    block_key: t.block_key,
     actions: t.actions.map((a) =>
       a.type === "custom"
         ? { type: "custom", blocks: a.blocks.map((b) => ({ ...b })) }

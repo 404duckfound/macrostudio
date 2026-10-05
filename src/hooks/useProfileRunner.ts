@@ -9,9 +9,7 @@ export function useProfileRunner() {
   const lastId = useRef<string | null>(null);
 
   const active = profiles.find((p) => p.id === activeId) ?? null;
-  const signature = active
-    ? JSON.stringify([active.triggers, active.block_key])
-    : null;
+  const signature = active ? JSON.stringify(active.triggers) : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -26,7 +24,7 @@ export function useProfileRunner() {
       }
       if (cancelled || !shouldRun || !active) return;
       try {
-        await start(active.id, active.name, active.triggers, active.block_key);
+        await start(active.id, active.name, active.triggers);
       } catch {}
     })();
     return () => {

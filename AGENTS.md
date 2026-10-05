@@ -1,6 +1,6 @@
 # Macro Studio — agent notes
 
-Tauri v2 + React 19 + Zustand + Vite 8 desktop app (Windows-first). Design tokens live in `src/theme.css`, mirrored by `DESIGN.md` (frontmatter hex + body must stay in sync when colors change).
+Tauri v2 + React 19 + Zustand + Vite 8 desktop app (Windows-first). Design tokens live in `src/theme.css`, mirrored by the `DESIGN.md` frontmatter hex values — keep those in sync when colors change. `DESIGN.md` has no prose body; it is tokens only.
 
 ## Commands (run in `macro-studio/`)
 

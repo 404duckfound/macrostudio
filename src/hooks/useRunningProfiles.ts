@@ -28,19 +28,13 @@ export function useRunningProfiles() {
   }, []);
 
   const start = useCallback(
-    async (
-      profileId: string,
-      profileName: string,
-      triggers: Trigger[],
-      blockKey: boolean,
-    ) => {
+    async (profileId: string, profileName: string, triggers: Trigger[]) => {
       setError(null);
       try {
         await invoke("ahk_start_profile", {
           profileId,
           profileName,
           triggers,
-          blockKey,
         });
       } catch (e) {
         setError(String(e));

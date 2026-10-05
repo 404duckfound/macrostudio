@@ -11,107 +11,10 @@ pub struct Profile {
     pub target_exe: Option<String>,
     #[serde(default = "default_true")]
     pub enabled: bool,
-    #[serde(default = "default_true")]
-    pub block_key: bool,
 }
 
 fn default_true() -> bool {
     true
-}
-
-fn parse_profile_entry(content: &str) -> Option<(Profile, bool)> {
-    let value: serde_json::Value = serde_json::from_str(content).ok()?;
-    let needs_rewrite = !is_new_triggers(value.get("triggers"));
-    let migrated = migrate_value(value);
-    let profile: Profile = serde_json::from_value(migrated).ok()?;
-    Some((profile, needs_rewrite))
-}
-
-fn is_new_triggers(v: Option<&serde_json::Value>) -> bool {
-    match v {
-        Some(serde_json::Value::Array(arr)) => arr.iter().all(|x| x.is_object()),
-        _ => false,
-    }
-}
-
-fn migrate_value(mut v: serde_json::Value) -> serde_json::Value {
-    if is_new_triggers(v.get("triggers")) {
-        if let Some(arr) = v.get_mut("triggers").and_then(|t| t.as_array_mut()) {
-            for t in arr.iter_mut() {
-                if let Some(actions) = t.get_mut("actions").and_then(|a| a.as_array_mut()) {
-                    for a in actions.iter_mut() {
-                        *a = convert_action(a.clone());
-                    }
-                }
-            }
-        }
-        return v;
-    }
-    let shared: Vec<serde_json::Value> = v
-        .get("actions")
-        .and_then(|a| a.as_array())
-        .map(|arr| arr.iter().cloned().map(convert_action).collect())
-        .unwrap_or_default();
-    let mut shortcuts: Vec<String> = match v.get("triggers") {
-        Some(serde_json::Value::Array(arr)) => arr
-            .iter()
-            .filter_map(|x| x.as_str().map(|s| s.to_string()))
-            .collect(),
-        _ => Vec::new(),
-    };
-    if shortcuts.is_empty() {
-        shortcuts.push(
-            v.get("trigger")
-                .and_then(|t| t.as_str())
-                .unwrap_or("F9")
-                .to_string(),
-        );
-    }
-    if let Some(obj) = v.as_object_mut() {
-        let triggers: Vec<serde_json::Value> = shortcuts
-            .into_iter()
-            .map(|s| {
-                serde_json::json!({ "shortcut": s, "actions": shared })
-            })
-            .collect();
-        obj.insert(
-            "triggers".to_string(),
-            serde_json::Value::Array(triggers),
-        );
-        obj.remove("trigger");
-        obj.remove("actions");
-    }
-    v
-}
-
-fn text_field(v: &serde_json::Value, key: &str, default: &str) -> serde_json::Value {
-    v.get(key)
-        .cloned()
-        .unwrap_or(serde_json::Value::String(default.to_string()))
-}
-
-fn convert_action(v: serde_json::Value) -> serde_json::Value {
-    let kind = v.get("type").and_then(|t| t.as_str()).unwrap_or("");
-    match kind {
-        "custom" if v.get("blocks").is_some() => v,
-        "keys" | "mouse" | "script" => v,
-        "send_keys" => {
-            serde_json::json!({ "type": "keys", "keys": text_field(&v, "payload", "") })
-        }
-        "delay" => {
-            let ms = v.get("ms").cloned().unwrap_or(serde_json::json!(0));
-            serde_json::json!({ "type": "custom", "blocks": [{ "kind": "delay", "ms": ms }] })
-        }
-        "mouse_click" => {
-            let x = v.get("x").cloned().unwrap_or(serde_json::json!(0));
-            let y = v.get("y").cloned().unwrap_or(serde_json::json!(0));
-            serde_json::json!({ "type": "mouse", "button": text_field(&v, "button", "Left"), "x": x, "y": y })
-        }
-        "custom" => {
-            serde_json::json!({ "type": "script", "code": text_field(&v, "code", "") })
-        }
-        _ => v,
-    }
 }
 
 fn profiles_dir() -> Result<std::path::PathBuf, String> {
@@ -122,7 +25,7 @@ fn profiles_dir() -> Result<std::path::PathBuf, String> {
 }
 
 fn write_ahk_file(dir: &std::path::Path, profile: &Profile) {
-    let script = compile_to_ahk_v2(&profile.triggers, profile.block_key, &profile.name);
+    let script = compile_to_ahk_v2(&profile.triggers, &profile.name);
     let path = dir.join(format!("{}.ahk", profile.id));
     let _ = std::fs::write(path, script);
 }
@@ -137,13 +40,9 @@ pub fn profile_list() -> Result<Vec<Profile>, String> {
             continue;
         }
         let content = std::fs::read_to_string(entry.path()).map_err(|e| e.to_string())?;
-        let Some((p, needs_rewrite)) = parse_profile_entry(&content) else {
+        let Ok(p) = serde_json::from_str::<Profile>(&content) else {
             continue;
         };
-        if needs_rewrite {
-            let pretty = serde_json::to_string_pretty(&p).map_err(|e| e.to_string())?;
-            std::fs::write(entry.path(), pretty).map_err(|e| e.to_string())?;
-        }
         out.push(p);
     }
     for p in &out {
@@ -178,69 +77,34 @@ pub fn profile_delete(profile_id: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::generator::Action;
-
-    #[test]
-    fn legacy_single_trigger_migrates_to_triggers() {
-        let old = serde_json::json!({
-            "id": "x", "name": "N", "trigger": "Ctrl+Shift+F1",
-            "target_exe": null, "enabled": true,
-            "actions": [{ "type": "delay", "ms": 5 }]
-        });
-        let migrated = migrate_value(old);
-        let p: Profile = serde_json::from_value(migrated).unwrap();
-        assert_eq!(p.triggers.len(), 1);
-        assert_eq!(p.triggers[0].shortcut, "Ctrl+Shift+F1");
-        match &p.triggers[0].actions[..] {
-            [Action::Custom { blocks }] => assert_eq!(blocks.len(), 1),
-            _ => panic!("expected single custom action"),
-        }
-        assert!(p.block_key);
-    }
-
-    #[test]
-    fn string_array_triggers_share_actions() {
-        let old = serde_json::json!({
-            "id": "x", "name": "N", "triggers": ["F9", "F10"],
-            "enabled": true, "block_key": false,
-            "actions": [{ "type": "send_keys", "payload": "hi" }]
-        });
-        let (p, needs_rewrite) = parse_profile_entry(&old.to_string()).unwrap();
-        assert!(needs_rewrite);
-        assert_eq!(p.triggers.len(), 2);
-        assert!(p.triggers.iter().all(|t| t.actions.len() == 1));
-        match &p.triggers[0].actions[..] {
-            [Action::Keys { keys }] => assert_eq!(keys, "hi"),
-            _ => panic!("expected keys action"),
-        }
-        assert!(!p.block_key);
-    }
-
-    #[test]
-    fn legacy_raw_custom_becomes_script() {
-        let old = serde_json::json!({
-            "id": "x", "name": "N", "trigger": "F9",
-            "actions": [{ "type": "custom", "code": "Send(\"x\")" }]
-        });
-        let migrated = migrate_value(old);
-        let p: Profile = serde_json::from_value(migrated).unwrap();
-        match &p.triggers[0].actions[..] {
-            [Action::Script { code }] => assert!(code.contains("Send")),
-            _ => panic!("expected script action"),
-        }
-    }
 
     #[test]
     fn corrupt_json_entry_is_skipped() {
-        assert!(parse_profile_entry("not json{{{").is_none());
+        assert!(serde_json::from_str::<Profile>("not json{{{").is_err());
     }
 
+    // Triggers written before blocking moved down from the profile have no
+    // per-trigger field, so they parse as passthrough. Losing blocking on
+    // upgrade is the accepted consequence, not an oversight -- locking it here
+    // so a future "helpful" default cannot quietly change stored behaviour.
     #[test]
-    fn legacy_entry_reports_rewrite() {
-        let (_, needs_rewrite) = parse_profile_entry(
-            r#"{"id":"x","name":"N","trigger":"F9","enabled":true,"actions":[]}"#,
-        )
-        .unwrap();
-        assert!(needs_rewrite);
+    fn trigger_without_block_key_defaults_to_passthrough() {
+        let old = serde_json::json!({
+            "id": "x", "name": "N", "enabled": true, "block_key": true,
+            "triggers": [{ "shortcut": "F9", "actions": [] }]
+        });
+        let p: Profile = serde_json::from_value(old).unwrap();
+        assert!(!p.triggers[0].block_key);
+    }
+
+    // The old profile-level field is simply ignored, so files written by the
+    // previous version still load instead of disappearing from the list.
+    #[test]
+    fn stale_profile_level_block_key_is_ignored() {
+        let old = r#"{"id":"x","name":"N","enabled":true,"block_key":true,
+            "triggers":[{"shortcut":"F9","actions":[]}]}"#;
+        let p: Profile = serde_json::from_str(old).unwrap();
+        assert_eq!(p.triggers.len(), 1);
+        assert!(!p.triggers[0].block_key);
     }
 }

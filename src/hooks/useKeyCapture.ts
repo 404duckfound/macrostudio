@@ -3,6 +3,9 @@ import { keyEventToTrigger, mouseEventToTrigger } from "../lib/keys";
 
 interface KeyCaptureOptions {
   preserveCase?: boolean;
+  // Stops the left button being picked as a trigger: with block_key on, a
+  // MouseLeft trigger emits `LButton::`, which swallows the click, so mouse
+  // clicks would vanish entirely.
   ignoreLeftClick?: boolean;
 }
 

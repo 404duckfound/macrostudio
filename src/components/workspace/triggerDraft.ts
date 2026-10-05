@@ -7,7 +7,7 @@ export function cleanDraft(drafts: Trigger[]): Trigger[] {
     const shortcut = t.shortcut.trim();
     if (!shortcut || seen.has(shortcut)) continue;
     seen.add(shortcut);
-    out.push({ shortcut, actions: t.actions });
+    out.push({ shortcut, actions: t.actions, block_key: t.block_key });
   }
   return out;
 }
@@ -16,6 +16,7 @@ export function toDrafts(triggers: Trigger[] | undefined): Trigger[] {
   if (!triggers?.length) return [];
   return triggers.map((t) => ({
     shortcut: t.shortcut,
+    block_key: t.block_key,
     actions: t.actions
       .slice(0, 1)
       .map((a) =>
