@@ -5,6 +5,7 @@ import TitleBar from "./components/chrome/TitleBar";
 import Navbar, { type NavView } from "./components/nav/Navbar";
 import ProfileRail from "./components/profiles/ProfileRail";
 import Workspace from "./components/workspace/Workspace";
+import MacrosView from "./components/macros/MacrosView";
 import SettingsView from "./components/settings/SettingsView";
 import "./theme.css";
 
@@ -25,6 +26,8 @@ function App() {
               <ProfileRail activeRun={activeRun} />
               <Workspace activeRun={activeRun} />
             </>
+          ) : view === "macros" ? (
+            <MacrosView />
           ) : (
             <SettingsView />
           )}

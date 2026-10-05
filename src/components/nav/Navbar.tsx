@@ -1,6 +1,6 @@
-import { Layers, Settings } from "lucide-react";
+import { Boxes, Layers, Settings } from "lucide-react";
 
-export type NavView = "profiles" | "settings";
+export type NavView = "profiles" | "macros" | "settings";
 
 export default function Navbar({
   view,
@@ -21,6 +21,16 @@ export default function Navbar({
         >
           <Layers aria-hidden="true" />
           <span>Profiles</span>
+        </button>
+        <button
+          type="button"
+          className={`navbar-btn ${view === "macros" ? "active" : ""}`}
+          aria-current={view === "macros" ? "page" : undefined}
+          title="Macros"
+          onClick={() => onView("macros")}
+        >
+          <Boxes aria-hidden="true" />
+          <span>Macros</span>
         </button>
         <button
           type="button"

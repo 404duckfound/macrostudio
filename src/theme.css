@@ -2797,6 +2797,98 @@ textarea:focus {
   padding: 0 8px;
 }
 
+.macro-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-muted);
+}
+.macro-list-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.macro-add-btn {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.macro-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.macro-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-muted);
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-height: 0;
+  text-align: left;
+}
+.macro-item:hover:not(.macro-item-selected) {
+  border-color: var(--border-default);
+}
+.macro-item-selected {
+  border-color: var(--accent-primary);
+}
+.macro-item-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.macro-item-count {
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.macro-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.macro-editor input {
+  min-height: 36px;
+  font-size: 13px;
+}
+.macro-add-row select {
+  width: 100%;
+  min-height: 36px;
+  font-size: 13px;
+}
+.macro-blocks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.macro-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-muted);
+}
+.macro-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.macro-save-btn {
+  min-height: 36px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .trigger-recording-hint,
   .modal {
