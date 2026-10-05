@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-/// RESEARCH.md bolum 5: Tip-guvenli sablon / metin uretimi (AST yok).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Action {
@@ -64,10 +63,6 @@ pub struct Trigger {
     pub actions: Vec<Action>,
 }
 
-/// AHK cift tirnakli dizi literali icine guvenle yerlestirir: tirnak ve
-/// backtick kacirilir, satir sonlari bosluga cevrilir. Profil adi kullanici
-/// girdisi oldugu icin kacislar; kacilmazsa satir sonu kodu sonlandirip yeni
-/// satir uretirdi.
 fn ahk_string_literal(value: &str) -> String {
     let escaped: String = value
         .replace(['\r', '\n'], " ")
@@ -77,18 +72,11 @@ fn ahk_string_literal(value: &str) -> String {
 }
 
 pub fn compile_to_ahk_v2(triggers: &[Trigger], block_key: bool, script_title: &str) -> String {
-    // #NoTrayIcon: AHK'nin kendi tray ikonu hic olusmasin. Macro Studio
-    // penceresi tek gosterge; sistem tray'inde iki ikon birden durmasin.
-    //
-    // A_ScriptName: MsgBox/InputBox/FileSelect/DirSelect/Gui basligi varsayilan
-    // olarak script dosya adini alir; profiller {uuid}.ahk olarak kaydedildigi
-    // icin kutu basliginda UUID cikiyordu.
+
     let mut script = format!(
         "#Requires AutoHotkey v2.0\n#NoTrayIcon\nA_ScriptName := {}\n\n",
         ahk_string_literal(script_title)
     );
-    // Yutmak icin `~` koymamak yeterli. `*` hook modifier'idir: tetiklenme
-    // zamanini degistirir (key-up'i da yakalar, ek modifier ile de tetiklenir).
     let prefix = if block_key { "" } else { "~" };
     let mut seen = std::collections::HashSet::new();
     let blocks: Vec<(String, &Trigger)> = triggers
@@ -162,9 +150,6 @@ fn brace_key_name(part: &str) -> String {
     }
 }
 
-/// Key name for `Send "{name down}"`. These are the names the Send key table
-/// accepts; `{ArrowUp}` is not one of them, so callers must hand us a mapped
-/// name (see keymap.ts) rather than a raw `KeyboardEvent.key`.
 fn native_key_name(part: &str) -> String {
     match part {
         "Ctrl" => "LCtrl".to_string(),
@@ -408,8 +393,6 @@ mod tests {
     #[test]
     fn script_suppresses_autohotkey_tray_icon() {
         let out = compile_to_ahk_v2(&[trig("F9", vec![])], true, TEST_TITLE);
-        // Direktif `#` sigiliyle yazilir; prefixesiz hali AHK tarafindan
-        // taninmaz ve tray ikonu yine gorunur.
         assert!(out.contains("\n#NoTrayIcon\n"));
         assert!(!out.contains("\nNoTrayIcon\n"));
     }

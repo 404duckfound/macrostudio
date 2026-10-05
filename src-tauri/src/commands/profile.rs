@@ -19,7 +19,6 @@ fn default_true() -> bool {
     true
 }
 
-/// Tek dosyalik profili cozumler; bozuk icerik disinda tutulmasi icin None doner.
 fn parse_profile_entry(content: &str) -> Option<(Profile, bool)> {
     let value: serde_json::Value = serde_json::from_str(content).ok()?;
     let needs_rewrite = !is_new_triggers(value.get("triggers"));
@@ -35,9 +34,6 @@ fn is_new_triggers(v: Option<&serde_json::Value>) -> bool {
     }
 }
 
-/// Eski semalari yeni semaya cevirir: legacy "trigger" + paylasilan "actions"
-/// ve string-dizisi "triggers", her biri kendi aksiyonlarini tasiyan
-/// trigger objelerine donusur. Legacy anahtarlar silinir.
 fn migrate_value(mut v: serde_json::Value) -> serde_json::Value {
     if is_new_triggers(v.get("triggers")) {
         if let Some(arr) = v.get_mut("triggers").and_then(|t| t.as_array_mut()) {
@@ -94,7 +90,6 @@ fn text_field(v: &serde_json::Value, key: &str, default: &str) -> serde_json::Va
         .unwrap_or(serde_json::Value::String(default.to_string()))
 }
 
-/// Eski aksiyon seklini yeni semaya cevirir; yeni sekiller aynen gecer.
 fn convert_action(v: serde_json::Value) -> serde_json::Value {
     let kind = v.get("type").and_then(|t| t.as_str()).unwrap_or("");
     match kind {

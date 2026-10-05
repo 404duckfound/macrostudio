@@ -45,9 +45,6 @@ export default function ProfileRail({
   } = useProfileStore();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  // Rail secimi pinnedId'yi de gunceller; otomatik pencere eslesmesi
-  // yalnizca activeId'yi degistirir, boylece odak bosaldiginda secim
-  // geri gelir.
   function selectProfile(id: string | null) {
     setActiveId(id);
     setPinnedId(id);

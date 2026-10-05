@@ -1,7 +1,5 @@
 import type { Trigger } from "../../types";
 
-/// Bos shortcut'i ve yinelenen kaydi kirpar; sonuc profilde saklanan haliyle
-/// birebir ayni olmali, yoksa `dirty` her zaman true doner.
 export function cleanDraft(drafts: Trigger[]): Trigger[] {
   const seen = new Set<string>();
   const out: Trigger[] = [];
@@ -14,10 +12,6 @@ export function cleanDraft(drafts: Trigger[]): Trigger[] {
   return out;
 }
 
-/// Kayitli trigger'lari duzenlenebilir taslaga cevirir. Her trigger ilk
-/// aksiyonunu korur (coklu aksiyon eski profillerde kalmis olabilir) ve
-/// `custom` bloklari kopyalanir, boylece taslak kaydettigimiz profili
-/// yanlislikla degistirmez.
 export function toDrafts(triggers: Trigger[] | undefined): Trigger[] {
   if (!triggers?.length) return [];
   return triggers.map((t) => ({

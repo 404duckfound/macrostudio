@@ -3,8 +3,6 @@ import { keyEventToTrigger, mouseEventToTrigger } from "../lib/keys";
 
 interface KeyCaptureOptions {
   preserveCase?: boolean;
-  // Sol tusu trigger olarak secmeyi engeller: block_key acikken `LButton::`
-  // uretilir ve tıklama yutulur, yani fare tiklamak tamamen kaybolur.
   ignoreLeftClick?: boolean;
 }
 

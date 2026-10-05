@@ -1,11 +1,8 @@
-/// Aktif calisan AHK PID'lerini dondur (teşhis icin).
 #[tauri::command]
 pub async fn system_active_pids(state: tauri::State<'_, crate::state::AppState>) -> Result<Vec<(String, u32)>, String> {
     Ok(state.ahk_manager.list())
 }
 
-/// Gorunur penceresi olan uygulamalarin exe adlarini benzersiz + sirali dondur (hedef secimi icin).
-/// Arka plan surecleri dahil degil: yalnizca gorunur ve baslikli pencereler taranir.
 #[cfg(windows)]
 #[tauri::command]
 pub async fn system_visible_window_exes() -> Result<Vec<String>, String> {

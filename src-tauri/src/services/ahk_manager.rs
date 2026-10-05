@@ -11,12 +11,13 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 pub const AHK_EXE_FILE: &str = "AutoHotkey64.exe";
 
-pub fn ahk_exe_candidates(resource_dir: &Path, exe_dir: &Path, cwd: &Path) -> Vec<PathBuf> {
-    vec![
-        resource_dir.join("tools").join(AHK_EXE_FILE),
-        exe_dir.join("..").join("..").join("tools").join(AHK_EXE_FILE),
-        cwd.join("tools").join(AHK_EXE_FILE),
-    ]
+pub fn ahk_exe_candidates(resolved: Option<&Path>, cwd: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    if let Some(p) = resolved {
+        out.push(p.to_path_buf());
+    }
+    out.push(cwd.join("tools").join(AHK_EXE_FILE));
+    out
 }
 
 pub fn resolve_ahk_exe(candidates: &[PathBuf]) -> Option<PathBuf> {
@@ -54,7 +55,6 @@ pub fn prune_dead<F: Fn(u32) -> bool>(processes: &mut HashMap<String, u32>, is_a
     before - processes.len()
 }
 
-/// Her profil ID'sini bir AHK PID'i ile eslestiren thread-safe yonetici.
 #[derive(Default, Clone)]
 pub struct AhkProcessManager {
     active_processes: Arc<Mutex<HashMap<String, u32>>>,
@@ -112,8 +112,6 @@ impl AhkProcessManager {
         });
     }
 
-    /// Haritadaki her pid'i cikarip `kill`e gecirir. Gercek `taskkill` cagrisini
-    /// testlerden ayirmak icin callback alir; `prune_dead` ile ayni desen.
     pub fn stop_all_with<F: FnMut(u32)>(&self, mut kill: F) {
         let Ok(mut processes) = self.active_processes.lock() else {
             return;
@@ -186,20 +184,23 @@ mod tests {
     }
 
     #[test]
-    fn candidates_cover_bundle_then_local_then_dev() {
-        let out = ahk_exe_candidates(
-            Path::new("C:/bundle"),
-            Path::new("C:/app/bin"),
-            Path::new("C:/repo"),
-        );
+    fn candidates_put_resolved_resource_first_then_dev() {
+        let resolved = Path::new("C:/bundle/_up_/tools/AutoHotkey64.exe");
+        let out = ahk_exe_candidates(Some(resolved), Path::new("C:/repo"));
         let names: Vec<String> = out
             .iter()
             .map(|p| p.to_string_lossy().replace('\\', "/"))
             .collect();
-        assert_eq!(names[0], "C:/bundle/tools/AutoHotkey64.exe");
-        assert_eq!(names[1], "C:/app/bin/../../tools/AutoHotkey64.exe");
-        assert_eq!(names[2], "C:/repo/tools/AutoHotkey64.exe");
-        assert_eq!(out.len(), 3);
+        assert_eq!(names[0], "C:/bundle/_up_/tools/AutoHotkey64.exe");
+        assert_eq!(names[1], "C:/repo/tools/AutoHotkey64.exe");
+        assert_eq!(out.len(), 2);
+    }
+
+    #[test]
+    fn candidates_fall_back_to_dev_only() {
+        let out = ahk_exe_candidates(None, Path::new("C:/repo"));
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].file_name().unwrap().to_string_lossy(), AHK_EXE_FILE);
     }
 
     fn seeded() -> (AhkProcessManager, Vec<(&'static str, u32)>) {
