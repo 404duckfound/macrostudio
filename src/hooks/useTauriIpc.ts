@@ -1,13 +1,37 @@
 import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { load, type Store } from "@tauri-apps/plugin-store";
 import {
   isPermissionGranted,
   requestPermission,
   sendNotification,
 } from "@tauri-apps/plugin-notification";
-import { useProfileStore } from "../stores/useProfileStore";
+import {
+  DEFAULT_IGNORED_EXES,
+  normalizeExeList,
+  useProfileStore,
+} from "../stores/useProfileStore";
 import type { Profile } from "../types";
+
+const SETTINGS_PATH = "settings.json";
+const IGNORED_KEY = "ignoredExes";
+
+let settingsStore: Promise<Store> | null = null;
+function getSettingsStore() {
+  if (!settingsStore) {
+    settingsStore = load(SETTINGS_PATH, {
+      autoSave: true,
+      defaults: { [IGNORED_KEY]: DEFAULT_IGNORED_EXES },
+    });
+  }
+  return settingsStore;
+}
+
+function isIgnoredExe(exe: string, ignored: string[]): boolean {
+  const lower = exe.trim().toLowerCase();
+  return ignored.some((e) => e.toLowerCase() === lower);
+}
 
 const DEFAULT_NAME = "Default";
 
@@ -78,23 +102,44 @@ export function useTauriIpc() {
   const {
     setProfiles,
     setActiveWindow,
+    setIgnoredExes,
     profiles,
     activeWindow,
     defaultId,
     focusFallbackMs,
+    ignoredExes,
   } = useProfileStore();
   const loadedRef = useRef(false);
   const healingRef = useRef(false);
+  const settingsLoadedRef = useRef(false);
 
   useEffect(() => {
     ensureDefaultProfile().then(setProfiles).catch(console.error);
+    getSettingsStore()
+      .then((s) => s.get<string[]>(IGNORED_KEY))
+      .then((val) => {
+        if (Array.isArray(val)) setIgnoredExes(normalizeExeList(val));
+      })
+      .catch(console.error)
+      .finally(() => {
+        settingsLoadedRef.current = true;
+      });
     const unlisten = listen<string>("active-window-changed", (e) => {
+      if (isIgnoredExe(e.payload, useProfileStore.getState().ignoredExes))
+        return;
       setActiveWindow(e.payload);
     });
     return () => {
       unlisten.then((f) => f());
     };
-  }, [setProfiles, setActiveWindow]);
+  }, [setProfiles, setActiveWindow, setIgnoredExes]);
+
+  useEffect(() => {
+    if (!settingsLoadedRef.current) return;
+    getSettingsStore()
+      .then((s) => s.set(IGNORED_KEY, ignoredExes))
+      .catch(console.error);
+  }, [ignoredExes]);
 
   useEffect(() => {
     if (!loadedRef.current) {

@@ -1,10 +1,21 @@
-import { Cpu, FolderOpen, Info, Monitor, RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { Cpu, FolderOpen, Info, Monitor, Plus, RotateCcw, X } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import NumberStepper from "../workspace/actions/NumberStepper";
 
 export default function SettingsView() {
   const focusFallbackMs = useProfileStore((s) => s.focusFallbackMs);
   const setFocusFallbackMs = useProfileStore((s) => s.setFocusFallbackMs);
+  const ignoredExes = useProfileStore((s) => s.ignoredExes);
+  const addIgnoredExe = useProfileStore((s) => s.addIgnoredExe);
+  const removeIgnoredExe = useProfileStore((s) => s.removeIgnoredExe);
+  const [draft, setDraft] = useState("");
+
+  function addDraft() {
+    if (!draft.trim()) return;
+    addIgnoredExe(draft);
+    setDraft("");
+  }
 
   return (
     <main className="workspace settings-workspace">
@@ -56,6 +67,55 @@ export default function SettingsView() {
                 </button>
               </div>
             </div>
+
+            <div className="settings-setting-row">
+              <div className="settings-setting-text">
+                <span className="settings-setting-name">Ignored windows</span>
+                <span className="settings-setting-desc">
+                  These windows never trigger an automatic profile switch. The current profile stays active while one of them is focused.
+                </span>
+              </div>
+            </div>
+            <div className="settings-ignore-add">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") addDraft();
+                }}
+                placeholder="osk.exe"
+                aria-label="Executable to ignore"
+              />
+              <button
+                type="button"
+                className="btn-secondary settings-ignore-btn"
+                onClick={addDraft}
+                disabled={!draft.trim()}
+              >
+                <Plus className="btn-icon-sm" aria-hidden="true" />
+                <span>Add</span>
+              </button>
+            </div>
+            {ignoredExes.length === 0 ? (
+              <p className="settings-setting-desc">No ignored windows.</p>
+            ) : (
+              <ul className="settings-ignore-list">
+                {ignoredExes.map((exe) => (
+                  <li key={exe.toLowerCase()} className="settings-ignore-item">
+                    <span className="settings-path-text">{exe}</span>
+                    <button
+                      type="button"
+                      className="btn-ghost settings-ignore-remove"
+                      onClick={() => removeIgnoredExe(exe)}
+                      title={`Stop ignoring ${exe}`}
+                      aria-label={`Stop ignoring ${exe}`}
+                    >
+                      <X className="btn-icon-sm" aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="settings-section-card">
