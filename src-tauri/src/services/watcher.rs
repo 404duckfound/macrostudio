@@ -1,4 +1,9 @@
 
+pub fn should_suppress_foreground_event(exe: &str) -> bool {
+    use crate::services::ahk_manager::AHK_EXE_FILE;
+    exe.is_empty() || exe == "Unknown" || exe.eq_ignore_ascii_case(AHK_EXE_FILE)
+}
+
 #[cfg(windows)]
 pub fn start_foreground_watcher(app_handle: tauri::AppHandle) {
     std::thread::spawn(move || unsafe {
@@ -35,7 +40,7 @@ pub fn start_foreground_watcher(app_handle: tauri::AppHandle) {
                 return;
             }
             let exe = get_process_name_from_hwnd(hwnd);
-            if exe.is_empty() || exe == "Unknown" {
+            if should_suppress_foreground_event(&exe) {
                 return;
             }
             unsafe {
@@ -99,3 +104,30 @@ pub fn start_foreground_watcher(app_handle: tauri::AppHandle) {
 
 #[cfg(not(windows))]
 pub fn start_foreground_watcher(_app_handle: tauri::AppHandle) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn suppresses_autohotkey_msgbox_window() {
+        assert!(should_suppress_foreground_event("AutoHotkey64.exe"));
+    }
+
+    #[test]
+    fn suppresses_autohotkey_regardless_of_case() {
+        assert!(should_suppress_foreground_event("autohotkey64.exe"));
+    }
+
+    #[test]
+    fn keeps_filtering_empty_and_unknown() {
+        assert!(should_suppress_foreground_event(""));
+        assert!(should_suppress_foreground_event("Unknown"));
+    }
+
+    #[test]
+    fn passes_real_application_windows() {
+        assert!(!should_suppress_foreground_event("Code.exe"));
+        assert!(!should_suppress_foreground_event("notepad.exe"));
+    }
+}
