@@ -395,6 +395,12 @@ export default function Workspace({
                     <span>Pick a key target, otherwise this trigger will execute nothing.</span>
                   </div>
                 )}
+                {!single && (
+                  <div className="inline-warn">
+                    <AlertCircle className="warn-icon" aria-hidden="true" />
+                    <span>No action selected — this trigger will execute nothing.</span>
+                  </div>
+                )}
                 {single && (
                   <ActionEditor action={single} onChange={setSingleAction} />
                 )}

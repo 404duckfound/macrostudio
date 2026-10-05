@@ -46,7 +46,11 @@ export default function MacrosView() {
     try {
       await invoke("macro_save", { macroItem: macro });
       await refreshMacros();
-      select(macro.id);
+      // select() would read the stale pre-save list here, so wire the
+      // freshly created macro directly instead.
+      setSelectedId(macro.id);
+      setDraft({ ...macro, blocks: [] });
+      setConfirmDelete(false);
     } catch (e) {
       console.error(e);
     } finally {
