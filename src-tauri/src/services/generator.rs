@@ -10,6 +10,7 @@ pub enum Action {
         #[serde(default)] x: i32,
         #[serde(default)] y: i32,
     },
+    #[serde(rename = "macro")]
     MacroRef { macro_id: String },
     Script { #[serde(default)] code: String },
     Key {
@@ -667,5 +668,17 @@ mod tests {
             &[],
         );
         assert!(out.contains("F9::\n{\n}\n"));
+    }
+
+    // The frontend sends {"type":"macro"} (MacroAction), so the tag must be
+    // exactly "macro" -- otherwise actions_lenient drops every macro ref.
+    #[test]
+    fn macro_ref_parses_from_macro_tag() {
+        let parsed: Action =
+            serde_json::from_str(r#"{"type":"macro","macro_id":"m1"}"#).unwrap();
+        match parsed {
+            Action::MacroRef { macro_id } => assert_eq!(macro_id, "m1"),
+            other => panic!("beklenen MacroRef, gelen {other:?}"),
+        }
     }
 }
