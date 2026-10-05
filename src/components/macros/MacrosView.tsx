@@ -123,128 +123,151 @@ export default function MacrosView() {
   }
 
   return (
-    <main className="workspace settings-workspace">
-      <div className="flow-canvas">
-        <div className="settings-container">
-          <div className="settings-header">
-            <h2 className="settings-title">Macros</h2>
-            <p className="settings-subtitle">
-              Reusable key, mouse, and delay sequences. Triggers run them by reference.
-            </p>
-          </div>
-
-          <div className="settings-section-card">
-            <div className="macro-layout">
-              <div className="macro-list-pane">
-                <button
-                  type="button"
-                  className="btn-secondary macro-add-btn"
-                  onClick={addMacro}
-                  disabled={saving}
-                >
-                  <Plus className="btn-icon-sm" aria-hidden="true" />
-                  <span>New macro</span>
-                </button>
-                <div className="macro-list" role="listbox" aria-label="Macros">
-                  {macros.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      role="option"
-                      aria-selected={m.id === selectedId}
-                      className={`macro-item ${m.id === selectedId ? "macro-item-selected" : ""}`}
-                      onClick={() => select(m.id)}
-                    >
-                      <span className="macro-item-name">{m.name || "(unnamed)"}</span>
-                      <span className="macro-item-count">{blockCountLabel(m.blocks.length)}</span>
-                    </button>
-                  ))}
-                  {macros.length === 0 && (
-                    <p className="settings-setting-desc">No macros yet.</p>
-                  )}
+    <>
+      <aside className="rail" aria-label="Macros">
+        <div className="rail-head">
+          <span className="rail-title">Macros</span>
+          <button
+            className="rail-add"
+            type="button"
+            aria-label="Add macro"
+            title="Add macro"
+            disabled={saving}
+            onClick={addMacro}
+          >
+            <Plus aria-hidden="true" />
+          </button>
+        </div>
+        <div className="rail-list">
+          {macros.length === 0 ? (
+            <div className="rail-empty">
+              <p>No macros found.</p>
+              <button
+                type="button"
+                className="btn-secondary rail-empty-btn"
+                disabled={saving}
+                onClick={addMacro}
+              >
+                <Plus aria-hidden="true" />
+                <span>Create Macro</span>
+              </button>
+            </div>
+          ) : (
+            macros.map((m) => (
+              <div
+                key={m.id}
+                className={`rail-row ${selectedId === m.id ? "active" : ""}`}
+                onClick={() => select(m.id)}
+              >
+                <div className="rail-row-main">
+                  <span className="rail-row-name">
+                    <span className="rail-name-text" title={m.name}>
+                      {m.name || "(unnamed)"}
+                    </span>
+                  </span>
+                  <span className="rail-row-meta">{blockCountLabel(m.blocks.length)}</span>
                 </div>
               </div>
+            ))
+          )}
+        </div>
+      </aside>
 
-              <div className="macro-editor">
-                {!draft ? (
-                  <p className="settings-setting-desc">
-                    Select a macro to edit its blocks, or create a new one.
-                  </p>
-                ) : (
-                  <>
-                    <input
-                      value={draft.name}
-                      aria-label="Macro name"
-                      onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                      placeholder="Macro name"
-                    />
-                    <div className="macro-add-row">
-                      <select
-                        value=""
-                        aria-label="Add block"
-                        onChange={(e) => {
-                          const kind = e.target.value as ActionBlock["kind"];
-                          if (kind) addBlock(kind);
-                        }}
-                      >
-                        <option value="">Add block…</option>
-                        <option value="keys">Keys / Text</option>
-                        <option value="mouse">Mouse Click</option>
-                        <option value="delay">Pause / Delay</option>
-                      </select>
-                    </div>
-                    {draft.blocks.length === 0 ? (
-                      <p className="settings-setting-desc">
-                        No blocks yet — add keys, mouse clicks, or delays above.
-                      </p>
-                    ) : (
-                      <div className="macro-blocks-list">
-                        {draft.blocks.map((b, i) => (
-                          <BlockRow
-                            key={i}
-                            block={b}
-                            onChange={(next) =>
-                              setDraft({
-                                ...draft,
-                                blocks: draft.blocks.map((old, j) => (j === i ? next : old)),
-                              })
-                            }
-                            onDelete={() =>
-                              setDraft({
-                                ...draft,
-                                blocks: draft.blocks.filter((_, j) => j !== i),
-                              })
-                            }
-                          />
-                        ))}
-                      </div>
+      <main className="workspace">
+        <div className="flow-canvas">
+          {!draft ? (
+            <div className="flow-canvas-empty">
+              <p>Select a macro from the rail to edit its blocks, or create a new one.</p>
+            </div>
+          ) : (
+            <div className="macro-editor">
+              <div className="flow-head">
+                <div className="flow-profile-header">
+                  <div className="flow-profile-title-row">
+                    <h2 className="flow-profile-title">{draft.name || "(unnamed)"}</h2>
+                  </div>
+                  <div className="flow-profile-sub-row">
+                    <span className="flow-trigger-counter">
+                      {blockCountLabel(draft.blocks.length)}
+                    </span>
+                    {dirty && (
+                      <span className="flow-dirty-indicator">
+                        <span className="dirty-dot" aria-hidden="true" />
+                        <span>Unsaved changes</span>
+                      </span>
                     )}
-                    <div className="macro-footer">
-                      <button
-                        type="button"
-                        className="btn-ghost macro-delete-btn"
-                        onClick={deleteSelected}
-                        disabled={saving}
-                      >
-                        <Trash2 className="btn-icon-sm" aria-hidden="true" />
-                        <span>{confirmDelete ? "Click again to confirm" : "Delete"}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-primary macro-save-btn"
-                        onClick={saveDraft}
-                        disabled={saving || !dirty}
-                      >
-                        <span>Save</span>
-                      </button>
-                    </div>
-                  </>
-                )}
+                  </div>
+                </div>
+              </div>
+              <input
+                value={draft.name}
+                aria-label="Macro name"
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                placeholder="Macro name"
+              />
+              <div className="macro-add-row">
+                <select
+                  value=""
+                  aria-label="Add block"
+                  onChange={(e) => {
+                    const kind = e.target.value as ActionBlock["kind"];
+                    if (kind) addBlock(kind);
+                    e.target.value = "";
+                  }}
+                >
+                  <option value="">Add block…</option>
+                  <option value="keys">Keys / Text</option>
+                  <option value="mouse">Mouse Click</option>
+                  <option value="delay">Pause / Delay</option>
+                </select>
+              </div>
+              {draft.blocks.length === 0 ? (
+                <p className="settings-setting-desc">No blocks yet — add keys, mouse clicks, or delays above.</p>
+              ) : (
+                <div className="macro-blocks-list">
+                  {draft.blocks.map((b, i) => (
+                    <BlockRow
+                      key={i}
+                      block={b}
+                      onChange={(next) =>
+                        setDraft({
+                          ...draft,
+                          blocks: draft.blocks.map((old, j) => (j === i ? next : old)),
+                        })
+                      }
+                      onDelete={() =>
+                        setDraft({
+                          ...draft,
+                          blocks: draft.blocks.filter((_, j) => j !== i),
+                        })
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+              <div className="macro-footer">
+                <button
+                  type="button"
+                  className="btn-ghost macro-delete-btn"
+                  onClick={deleteSelected}
+                  disabled={saving}
+                >
+                  <Trash2 className="btn-icon-sm" aria-hidden="true" />
+                  <span>{confirmDelete ? "Click again to confirm" : "Delete"}</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary macro-save-btn"
+                  onClick={saveDraft}
+                  disabled={saving || !dirty}
+                >
+                  <span>Save</span>
+                </button>
               </div>
             </div>
-          </div>
+          )}
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }
