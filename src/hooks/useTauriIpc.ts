@@ -12,7 +12,7 @@ import {
   normalizeExeList,
   useProfileStore,
 } from "../stores/useProfileStore";
-import type { Profile } from "../types";
+import type { Macro, Profile } from "../types";
 
 const SETTINGS_PATH = "settings.json";
 const IGNORED_KEY = "ignoredExes";
@@ -101,6 +101,7 @@ async function ensureDefaultProfile(): Promise<Profile[]> {
 export function useTauriIpc() {
   const {
     setProfiles,
+    setMacros,
     setActiveWindow,
     setIgnoredExes,
     profiles,
@@ -115,6 +116,7 @@ export function useTauriIpc() {
 
   useEffect(() => {
     ensureDefaultProfile().then(setProfiles).catch(console.error);
+    invoke<Macro[]>("macro_list").then(setMacros).catch(console.error);
     getSettingsStore()
       .then((s) => s.get<string[]>(IGNORED_KEY))
       .then((val) => {
@@ -132,7 +134,7 @@ export function useTauriIpc() {
     return () => {
       unlisten.then((f) => f());
     };
-  }, [setProfiles, setActiveWindow, setIgnoredExes]);
+  }, [setProfiles, setMacros, setActiveWindow, setIgnoredExes]);
 
   useEffect(() => {
     if (!settingsLoadedRef.current) return;

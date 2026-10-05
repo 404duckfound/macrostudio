@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Boxes,
   Check,
   ChevronDown,
   ChevronUp,
   CodeXml,
   Keyboard,
   Mouse,
-  Play,
   Search,
   Type,
 } from "lucide-react";
@@ -41,10 +41,10 @@ export const ACTION_TYPES: ActionTypeMeta[] = [
     desc: "Click with optional X/Y",
   },
   {
-    value: "custom",
-    title: "Custom",
+    value: "macro",
+    title: "Macro",
     badge: "Automate",
-    desc: "Keys + Mouse + Delay blocks",
+    desc: "Run a saved macro",
   },
   {
     value: "script",
@@ -58,7 +58,7 @@ function TypeIcon({ value }: { value: ActionTypeValue }) {
   if (value === "key") return <Keyboard aria-hidden="true" />;
   if (value === "keys") return <Type aria-hidden="true" />;
   if (value === "mouse") return <Mouse aria-hidden="true" />;
-  if (value === "custom") return <Play aria-hidden="true" />;
+  if (value === "macro") return <Boxes aria-hidden="true" />;
   return <CodeXml aria-hidden="true" />;
 }
 

@@ -1,8 +1,9 @@
 import { create } from "zustand";
-import type { Profile } from "../types";
+import type { Macro, Profile } from "../types";
 
 interface ProfileState {
   profiles: Profile[];
+  macros: Macro[];
   activeId: string | null;
   pinnedId: string | null;
   defaultId: string | null;
@@ -10,6 +11,7 @@ interface ProfileState {
   focusFallbackMs: number;
   ignoredExes: string[];
   setProfiles: (p: Profile[]) => void;
+  setMacros: (m: Macro[]) => void;
   setActiveId: (id: string | null) => void;
   setPinnedId: (id: string | null) => void;
   setDefaultId: (id: string | null) => void;
@@ -40,6 +42,7 @@ export function normalizeExeList(list: string[]): string[] {
 
 export const useProfileStore = create<ProfileState>((set) => ({
   profiles: [],
+  macros: [],
   activeId: null,
   pinnedId: null,
   defaultId: null,
@@ -63,6 +66,7 @@ export const useProfileStore = create<ProfileState>((set) => ({
           : s.defaultId,
     })),
   setActiveId: (activeId) => set({ activeId }),
+  setMacros: (macros) => set({ macros }),
   setPinnedId: (pinnedId) => set({ pinnedId }),
   setDefaultId: (defaultId) => set({ defaultId }),
   setActiveWindow: (activeWindow) => set({ activeWindow }),

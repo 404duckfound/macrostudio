@@ -1,15 +1,17 @@
 import { useEffect, useRef } from "react";
 import { useProfileStore } from "../stores/useProfileStore";
 import { useRunningProfiles } from "./useRunningProfiles";
+import { macroSignature } from "../components/workspace/triggerDraft";
 
 export function useProfileRunner() {
   const activeId = useProfileStore((s) => s.activeId);
   const profiles = useProfileStore((s) => s.profiles);
+  const macros = useProfileStore((s) => s.macros);
   const { running, start, stop, error } = useRunningProfiles();
   const lastId = useRef<string | null>(null);
 
   const active = profiles.find((p) => p.id === activeId) ?? null;
-  const signature = active ? JSON.stringify(active.triggers) : null;
+  const signature = active ? macroSignature(active.triggers, macros) : null;
 
   useEffect(() => {
     let cancelled = false;

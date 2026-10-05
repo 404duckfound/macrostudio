@@ -15,8 +15,14 @@ export type MacroAction =
     }
   | { type: "keys"; keys: string }
   | { type: "mouse"; button: string; x: number; y: number }
-  | { type: "custom"; blocks: ActionBlock[] }
+  | { type: "macro"; macro_id: string }
   | { type: "script"; code: string };
+
+export interface Macro {
+  id: string;
+  name: string;
+  blocks: ActionBlock[];
+}
 
 export interface Trigger {
   shortcut: string;

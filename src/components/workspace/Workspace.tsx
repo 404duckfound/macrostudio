@@ -16,7 +16,7 @@ import {
 import { useProfileStore } from "../../stores/useProfileStore";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
-import type { MacroAction, Profile, Trigger } from "../../types";
+import type { Macro, MacroAction, Profile, Trigger } from "../../types";
 import ActionEditor from "./actions/ActionEditor";
 import ActionTypeCard from "./actions/ActionTypeCard";
 import BlockKeyToggle from "./BlockKeyToggle";
@@ -24,7 +24,10 @@ import Chips from "./Chips";
 import ShortcutField from "./ShortcutField";
 import { cleanDraft, toDrafts } from "./triggerDraft";
 
-function actionPreviewLabel(action?: MacroAction | null): string | null {
+function actionPreviewLabel(
+  action: MacroAction | null | undefined,
+  macros: Macro[],
+): string | null {
   if (!action) return null;
   switch (action.type) {
     case "key":
@@ -33,8 +36,11 @@ function actionPreviewLabel(action?: MacroAction | null): string | null {
       return action.keys ? `Text: "${action.keys}"` : "Text: (empty)";
     case "mouse":
       return `Mouse: ${action.button}`;
-    case "custom":
-      return `Custom: ${action.blocks.length} ${action.blocks.length === 1 ? "block" : "blocks"}`;
+    case "macro": {
+      if (!action.macro_id) return "Macro: (empty)";
+      const found = macros.find((m) => m.id === action.macro_id);
+      return found ? `Macro: ${found.name || "(unnamed)"}` : "Macro: (deleted)";
+    }
     case "script":
       return "AHK Script";
   }
@@ -47,6 +53,7 @@ export default function Workspace({
 }) {
   const activeId = useProfileStore((s) => s.activeId);
   const profiles = useProfileStore((s) => s.profiles);
+  const macros = useProfileStore((s) => s.macros);
   const active = profiles.find((p) => p.id === activeId) ?? null;
 
   const [draftTriggers, setDraftTriggers] = useState<Trigger[]>(
@@ -136,8 +143,8 @@ export default function Workspace({
       case "mouse":
         fresh = { type: "mouse", button: "Left", x: 0, y: 0 };
         break;
-      case "custom":
-        fresh = { type: "custom", blocks: [] };
+      case "macro":
+        fresh = { type: "macro", macro_id: "" };
         break;
       case "script":
         fresh = { type: "script", code: "" };
@@ -246,7 +253,7 @@ export default function Workspace({
 
           <div className="trigger-card-list">
             {draftTriggers.map((t, i) => {
-              const preview = actionPreviewLabel(t.actions[0]);
+              const preview = actionPreviewLabel(t.actions[0], macros);
               return (
                 <div
                   key={`${i}-${t.shortcut}`}

@@ -1,9 +1,9 @@
-import { Clock, CodeXml, Mouse, Plus, Type } from "lucide-react";
+import { CodeXml } from "lucide-react";
 import type { MacroAction } from "../../../types";
 import KeyActionEditor from "./KeyActionEditor";
 import { KeysInput } from "./KeysInput";
 import { MouseInput } from "./MouseInput";
-import BlockRow from "./BlockRow";
+import MacroSelect from "./MacroSelect";
 
 export default function ActionEditor({
   action,
@@ -67,88 +67,14 @@ export default function ActionEditor({
     );
   }
 
-  return (
-    <div className="action-card custom-action-container">
-      <CustomBlocks action={action} onChange={onChange} />
-    </div>
-  );
-}
-
-function CustomBlocks({
-  action,
-  onChange,
-}: {
-  action: Extract<MacroAction, { type: "custom" }>;
-  onChange: (a: MacroAction) => void;
-}) {
-  function setBlocks(
-    blocks: Extract<MacroAction, { type: "custom" }>["blocks"],
-  ) {
-    onChange({ type: "custom", blocks });
+  if (action.type === "macro") {
+    return (
+      <MacroSelect
+        value={action.macro_id}
+        onChange={(macro_id) => onChange({ type: "macro", macro_id })}
+      />
+    );
   }
 
-  return (
-    <div className="custom-blocks-wrapper">
-      {action.blocks.length === 0 ? (
-        <div className="custom-blocks-empty">
-          <span>No sequence blocks configured yet.</span>
-          <span className="custom-blocks-empty-sub">
-            Add keys, mouse clicks, or delays below to create a multi-step macro.
-          </span>
-        </div>
-      ) : (
-        <div className="custom-blocks-list">
-          {action.blocks.map((b, i) => (
-            <BlockRow
-              key={i}
-              block={b}
-              onChange={(next) =>
-                setBlocks(action.blocks.map((old, j) => (j === i ? next : old)))
-              }
-              onDelete={() => setBlocks(action.blocks.filter((_, j) => j !== i))}
-            />
-          ))}
-        </div>
-      )}
-
-      <div className="block-add-row">
-        <button
-          type="button"
-          className="btn-add-block"
-          onClick={() =>
-            setBlocks([...action.blocks, { kind: "keys", keys: "" }])
-          }
-        >
-          <Plus className="btn-add-icon" aria-hidden="true" />
-          <Type className="btn-add-icon" aria-hidden="true" />
-          <span>Keys</span>
-        </button>
-        <button
-          type="button"
-          className="btn-add-block"
-          onClick={() =>
-            setBlocks([
-              ...action.blocks,
-              { kind: "mouse", button: "Left", x: 0, y: 0 },
-            ])
-          }
-        >
-          <Plus className="btn-add-icon" aria-hidden="true" />
-          <Mouse className="btn-add-icon" aria-hidden="true" />
-          <span>Mouse</span>
-        </button>
-        <button
-          type="button"
-          className="btn-add-block"
-          onClick={() =>
-            setBlocks([...action.blocks, { kind: "delay", ms: 500 }])
-          }
-        >
-          <Plus className="btn-add-icon" aria-hidden="true" />
-          <Clock className="btn-add-icon" aria-hidden="true" />
-          <span>Delay</span>
-        </button>
-      </div>
-    </div>
-  );
+  return null;
 }
