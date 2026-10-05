@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::services::generator::{compile_to_ahk_v2, Trigger};
+use crate::commands::macros::load_macros;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Profile {
@@ -25,7 +26,7 @@ fn profiles_dir() -> Result<std::path::PathBuf, String> {
 }
 
 fn write_ahk_file(dir: &std::path::Path, profile: &Profile) {
-    let script = compile_to_ahk_v2(&profile.triggers, &profile.name);
+    let script = compile_to_ahk_v2(&profile.triggers, &profile.name, &load_macros());
     let path = dir.join(format!("{}.ahk", profile.id));
     let _ = std::fs::write(path, script);
 }

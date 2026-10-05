@@ -10,7 +10,7 @@ use tauri::{
     WindowEvent,
 };
 
-use crate::commands::{ahk::*, profile::*, system::*};
+use crate::commands::{ahk::*, macros::*, profile::*, system::*};
 use crate::state::AppState;
 
 const MAIN_WINDOW: &str = "main";
@@ -34,6 +34,9 @@ pub fn run() {
             profile_list,
             profile_save,
             profile_delete,
+            macro_list,
+            macro_save,
+            macro_delete,
             system_active_pids,
             system_visible_window_exes,
         ])

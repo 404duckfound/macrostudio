@@ -4,7 +4,8 @@ use tauri::{AppHandle, Manager, State};
 use crate::services::ahk_manager::{
     ahk_exe_candidates, resolve_ahk_exe, AHK_EXE_FILE,
 };
-use crate::services::generator::{compile_to_ahk_v2, Trigger};
+use crate::services::generator::{compile_to_ahk_v2, Macro, Trigger};
+use crate::commands::macros::load_macros;
 use crate::state::AppState;
 
 #[tauri::command]
@@ -15,7 +16,7 @@ pub async fn ahk_start_profile(
     profile_name: String,
     triggers: Vec<Trigger>,
 ) -> Result<u32, String> {
-    let script = compile_to_ahk_v2(&triggers, &profile_name);
+    let script = compile_to_ahk_v2(&triggers, &profile_name, &load_macros());
 
     let config_dir = dirs_config_dir()?;
     let profiles_dir = std::path::Path::new(&config_dir).join("macro-studio/profiles");
@@ -62,8 +63,8 @@ pub async fn ahk_stop_profile(state: State<'_, AppState>, profile_id: String) ->
 }
 
 #[tauri::command]
-pub fn ahk_compile_preview(triggers: Vec<Trigger>) -> String {
-    compile_to_ahk_v2(&triggers, "Preview")
+pub fn ahk_compile_preview(triggers: Vec<Trigger>, macros: Vec<Macro>) -> String {
+    compile_to_ahk_v2(&triggers, "Preview", &macros)
 }
 
 #[tauri::command]
