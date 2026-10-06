@@ -1,16 +1,13 @@
-import { Clock, Mouse, Trash2, Type } from "lucide-react";
+import { Clock, Mouse, Trash2 } from "lucide-react";
 import type { ActionBlock } from "../../../types";
-import { KeysInput } from "./KeysInput";
 import { MouseInput } from "./MouseInput";
 
 function BlockIcon({ kind }: { kind: ActionBlock["kind"] }) {
-  if (kind === "keys") return <Type className="block-icon" aria-hidden="true" />;
   if (kind === "mouse") return <Mouse className="block-icon" aria-hidden="true" />;
   return <Clock className="block-icon" aria-hidden="true" />;
 }
 
 const BLOCK_LABELS: Record<ActionBlock["kind"], string> = {
-  keys: "Keys / Text",
   mouse: "Mouse Click",
   delay: "Pause / Delay",
 };
@@ -43,12 +40,6 @@ export default function BlockRow({
       </div>
 
       <div className="custom-block-body">
-        {block.kind === "keys" && (
-          <KeysInput
-            keys={block.keys}
-            onKeys={(keys) => onChange({ kind: "keys", keys })}
-          />
-        )}
         {block.kind === "delay" && (
           <div className="delay-input-row">
             <span className="delay-label">Wait time:</span>

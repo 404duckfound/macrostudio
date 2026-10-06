@@ -1,5 +1,4 @@
 export type ActionBlock =
-  | { kind: "keys"; keys: string }
   | { kind: "mouse"; button: string; x: number; y: number }
   | { kind: "delay"; ms: number };
 
@@ -13,7 +12,6 @@ export type MacroAction =
       pre_delay_ms: number;
       repeat: number;
     }
-  | { type: "keys"; keys: string }
   | { type: "mouse"; button: string; x: number; y: number }
   | { type: "macro"; macro_id: string }
   | { type: "script"; code: string };

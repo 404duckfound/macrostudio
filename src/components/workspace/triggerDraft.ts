@@ -1,7 +1,12 @@
 import type { Macro, MacroAction, Trigger } from "../../types";
 
+// Actions the UI can no longer edit or compile (removed types like custom
+// and keys, or unknown future ones) are dropped on clean/save, mirroring the
+// backend's lenient parsing. Otherwise they would linger in JSON forever.
+const EDITABLE_ACTION_TYPES = new Set(["key", "mouse", "macro", "script"]);
+
 function isDroppedAction(a: MacroAction): boolean {
-  return (a as { type: string }).type === "custom";
+  return !EDITABLE_ACTION_TYPES.has((a as { type: string }).type);
 }
 
 export function cleanDraft(drafts: Trigger[]): Trigger[] {

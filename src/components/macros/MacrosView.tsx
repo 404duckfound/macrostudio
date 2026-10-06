@@ -77,11 +77,9 @@ export default function MacrosView() {
   function addBlock(kind: ActionBlock["kind"]) {
     if (!draft) return;
     const block: ActionBlock =
-      kind === "keys"
-        ? { kind: "keys", keys: "" }
-        : kind === "mouse"
-          ? { kind: "mouse", button: "Left", x: 0, y: 0 }
-          : { kind: "delay", ms: 500 };
+      kind === "mouse"
+        ? { kind: "mouse", button: "Left", x: 0, y: 0 }
+        : { kind: "delay", ms: 500 };
     setDraft({ ...draft, blocks: [...draft.blocks, block] });
   }
 
@@ -187,7 +185,6 @@ export default function MacrosView() {
                   }}
                 >
                   <option value="">Add block…</option>
-                  <option value="keys">Keys / Text</option>
                   <option value="mouse">Mouse Click</option>
                   <option value="delay">Pause / Delay</option>
                 </select>

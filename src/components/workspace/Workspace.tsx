@@ -32,8 +32,6 @@ function actionPreviewLabel(
   switch (action.type) {
     case "key":
       return action.key ? `Key: ${action.key}` : "Key: (empty)";
-    case "keys":
-      return action.keys ? `Text: "${action.keys}"` : "Text: (empty)";
     case "mouse":
       return `Mouse: ${action.button}`;
     case "macro": {
@@ -137,9 +135,6 @@ export default function Workspace({
   function selectActionType(type: MacroAction["type"]) {
     let fresh: MacroAction;
     switch (type) {
-      case "keys":
-        fresh = { type: "keys", keys: "" };
-        break;
       case "mouse":
         fresh = { type: "mouse", button: "Left", x: 0, y: 0 };
         break;

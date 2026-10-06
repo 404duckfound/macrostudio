@@ -1,7 +1,6 @@
 import { CodeXml } from "lucide-react";
 import type { MacroAction } from "../../../types";
 import KeyActionEditor from "./KeyActionEditor";
-import { KeysInput } from "./KeysInput";
 import { MouseInput } from "./MouseInput";
 import MacroSelect from "./MacroSelect";
 
@@ -16,17 +15,6 @@ export default function ActionEditor({
     return (
       <div className="action-card">
         <KeyActionEditor action={action} onChange={onChange} />
-      </div>
-    );
-  }
-
-  if (action.type === "keys") {
-    return (
-      <div className="action-card">
-        <KeysInput
-          keys={action.keys}
-          onKeys={(keys) => onChange({ type: "keys", keys })}
-        />
       </div>
     );
   }

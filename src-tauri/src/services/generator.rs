@@ -3,7 +3,6 @@ use serde::{Deserialize, Deserializer, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Action {
-    Keys { #[serde(default)] keys: String },
     Mouse {
         #[serde(default = "default_mouse_button")]
         button: String,
@@ -27,7 +26,6 @@ pub enum Action {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Block {
-    Keys { #[serde(default)] keys: String },
     Mouse {
         #[serde(default = "default_mouse_button")]
         button: String,
@@ -41,7 +39,7 @@ pub enum Block {
 pub struct Macro {
     pub id: String,
     pub name: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "blocks_lenient")]
     pub blocks: Vec<Block>,
 }
 
@@ -66,6 +64,20 @@ fn default_mouse_button() -> String {
 }
 
 fn actions_lenient<'de, D>(deserializer: D) -> Result<Vec<Action>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw = Vec::<serde_json::Value>::deserialize(deserializer)?;
+    Ok(raw
+        .into_iter()
+        .filter_map(|v| serde_json::from_value(v).ok())
+        .collect())
+}
+
+// Entries that no longer deserialize (e.g. the removed {"kind":"keys"}
+// blocks) are dropped so the macro itself stays loadable. Same rule as
+// actions_lenient: dropping is the accepted upgrade consequence.
+fn blocks_lenient<'de, D>(deserializer: D) -> Result<Vec<Block>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -138,9 +150,6 @@ pub fn compile_to_ahk_v2(
         script.push_str(&format!("{key}::\n{{\n"));
         for action in &trigger.actions {
             match action {
-                Action::Keys { keys } => {
-                    script.push_str(&send_line(keys));
-                }
                 Action::Mouse { button, x, y } => {
                     script.push_str(&mouse_click_line(button, *x, *y));
                 }
@@ -175,9 +184,6 @@ pub fn compile_to_ahk_v2(
 
 fn emit_block(script: &mut String, block: &Block) {
     match block {
-        Block::Keys { keys } => {
-            script.push_str(&send_line(keys));
-        }
         Block::Mouse { button, x, y } => {
             script.push_str(&mouse_click_line(button, *x, *y));
         }
@@ -185,11 +191,6 @@ fn emit_block(script: &mut String, block: &Block) {
             script.push_str(&format!("    Sleep({ms})\n"));
         }
     }
-}
-
-fn send_line(keys: &str) -> String {
-    let escaped = keys.replace('"', "`\"");
-    format!("    Send(\"{escaped}\")\n")
 }
 
 fn brace_key_name(part: &str) -> String {
@@ -351,13 +352,13 @@ mod tests {
         let out = compile_to_ahk_v2(&[
                 trig(
                     "Ctrl+Shift+F1",
-                    vec![Action::Keys { keys: "hi".to_string() }],
+                    vec![Action::Script { code: "Sleep(5)".to_string() }],
                 ),
                 trig("F9", vec![macroref("m1")]),
             ],
             TEST_TITLE,
             &macros);
-        assert!(out.contains("^+F1::\n{\n    Send(\"hi\")\n}\n"));
+        assert!(out.contains("^+F1::\n{\n    Sleep(5)\n}\n"));
         assert!(out.contains("F9::\n{\n    Sleep(10)\n}\n"));
     }
 
@@ -382,9 +383,9 @@ mod tests {
     }
 
     #[test]
-    fn macro_blocks_mix_keys_mouse_delay() {
+    fn macro_blocks_mix_delay_and_mouse() {
         let macros = vec![named_macro("m1", vec![
-            Block::Keys { keys: "ab".to_string() },
+            Block::Delay { ms: 15 },
             Block::Delay { ms: 50 },
             Block::Mouse {
                 button: "Left".to_string(),
@@ -396,7 +397,7 @@ mod tests {
                 "F9",
                 vec![macroref("m1")],
             )], TEST_TITLE, &macros);
-        assert!(out.contains("    Send(\"ab\")\n    Sleep(50)\n    Click(10, 20, \"Left\")\n"));
+        assert!(out.contains("    Sleep(15)\n    Sleep(50)\n    Click(10, 20, \"Left\")\n"));
     }
 
     #[test]
@@ -629,7 +630,7 @@ mod tests {
             "shortcut": "F9", "block_key": false,
             "actions": [
                 {"type": "custom", "blocks": [{"kind": "delay", "ms": 5}]},
-                {"type": "keys", "keys": "hi"}
+                {"type": "mouse", "button": "Left", "x": 0, "y": 0}
             ]
         });
         let t: Trigger = serde_json::from_value(old).unwrap();
@@ -656,7 +657,11 @@ mod tests {
             id: "m1".to_string(),
             name: "Greet".to_string(),
             blocks: vec![
-                Block::Keys { keys: "ab".to_string() },
+                Block::Mouse {
+                    button: "Left".to_string(),
+                    x: 0,
+                    y: 0,
+                },
                 Block::Delay { ms: 50 },
             ],
         }];
@@ -668,7 +673,7 @@ mod tests {
             TEST_TITLE,
             &macros,
         );
-        assert!(out.contains("    Send(\"ab\")\n    Sleep(50)\n"));
+        assert!(out.contains("    Click(\"Left\")\n    Sleep(50)\n"));
     }
 
     #[test]
@@ -694,5 +699,32 @@ mod tests {
             Action::MacroRef { macro_id } => assert_eq!(macro_id, "m1"),
             other => panic!("beklenen MacroRef, gelen {other:?}"),
         }
+    }
+
+    // Type Text is removed: old {"type":"keys"} actions drop on parse so the
+    // profile itself stays loadable, same rule as the removed custom actions.
+    #[test]
+    fn legacy_keys_action_is_dropped_on_parse() {
+        let old = serde_json::json!({
+            "shortcut": "F9", "block_key": false,
+            "actions": [
+                {"type": "keys", "keys": "hi"},
+                {"type": "mouse", "button": "Left", "x": 0, "y": 0}
+            ]
+        });
+        let t: Trigger = serde_json::from_value(old).unwrap();
+        assert_eq!(t.actions.len(), 1);
+    }
+
+    // Old macros whose blocks are all {"kind":"keys"} parse to empty blocks
+    // instead of failing the whole macro load.
+    #[test]
+    fn keys_only_macro_blocks_parse_to_empty() {
+        let old = serde_json::json!({
+            "id": "m1", "name": "Old",
+            "blocks": [{"kind": "keys", "keys": "ab"}]
+        });
+        let m: Macro = serde_json::from_value(old).unwrap();
+        assert!(m.blocks.is_empty());
     }
 }

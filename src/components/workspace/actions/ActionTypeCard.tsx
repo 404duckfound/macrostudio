@@ -8,7 +8,6 @@ import {
   Keyboard,
   Mouse,
   Search,
-  Type,
 } from "lucide-react";
 import type { MacroAction } from "../../../types";
 
@@ -27,12 +26,6 @@ export const ACTION_TYPES: ActionTypeMeta[] = [
     title: "Keyboard Press",
     badge: "Input",
     desc: "Emulate physical keystroke or key combo",
-  },
-  {
-    value: "keys",
-    title: "Type Text",
-    badge: "Input",
-    desc: "Send a literal string of text",
   },
   {
     value: "mouse",
@@ -56,7 +49,6 @@ export const ACTION_TYPES: ActionTypeMeta[] = [
 
 function TypeIcon({ value }: { value: ActionTypeValue }) {
   if (value === "key") return <Keyboard aria-hidden="true" />;
-  if (value === "keys") return <Type aria-hidden="true" />;
   if (value === "mouse") return <Mouse aria-hidden="true" />;
   if (value === "macro") return <Boxes aria-hidden="true" />;
   return <CodeXml aria-hidden="true" />;
