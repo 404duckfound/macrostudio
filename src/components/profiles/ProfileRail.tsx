@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Ellipsis, Plus } from "lucide-react";
+import { Ellipsis } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
+import Rail from "../common/Rail";
 import ProfileDeleteModal from "./modals/ProfileDeleteModal";
 import ProfileFormModal from "./modals/ProfileFormModal";
 import type { Profile, Trigger } from "../../types";
@@ -117,124 +118,100 @@ export default function ProfileRail({
   }, [openMenuId]);
 
   return (
-    <aside className="rail">
-      <div className="rail-head">
-        <span className="rail-title">Profiles</span>
-        <button
-          className="rail-add"
-          type="button"
-          aria-label="Add profile"
-          title="Add profile"
-          onClick={() => setModal({ kind: "form", mode: "add" })}
-        >
-          <Plus aria-hidden="true" />
-        </button>
-      </div>
-      <div className="rail-list">
-        {profiles.length === 0 ? (
-          <div className="rail-empty">
-            <p>No profiles found.</p>
+    <>
+      <Rail
+        title="Profiles"
+        addAriaLabel="Add profile"
+        items={profiles}
+        selectedId={activeId}
+        emptyText="No profiles found."
+        createLabel="Create Profile"
+        onSelect={(id) => {
+          selectProfile(id);
+          setOpenMenuId(null);
+        }}
+        onAdd={() => setModal({ kind: "form", mode: "add" })}
+        renderName={(p) => (
+          <>
+            {activeRun?.id === p.id && (
+              <span
+                className={`rail-run-dot ${
+                  activeRun.ok ? "" : "rail-run-dot-error"
+                }`}
+                title={activeRun.ok ? "Engine Running" : "Engine Failed"}
+              />
+            )}
+            <span className="rail-name-text" title={p.name}>
+              {p.name}
+            </span>
+            {defaultId === p.id && (
+              <span className="rail-default-badge">Default</span>
+            )}
+          </>
+        )}
+        renderMeta={(p) => (p.target_exe ? p.target_exe : "All windows")}
+        renderActions={(p) => (
+          <>
             <button
+              className="rail-dots"
               type="button"
-              className="btn-secondary rail-empty-btn"
-              onClick={() => setModal({ kind: "form", mode: "add" })}
-            >
-              <Plus aria-hidden="true" />
-              <span>Create Profile</span>
-            </button>
-          </div>
-        ) : (
-          profiles.map((p) => (
-            <div
-              key={p.id}
-              className={`rail-row ${activeId === p.id ? "active" : ""}`}
-              onClick={() => {
-                selectProfile(p.id);
-                setOpenMenuId(null);
+              aria-label={`${p.name} menu`}
+              title="Options"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenMenuId(openMenuId === p.id ? null : p.id);
               }}
             >
-              <div className="rail-row-main">
-                <span className="rail-row-name">
-                  {activeRun?.id === p.id && (
-                    <span
-                      className={`rail-run-dot ${
-                        activeRun.ok ? "" : "rail-run-dot-error"
-                      }`}
-                      title={activeRun.ok ? "Engine Running" : "Engine Failed"}
-                    />
-                  )}
-                  <span className="rail-name-text" title={p.name}>
-                    {p.name}
-                  </span>
-                  {defaultId === p.id && (
-                    <span className="rail-default-badge">Default</span>
-                  )}
-                </span>
-                <span className="rail-row-meta">
-                  {p.target_exe ? p.target_exe : "All windows"}
-                </span>
-              </div>
-              <button
-                className="rail-dots"
-                type="button"
-                aria-label={`${p.name} menu`}
-                title="Options"
+              <Ellipsis aria-hidden="true" />
+            </button>
+            {openMenuId === p.id && (
+              <div
+                className="rail-menu"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setOpenMenuId(openMenuId === p.id ? null : p.id);
+                  setOpenMenuId(null);
                 }}
               >
-                <Ellipsis aria-hidden="true" />
-              </button>
-              {openMenuId === p.id && (
-                <div
-                  className="rail-menu"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenMenuId(null);
+                <button
+                  className="rail-menu-item"
+                  type="button"
+                  onClick={() =>
+                    setModal({ kind: "form", mode: "edit", profile: p })
+                  }
+                >
+                  Edit Profile
+                </button>
+                <button
+                  className="rail-menu-item"
+                  type="button"
+                  onClick={() => duplicateProfile(p)}
+                >
+                  Duplicate
+                </button>
+                <button
+                  className="rail-menu-item"
+                  type="button"
+                  disabled={defaultId === p.id}
+                  onClick={() => {
+                    setDefaultId(p.id);
+                    selectProfile(p.id);
                   }}
                 >
-                  <button
-                    className="rail-menu-item"
-                    type="button"
-                    onClick={() =>
-                      setModal({ kind: "form", mode: "edit", profile: p })
-                    }
-                  >
-                    Edit Profile
-                  </button>
-                  <button
-                    className="rail-menu-item"
-                    type="button"
-                    onClick={() => duplicateProfile(p)}
-                  >
-                    Duplicate
-                  </button>
-                  <button
-                    className="rail-menu-item"
-                    type="button"
-                    disabled={defaultId === p.id}
-                    onClick={() => {
-                      setDefaultId(p.id);
-                      selectProfile(p.id);
-                    }}
-                  >
-                    Make default
-                  </button>
-                  <div className="rail-menu-divider" />
-                  <button
-                    className="rail-menu-item rail-menu-item-danger"
-                    type="button"
-                    onClick={() => setModal({ kind: "delete", profile: p })}
-                  >
-                    Delete Profile
-                  </button>
-                </div>
-              )}
-            </div>
-          ))
+                  Make default
+                </button>
+                <div className="rail-menu-divider" />
+                <button
+                  className="rail-menu-item rail-menu-item-danger"
+                  type="button"
+                  onClick={() => setModal({ kind: "delete", profile: p })}
+                >
+                  Delete Profile
+                </button>
+              </div>
+            )}
+          </>
         )}
-      </div>
+      />
 
       {modal?.kind === "form" && (
         <ProfileFormModal
@@ -256,6 +233,6 @@ export default function ProfileRail({
           onConfirm={deleteProfile}
         />
       )}
-    </aside>
+    </>
   );
 }

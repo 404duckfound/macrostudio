@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
+import Rail from "../common/Rail";
 import type { ActionBlock, Macro, Profile } from "../../types";
 import BlockRow from "../workspace/actions/BlockRow";
 
@@ -124,54 +125,24 @@ export default function MacrosView() {
 
   return (
     <>
-      <aside className="rail" aria-label="Macros">
-        <div className="rail-head">
-          <span className="rail-title">Macros</span>
-          <button
-            className="rail-add"
-            type="button"
-            aria-label="Add macro"
-            title="Add macro"
-            disabled={saving}
-            onClick={addMacro}
-          >
-            <Plus aria-hidden="true" />
-          </button>
-        </div>
-        <div className="rail-list">
-          {macros.length === 0 ? (
-            <div className="rail-empty">
-              <p>No macros found.</p>
-              <button
-                type="button"
-                className="btn-secondary rail-empty-btn"
-                disabled={saving}
-                onClick={addMacro}
-              >
-                <Plus aria-hidden="true" />
-                <span>Create Macro</span>
-              </button>
-            </div>
-          ) : (
-            macros.map((m) => (
-              <div
-                key={m.id}
-                className={`rail-row ${selectedId === m.id ? "active" : ""}`}
-                onClick={() => select(m.id)}
-              >
-                <div className="rail-row-main">
-                  <span className="rail-row-name">
-                    <span className="rail-name-text" title={m.name}>
-                      {m.name || "(unnamed)"}
-                    </span>
-                  </span>
-                  <span className="rail-row-meta">{blockCountLabel(m.blocks.length)}</span>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </aside>
+      <Rail
+        title="Macros"
+        ariaLabel="Macros"
+        addAriaLabel="Add macro"
+        items={macros}
+        selectedId={selectedId}
+        emptyText="No macros found."
+        createLabel="Create Macro"
+        disabled={saving}
+        onSelect={select}
+        onAdd={addMacro}
+        renderName={(m) => (
+          <span className="rail-name-text" title={m.name}>
+            {m.name || "(unnamed)"}
+          </span>
+        )}
+        renderMeta={(m) => blockCountLabel(m.blocks.length)}
+      />
 
       <main className="workspace">
         <div className="flow-canvas">
