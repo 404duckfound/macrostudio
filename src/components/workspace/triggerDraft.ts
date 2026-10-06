@@ -13,7 +13,7 @@ export function cleanDraft(drafts: Trigger[]): Trigger[] {
     seen.add(shortcut);
     out.push({
       shortcut,
-      actions: t.actions.filter((a) => !isDroppedAction(a)),
+      actions: t.actions.filter((a) => !isDroppedAction(a)).map((a) => ({ ...a })),
       block_key: t.block_key,
     });
   }
@@ -25,7 +25,7 @@ export function toDrafts(triggers: Trigger[] | undefined): Trigger[] {
   return triggers.map((t) => ({
     shortcut: t.shortcut,
     block_key: t.block_key,
-    actions: t.actions.filter((a) => !isDroppedAction(a)).slice(0, 1),
+    actions: t.actions.filter((a) => !isDroppedAction(a)).slice(0, 1).map((a) => ({ ...a })),
   }));
 }
 

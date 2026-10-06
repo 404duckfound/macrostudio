@@ -636,6 +636,20 @@ mod tests {
         assert_eq!(t.actions.len(), 1);
     }
 
+    // A trigger with only custom actions parses to empty actions instead of
+    // failing the whole profile load.
+    #[test]
+    fn custom_only_trigger_parses_to_empty_actions() {
+        let old = serde_json::json!({
+            "shortcut": "F9", "block_key": false,
+            "actions": [
+                {"type": "custom", "blocks": [{"kind": "delay", "ms": 5}]}
+            ]
+        });
+        let t: Trigger = serde_json::from_value(old).unwrap();
+        assert!(t.actions.is_empty());
+    }
+
     #[test]
     fn macro_ref_expands_blocks_inline() {
         let macros = vec![Macro {

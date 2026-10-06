@@ -12,9 +12,9 @@ export default function MacroSelect({
 
   return (
     <div className="action-card">
-      <div className="macro-select-wrap">
+      <div className="custom-select-wrap">
         <select
-          className="macro-select"
+          className="custom-select"
           value={known ? value : ""}
           aria-label="Select macro"
           onChange={(e) => onChange(e.target.value)}
@@ -32,7 +32,7 @@ export default function MacroSelect({
           </span>
         )}
         {macros.length === 0 && (
-          <span className="macro-select-hint">
+          <span className="settings-setting-desc">
             No macros yet — create one in Macros.
           </span>
         )}

@@ -82,4 +82,23 @@ mod tests {
             serde_json::from_str(r#"{"id":"m2","name":"Empty"}"#).unwrap();
         assert!(m.blocks.is_empty());
     }
+
+    // The JSON written by macro_save must read back through the filesystem
+    // with blocks intact.
+    #[test]
+    fn macro_file_round_trip_through_filesystem() {
+        let m = sample("fs1");
+        let dir =
+            std::env::temp_dir().join(format!("macro-studio-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("fs1.json");
+        let content = serde_json::to_string_pretty(&m).unwrap();
+        std::fs::write(&path, &content).unwrap();
+        let reread = std::fs::read_to_string(&path).unwrap();
+        let back: Macro = serde_json::from_str(&reread).unwrap();
+        assert_eq!(back.id, "fs1");
+        assert_eq!(back.name, "Macro fs1");
+        assert_eq!(back.blocks.len(), 1);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
