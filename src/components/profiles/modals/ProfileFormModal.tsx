@@ -138,6 +138,7 @@ export default function ProfileFormModal({
             onChange={(e) => setName(e.target.value)}
             maxLength={60}
             autoFocus
+            autoComplete="off"
           />
         </div>
         <ProfileScopeField

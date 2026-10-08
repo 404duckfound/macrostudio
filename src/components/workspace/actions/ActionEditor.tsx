@@ -48,6 +48,7 @@ export default function ActionEditor({
             value={action.code}
             placeholder={'// Raw AutoHotkey v2 code\nSend("Hello from Macro Studio{Enter}")'}
             spellCheck={false}
+            autoComplete="off"
             onChange={(e) => onChange({ type: "script", code: e.target.value })}
           />
         </div>

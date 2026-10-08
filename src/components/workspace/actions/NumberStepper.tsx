@@ -57,6 +57,7 @@ export default function NumberStepper({
           step={step}
           disabled={disabled}
           aria-label={label}
+          autoComplete="off"
           onChange={(e) => {
             setText(e.target.value);
             const num = Number(e.target.value);

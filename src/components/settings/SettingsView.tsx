@@ -85,6 +85,7 @@ export default function SettingsView() {
                 }}
                 placeholder="osk.exe"
                 aria-label="Executable to ignore"
+                autoComplete="off"
               />
               <button
                 type="button"

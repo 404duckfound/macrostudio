@@ -63,6 +63,7 @@ export function MouseInput({
                   value={x}
                   placeholder="0"
                   aria-label="Click X position"
+                  autoComplete="off"
                   onChange={(e) => onPatch({ x: Number(e.target.value) || 0 })}
                 />
                 <span className="mouse-coord-unit">px</span>
@@ -78,6 +79,7 @@ export function MouseInput({
                   value={y}
                   placeholder="0"
                   aria-label="Click Y position"
+                  autoComplete="off"
                   onChange={(e) => onPatch({ y: Number(e.target.value) || 0 })}
                 />
                 <span className="mouse-coord-unit">px</span>

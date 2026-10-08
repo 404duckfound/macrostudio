@@ -173,6 +173,7 @@ export default function MacrosView() {
                 aria-label="Macro name"
                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                 placeholder="Macro name"
+                autoComplete="off"
               />
               <div className="macro-add-row">
                 <select

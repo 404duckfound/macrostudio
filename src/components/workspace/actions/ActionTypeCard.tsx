@@ -139,6 +139,7 @@ export default function ActionTypeSelect({
               value={query}
               placeholder="Search action types..."
               aria-label="Search action types"
+              autoComplete="off"
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>

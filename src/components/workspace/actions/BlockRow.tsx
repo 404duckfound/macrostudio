@@ -52,6 +52,7 @@ export default function BlockRow({
                 className="delay-input"
                 value={block.ms}
                 aria-label="Delay milliseconds"
+                autoComplete="off"
                 onChange={(e) =>
                   onChange({ kind: "delay", ms: Number(e.target.value) || 0 })
                 }
