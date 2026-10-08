@@ -23,6 +23,10 @@ function cloneTriggers(triggers: Trigger[]): Trigger[] {
   return triggers.map((t) => ({
     shortcut: t.shortcut,
     block_key: t.block_key,
+    fire_on_release: t.fire_on_release,
+    mod_sides: { ...t.mod_sides },
+    wildcard: t.wildcard,
+    force_hook: t.force_hook,
     actions: t.actions.map((a) => ({ ...a })),
   }));
 }

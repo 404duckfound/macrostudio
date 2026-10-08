@@ -24,7 +24,7 @@ function App() {
           {view === "profiles" ? (
             <>
               <ProfileRail activeRun={activeRun} />
-              <Workspace activeRun={activeRun} />
+              <Workspace />
             </>
           ) : view === "macros" ? (
             <MacrosView />

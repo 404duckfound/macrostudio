@@ -47,8 +47,8 @@ pub struct Macro {
 #[serde(rename_all = "snake_case")]
 pub enum KeyBehavior {
     Tap,
-    HoldDown,
-    Release,
+    Hold,
+    Toggle,
 }
 
 fn default_behavior() -> KeyBehavior {
@@ -88,6 +88,13 @@ where
         .collect())
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ModSide {
+    Left,
+    Right,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Trigger {
     pub shortcut: String,
@@ -101,6 +108,21 @@ pub struct Trigger {
     // passthrough -- existing profiles lose blocking on upgrade, by design.
     #[serde(default)]
     pub block_key: bool,
+    // Fire when the key is released instead of pressed (" Up" suffix).
+    // Missing in older JSON, so old triggers keep firing on press.
+    #[serde(default)]
+    pub fire_on_release: bool,
+    // Either side fires by default; an entry pins one modifier
+    // ("Ctrl"/"Shift"/"Alt"/"Win") to its left or right key ("<" / ">").
+    #[serde(default)]
+    pub mod_sides: std::collections::HashMap<String, ModSide>,
+    // Fire even when extra modifiers are held ("*" prefix).
+    #[serde(default)]
+    pub wildcard: bool,
+    // Force the keyboard hook ("$" prefix), so Send cannot fire this
+    // hotkey itself.
+    #[serde(default)]
+    pub force_hook: bool,
 }
 
 /// Quotes `value` as an AHK double-quoted literal: quotes and backticks are
@@ -142,13 +164,30 @@ pub fn compile_to_ahk_v2(
     let blocks: Vec<&Trigger> = triggers
         .iter()
         .filter(|t| !t.shortcut.trim().is_empty())
-        .filter(|t| seen.insert(map_shortcut_to_ahk(t.shortcut.trim())))
+        .filter(|t| {
+            // Wildcard and release variants are distinct hotkeys; the hook
+            // prefix is not (it changes hook usage, not identity), so a
+            // hook-only difference collapses to the first trigger -- the
+            // same rule as an opposing block_key.
+            seen.insert(format!(
+                "{}{}{}",
+                if t.wildcard { "*" } else { "" },
+                map_trigger_hotkey(t.shortcut.trim(), &t.mod_sides),
+                if t.fire_on_release { " up" } else { "" }
+            ))
+        })
         .collect();
     for trigger in &blocks {
-        let prefix = if trigger.block_key { "" } else { "~" };
-        let key = format!("{prefix}{}", map_shortcut_to_ahk(trigger.shortcut.trim()));
+        let hook = if trigger.force_hook { "$" } else { "" };
+        let tilde = if trigger.block_key { "" } else { "~" };
+        let star = if trigger.wildcard { "*" } else { "" };
+        let up = if trigger.fire_on_release { " Up" } else { "" };
+        let key = format!(
+            "{hook}{tilde}{star}{}{up}",
+            map_trigger_hotkey(trigger.shortcut.trim(), &trigger.mod_sides)
+        );
         script.push_str(&format!("{key}::\n{{\n"));
-        for action in &trigger.actions {
+        for (action_idx, action) in trigger.actions.iter().enumerate() {
             match action {
                 Action::Mouse { button, x, y } => {
                     script.push_str(&mouse_click_line(button, *x, *y));
@@ -173,7 +212,14 @@ pub fn compile_to_ahk_v2(
                     pre_delay_ms,
                     repeat,
                 } => {
-                    script.push_str(&key_action_lines(key, *behavior, *pre_delay_ms, *repeat));
+                    script.push_str(&key_action_lines(
+                        key,
+                        *behavior,
+                        *pre_delay_ms,
+                        *repeat,
+                        trigger.shortcut.trim(),
+                        action_idx,
+                    ));
                 }
             }
         }
@@ -251,7 +297,21 @@ fn wrap_in_repeat(body: &str, repeat: u32) -> String {
     format!("    Loop {repeat}\n    {{\n{indented}    }}\n")
 }
 
-fn key_action_lines(key: &str, behavior: KeyBehavior, pre_delay_ms: u32, repeat: u32) -> String {
+/// The physical key a Hold waits on: KeyWait needs the main key, not the
+/// modifiers, so "Ctrl+F9" waits on F9 and "Ctrl+MouseLeft" on LButton.
+fn trigger_wait_key(shortcut: &str) -> String {
+    let main = key_parts(shortcut).last().copied().unwrap_or_default();
+    native_key_name(main)
+}
+
+fn key_action_lines(
+    key: &str,
+    behavior: KeyBehavior,
+    pre_delay_ms: u32,
+    repeat: u32,
+    trigger_shortcut: &str,
+    action_idx: usize,
+) -> String {
     let parts = key_parts(key);
     if parts.is_empty() {
         return String::new();
@@ -266,19 +326,37 @@ fn key_action_lines(key: &str, behavior: KeyBehavior, pre_delay_ms: u32, repeat:
                 .join("");
             wrap_in_repeat(&format!("    Send(\"{braces}\")\n"), repeat)
         }
-        KeyBehavior::HoldDown | KeyBehavior::Release => {
-            // AHK v2 has no KeyDown/KeyUp functions; holding a key is
-            // Send "{name down}". Using the v1 spelling made AHK parse the
-            // name as an unassigned local variable and warn instead of run.
-            let word = if behavior == KeyBehavior::HoldDown {
-                "down"
-            } else {
-                "up"
-            };
-            parts
+        KeyBehavior::Hold => {
+            // Down on fire, up when the trigger itself is physically
+            // released. Repeat is ignored: holding forever and repeating
+            // N times cannot both be true.
+            let downs: String = parts
                 .iter()
-                .map(|p| format!("    Send(\"{{{} {word}}}\")\n", native_key_name(p)))
-                .collect()
+                .map(|p| format!("    Send(\"{{{} down}}\")\n", native_key_name(p)))
+                .collect();
+            let ups: String = parts
+                .iter()
+                .rev()
+                .map(|p| format!("    Send(\"{{{} up}}\")\n", native_key_name(p)))
+                .collect();
+            format!("{downs}    KeyWait(\"{}\")\n{ups}", trigger_wait_key(trigger_shortcut))
+        }
+        KeyBehavior::Toggle => {
+            // Odd presses hold the target down, even presses release it.
+            // The flag is static so it survives across firings; the index
+            // keeps two toggle actions in one trigger from sharing it.
+            let downs: String = parts
+                .iter()
+                .map(|p| format!("        Send(\"{{{} down}}\")\n", native_key_name(p)))
+                .collect();
+            let ups: String = parts
+                .iter()
+                .rev()
+                .map(|p| format!("        Send(\"{{{} up}}\")\n", native_key_name(p)))
+                .collect();
+            format!(
+                "    static _tgl{action_idx} := false\n    _tgl{action_idx} := !_tgl{action_idx}\n    if (_tgl{action_idx})\n    {{\n{downs}    }}\n    else\n    {{\n{ups}    }}\n"
+            )
         }
     };
 
@@ -297,20 +375,34 @@ fn mouse_click_line(button: &str, x: i32, y: i32) -> String {
     }
 }
 
-fn map_shortcut_to_ahk(input: &str) -> String {
-    input
-        .split('+')
-        .map(|part| match part.trim() {
-            "Ctrl" => "^",
-            "Alt" => "!",
-            "Shift" => "+",
-            "Win" => "#",
-            "MouseLeft" => "LButton",
-            "MouseRight" => "RButton",
-            "MouseMiddle" => "MButton",
-            "MouseX1" => "XButton1",
-            "MouseX2" => "XButton2",
-            other => other,
+/// Maps a recorded shortcut to its AHK hotkey form, pinning any sided
+/// modifiers to their left ("<") or right (">") key. "Meta" shares Win's
+/// entry; anything else maps exactly like the plain form.
+fn map_trigger_hotkey(
+    input: &str,
+    sides: &std::collections::HashMap<String, ModSide>,
+) -> String {
+    key_parts(input)
+        .iter()
+        .map(|part| {
+            let side_key = if *part == "Meta" { "Win" } else { part };
+            let angle = match sides.get(side_key) {
+                Some(ModSide::Left) => "<",
+                Some(ModSide::Right) => ">",
+                None => "",
+            };
+            match part.trim() {
+                "Ctrl" => format!("{angle}^"),
+                "Alt" => format!("{angle}!"),
+                "Shift" => format!("{angle}+"),
+                "Win" => format!("{angle}#"),
+                "MouseLeft" => "LButton".to_string(),
+                "MouseRight" => "RButton".to_string(),
+                "MouseMiddle" => "MButton".to_string(),
+                "MouseX1" => "XButton1".to_string(),
+                "MouseX2" => "XButton2".to_string(),
+                other => other.to_string(),
+            }
         })
         .collect::<Vec<_>>()
         .join("")
@@ -325,6 +417,10 @@ mod tests {
             shortcut: shortcut.to_string(),
             actions,
             block_key: true,
+            fire_on_release: false,
+            mod_sides: std::collections::HashMap::new(),
+            wildcard: false,
+            force_hook: false,
         }
     }
 
@@ -333,6 +429,10 @@ mod tests {
             shortcut: shortcut.to_string(),
             actions,
             block_key: false,
+            fire_on_release: false,
+            mod_sides: std::collections::HashMap::new(),
+            wildcard: false,
+            force_hook: false,
         }
     }
 
@@ -548,13 +648,43 @@ mod tests {
         assert!(!out.contains("Loop"));
     }
 
+    // Hold keeps the target down while the trigger itself is physically held:
+    // down, wait for the trigger's release, then up -- in that order.
     #[test]
-    fn key_hold_down_and_release_emit_key_events() {
-        let down = compile_to_ahk_v2(&[trig("F9", vec![key_action("Ctrl+Alt", KeyBehavior::HoldDown, 0, 1)])], TEST_TITLE, &[]);
-        assert!(down.contains("    Send(\"{LCtrl down}\")\n    Send(\"{LAlt down}\")\n"));
+    fn key_hold_keeps_target_down_while_trigger_held() {
+        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("a", KeyBehavior::Hold, 0, 1)])], TEST_TITLE, &[]);
+        let down = out.find("Send(\"{a down}\")").unwrap();
+        let wait = out.find("KeyWait(\"F9\")").unwrap();
+        let up = out.find("Send(\"{a up}\")").unwrap();
+        assert!(down < wait && wait < up);
+    }
 
-        let up = compile_to_ahk_v2(&[trig("F9", vec![key_action("Ctrl+Alt", KeyBehavior::Release, 0, 1)])], TEST_TITLE, &[]);
-        assert!(up.contains("    Send(\"{LCtrl up}\")\n    Send(\"{LAlt up}\")\n"));
+    // A combo trigger waits on its main key, not the modifiers.
+    #[test]
+    fn key_hold_uses_main_key_of_combo_trigger() {
+        let out = compile_to_ahk_v2(&[trig("Ctrl+F9", vec![key_action("a", KeyBehavior::Hold, 0, 1)])], TEST_TITLE, &[]);
+        assert!(out.contains("    KeyWait(\"F9\")\n"));
+    }
+
+    // Toggle flips a per-hotkey flag: odd presses hold the target down,
+    // even presses release it.
+    #[test]
+    fn key_toggle_flips_with_static_flag() {
+        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("a", KeyBehavior::Toggle, 0, 1)])], TEST_TITLE, &[]);
+        assert!(out.contains("static "));
+        assert!(out.contains("Send(\"{a down}\")\n"));
+        assert!(out.contains("Send(\"{a up}\")\n"));
+    }
+
+    // Repeating forever while held/toggled makes no sense, so repeat is
+    // ignored there and only Tap loops.
+    #[test]
+    fn key_hold_and_toggle_ignore_repeat() {
+        let held = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::Hold, 0, 9)])], TEST_TITLE, &[]);
+        assert!(!held.contains("Loop"));
+
+        let toggled = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::Toggle, 0, 9)])], TEST_TITLE, &[]);
+        assert!(!toggled.contains("Loop"));
     }
 
     #[test]
@@ -574,8 +704,8 @@ mod tests {
         let upper = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::Tap, 0, 1)])], TEST_TITLE, &[]);
         assert!(upper.contains("    Send(\"{A}\")\n"));
 
-        // Hold/release fiziksel tus adidir; AHK'ta case duyarsiz.
-        let held = compile_to_ahk_v2(&[trig("F9", vec![key_action("a", KeyBehavior::HoldDown, 0, 1)])], TEST_TITLE, &[]);
+        // Hold/Toggle fiziksel tus adidir; AHK'ta case duyarsiz.
+        let held = compile_to_ahk_v2(&[trig("F9", vec![key_action("a", KeyBehavior::Hold, 0, 1)])], TEST_TITLE, &[]);
         assert!(held.contains("    Send(\"{a down}\")\n"));
     }
 
@@ -592,7 +722,7 @@ mod tests {
         assert!(zero.contains("    Send(\"{Enter}\")\n"));
         assert!(!zero.contains("Loop"));
 
-        let held = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::HoldDown, 0, 9)])], TEST_TITLE, &[]);
+        let held = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::Hold, 0, 9)])], TEST_TITLE, &[]);
         assert!(held.contains("    Send(\"{A down}\")\n"));
         assert!(!held.contains("Loop"));
     }
@@ -620,6 +750,31 @@ mod tests {
             }
             other => panic!("beklenen Key, gelen {other:?}"),
         }
+    }
+
+    // HoldDown/Release are removed: old manual down/up actions drop on parse
+    // so the profile itself stays loadable. Single-trigger Hold/Toggle are
+    // their replacement.
+    #[test]
+    fn legacy_holddown_release_actions_are_dropped_on_parse() {
+        let old = serde_json::json!({
+            "shortcut": "F9", "block_key": false,
+            "actions": [
+                {"type": "key", "key": "a", "behavior": "hold_down"},
+                {"type": "mouse", "button": "Left", "x": 0, "y": 0}
+            ]
+        });
+        let t: Trigger = serde_json::from_value(old).unwrap();
+        assert_eq!(t.actions.len(), 1);
+
+        let old = serde_json::json!({
+            "shortcut": "F9", "block_key": false,
+            "actions": [
+                {"type": "key", "key": "a", "behavior": "release"}
+            ]
+        });
+        let t: Trigger = serde_json::from_value(old).unwrap();
+        assert!(t.actions.is_empty());
     }
 
     // Old profiles carry {"type":"custom"} actions. Customs are dropped on
@@ -699,6 +854,112 @@ mod tests {
             Action::MacroRef { macro_id } => assert_eq!(macro_id, "m1"),
             other => panic!("beklenen MacroRef, gelen {other:?}"),
         }
+    }
+
+    // Fire-on-release appends the Up suffix: F9 becomes "F9 Up::".
+    #[test]
+    fn up_suffix_fires_on_release() {
+        let mut t = trig("F9", vec![]);
+        t.fire_on_release = true;
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        assert!(out.contains("F9 Up::\n"));
+    }
+
+    // A left/right side on a modifier emits the angle prefix: left Ctrl
+    // plus F9 becomes "<^F9::".
+    #[test]
+    fn modifier_side_emits_angle_prefix() {
+        let mut t = trig("Ctrl+F9", vec![]);
+        t.mod_sides.insert("Ctrl".to_string(), ModSide::Left);
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        assert!(out.contains("<^F9::\n"));
+
+        let mut t = trig("Alt+F9", vec![]);
+        t.mod_sides.insert("Alt".to_string(), ModSide::Right);
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        assert!(out.contains(">!F9::\n"));
+    }
+
+    // What the recorder stores for AltGr+M: a plain combo plus left-Ctrl /
+    // right-Alt sides, which is exactly the "<^>!" AltGr form.
+    #[test]
+    fn altgr_records_as_left_ctrl_right_alt() {
+        let mut t = trig("Ctrl+Alt+M", vec![]);
+        t.mod_sides.insert("Ctrl".to_string(), ModSide::Left);
+        t.mod_sides.insert("Alt".to_string(), ModSide::Right);
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        assert!(out.contains("<^>!M::\n"));
+    }
+
+    // Down and Up variants of the same shortcut are distinct hotkeys, so
+    // deduplication must not collapse them.
+    #[test]
+    fn up_and_down_variants_coexist() {
+        let mut released = trig("F9", vec![]);
+        released.fire_on_release = true;
+        let out = compile_to_ahk_v2(&[trig("F9", vec![]), released], TEST_TITLE, &[]);
+        assert_eq!(out.matches("F9 Up::").count(), 1);
+        assert_eq!(out.matches("::\n").count(), 2);
+    }
+
+    // Triggers written before these fields existed parse as plain
+    // press-down, either-side hotkeys.
+    #[test]
+    fn trigger_modifiers_default_to_plain_press() {
+        let old = serde_json::json!({
+            "shortcut": "F9", "block_key": false, "actions": []
+        });
+        let t: Trigger = serde_json::from_value(old).unwrap();
+        assert!(!t.fire_on_release);
+        assert!(t.mod_sides.is_empty());
+        assert!(!t.wildcard);
+        assert!(!t.force_hook);
+    }
+
+    // Wildcard fires even when extra modifiers are held ("*F9::").
+    #[test]
+    fn wildcard_prefix_fires_with_extra_modifiers() {
+        let mut t = trig("F9", vec![]);
+        t.wildcard = true;
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        assert!(out.contains("*F9::\n"));
+    }
+
+    // The hook prefix stops Send from firing the hotkey itself ("$F9::").
+    #[test]
+    fn hook_prefix_forces_keyboard_hook() {
+        let mut t = trig("F9", vec![]);
+        t.force_hook = true;
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        assert!(out.contains("$F9::\n"));
+    }
+
+    // Prefixes stack in one order: hook, passthrough, wildcard ("$~*",
+    // matching the "$#z" convention of the dollar-first examples).
+    #[test]
+    fn prefixes_stack_in_canonical_order() {
+        let mut t = passthrough("F9", vec![]);
+        t.wildcard = true;
+        t.force_hook = true;
+        t.fire_on_release = true;
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        assert!(out.contains("$~*F9 Up::\n"));
+    }
+
+    // A wildcard variant is a distinct hotkey from the plain one, so both
+    // survive. A hook-only difference is not: "$" changes hook usage, not
+    // identity, so the first trigger wins (same rule as block_key).
+    #[test]
+    fn wildcard_variants_coexist_hook_only_collapses() {
+        let mut wild = trig("F9", vec![]);
+        wild.wildcard = true;
+        let out = compile_to_ahk_v2(&[trig("F9", vec![]), wild], TEST_TITLE, &[]);
+        assert_eq!(out.matches("::\n").count(), 2);
+
+        let mut hooked = trig("F9", vec![]);
+        hooked.force_hook = true;
+        let out = compile_to_ahk_v2(&[trig("F9", vec![]), hooked], TEST_TITLE, &[]);
+        assert_eq!(out.matches("::\n").count(), 1);
     }
 
     // Type Text is removed: old {"type":"keys"} actions drop on parse so the

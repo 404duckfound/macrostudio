@@ -10,11 +10,15 @@ type KeyAction = Extract<MacroAction, { type: "key" }>;
 const BEHAVIORS: { value: KeyBehavior; label: string; desc: string }[] = [
   { value: "tap", label: "Tap", desc: "Standard press" },
   {
-    value: "hold_down",
-    label: "Hold Down",
-    desc: "Stays pressed until released",
+    value: "hold",
+    label: "Hold",
+    desc: "Held down while the trigger is held",
   },
-  { value: "release", label: "Release", desc: "Releases a held key" },
+  {
+    value: "toggle",
+    label: "Toggle",
+    desc: "Press once to hold, again to release",
+  },
 ];
 
 export default function KeyActionEditor({

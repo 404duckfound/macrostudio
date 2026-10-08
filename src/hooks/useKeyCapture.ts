@@ -11,7 +11,7 @@ interface KeyCaptureOptions {
 
 export function useKeyCapture(
   active: boolean,
-  onCapture: (combo: string) => void,
+  onCapture: (combo: string, altGr?: boolean) => void,
   onCancel: () => void,
   { preserveCase = false, ignoreLeftClick = false }: KeyCaptureOptions = {},
 ) {
@@ -23,8 +23,8 @@ export function useKeyCapture(
         onCancel();
         return;
       }
-      const combo = keyEventToTrigger(e, preserveCase);
-      if (combo) onCapture(combo);
+      const captured = keyEventToTrigger(e, preserveCase);
+      if (captured) onCapture(captured.combo, captured.altGr);
     }
     function onMouse(e: MouseEvent) {
       if (ignoreLeftClick && e.button === 0) return;

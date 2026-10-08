@@ -1,4 +1,4 @@
-import type { Macro, MacroAction, Trigger } from "../../types";
+import type { Macro, MacroAction, ModSide, Trigger } from "../../types";
 
 // Actions the UI can no longer edit or compile (removed types like custom
 // and keys, or unknown future ones) are dropped on clean/save, mirroring the
@@ -7,6 +7,20 @@ const EDITABLE_ACTION_TYPES = new Set(["key", "mouse", "macro", "script"]);
 
 function isDroppedAction(a: MacroAction): boolean {
   return !EDITABLE_ACTION_TYPES.has((a as { type: string }).type);
+}
+
+// Sides for modifiers no longer in the shortcut are meaningless (the
+// generator only looks up parts that are present), so drop them.
+export function pruneSides(
+  shortcut: string,
+  sides: Record<string, ModSide>,
+): Record<string, ModSide> {
+  const parts = new Set(shortcut.split("+").map((p) => p.trim()));
+  const out: Record<string, ModSide> = {};
+  for (const [mod, side] of Object.entries(sides ?? {})) {
+    if (parts.has(mod)) out[mod] = side;
+  }
+  return out;
 }
 
 export function cleanDraft(drafts: Trigger[]): Trigger[] {
@@ -20,6 +34,10 @@ export function cleanDraft(drafts: Trigger[]): Trigger[] {
       shortcut,
       actions: t.actions.filter((a) => !isDroppedAction(a)).map((a) => ({ ...a })),
       block_key: t.block_key,
+      fire_on_release: t.fire_on_release ?? false,
+      mod_sides: pruneSides(shortcut, t.mod_sides),
+      wildcard: t.wildcard ?? false,
+      force_hook: t.force_hook ?? false,
     });
   }
   return out;
@@ -30,6 +48,10 @@ export function toDrafts(triggers: Trigger[] | undefined): Trigger[] {
   return triggers.map((t) => ({
     shortcut: t.shortcut,
     block_key: t.block_key,
+    fire_on_release: t.fire_on_release ?? false,
+    mod_sides: { ...(t.mod_sides ?? {}) },
+    wildcard: t.wildcard ?? false,
+    force_hook: t.force_hook ?? false,
     actions: t.actions.filter((a) => !isDroppedAction(a)).slice(0, 1).map((a) => ({ ...a })),
   }));
 }

@@ -16,12 +16,12 @@ import {
 import { useProfileStore } from "../../stores/useProfileStore";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
-import type { Macro, MacroAction, Profile, Trigger } from "../../types";
+import type { Macro, MacroAction, ModSide, Profile, Trigger } from "../../types";
 import ActionEditor from "./actions/ActionEditor";
 import ActionTypeCard from "./actions/ActionTypeCard";
-import BlockKeyToggle from "./BlockKeyToggle";
 import Chips from "./Chips";
 import ShortcutField from "./ShortcutField";
+import TriggerModifiers from "./TriggerModifiers";
 import { cleanDraft, toDrafts } from "./triggerDraft";
 
 function actionPreviewLabel(
@@ -44,11 +44,17 @@ function actionPreviewLabel(
   }
 }
 
-export default function Workspace({
-  activeRun,
-}: {
-  activeRun?: { id: string; ok: boolean } | null;
-}) {
+// AltGr is LeftCtrl + RightAlt physically: pin the recorded combo to those
+// sides so the trigger fires on AltGr alone instead of any Ctrl+Alt.
+function altGrSides(combo: string): Record<string, ModSide> {
+  const parts = combo.split("+").map((p) => p.trim());
+  const sides: Record<string, ModSide> = {};
+  if (parts.includes("Ctrl")) sides["Ctrl"] = "left";
+  if (parts.includes("Alt")) sides["Alt"] = "right";
+  return sides;
+}
+
+export default function Workspace() {
   const activeId = useProfileStore((s) => s.activeId);
   const profiles = useProfileStore((s) => s.profiles);
   const macros = useProfileStore((s) => s.macros);
@@ -72,7 +78,7 @@ export default function Workspace({
   const selected = draftTriggers[sel] ?? null;
 
   const captureShortcut = useCallback(
-    (combo: string) => {
+    (combo: string, altGr = false) => {
       const clash = draftTriggers.some(
         (x, i) => i !== sel && x.shortcut.trim() === combo.trim(),
       );
@@ -83,7 +89,11 @@ export default function Workspace({
       }
       setShortcutError(null);
       setDraftTriggers((prev) =>
-        prev.map((x, i) => (i === sel ? { ...x, shortcut: combo } : x)),
+        prev.map((x, i) =>
+          i === sel
+            ? { ...x, shortcut: combo, ...(altGr ? { mod_sides: altGrSides(combo) } : {}) }
+            : x,
+        ),
       );
       setRecording(false);
     },
@@ -113,7 +123,7 @@ export default function Workspace({
   function addTrigger() {
     setDraftTriggers((prev) => [
       ...prev,
-      { shortcut: "", actions: [], block_key: false },
+      { shortcut: "", actions: [], block_key: false, fire_on_release: false, mod_sides: {}, wildcard: false, force_hook: false },
     ]);
     setSelectedIdx(draftTriggers.length);
   }
@@ -221,16 +231,6 @@ export default function Workspace({
                     Global (All Windows)
                   </span>
                 )}
-                {activeRun?.id === active.id && (
-                  <span
-                    className={`telemetry-badge ${
-                      activeRun.ok ? "telemetry-active" : "telemetry-error"
-                    }`}
-                  >
-                    <span className="telemetry-dot" />
-                    {activeRun.ok ? "Engine Active" : "Engine Error"}
-                  </span>
-                )}
               </div>
               <div className="flow-profile-sub-row">
                 <span className="flow-trigger-counter">
@@ -305,12 +305,6 @@ export default function Workspace({
             <Plus aria-hidden="true" />
             <span>Add new trigger</span>
           </button>
-          {draftTriggers.length === 1 && (
-            <div className="flow-canvas-tip" role="note">
-              <span className="flow-canvas-tip-mark" aria-hidden="true" />
-              <span>Use the inspector to edit this trigger’s shortcut and action.</span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -356,13 +350,13 @@ export default function Workspace({
                     <span>A trigger has an empty or duplicated shortcut. It will be omitted on save.</span>
                   </div>
                 )}
-                <BlockKeyToggle
-                  value={selected.block_key}
-                  onChange={(block_key) =>
-                    patchSelected((x) => ({ ...x, block_key }))
-                  }
-                />
               </section>
+
+              <TriggerModifiers
+                key={sel}
+                trigger={selected}
+                onPatch={patchSelected}
+              />
 
               <section className="inspector-section">
                 <div className="section-head">

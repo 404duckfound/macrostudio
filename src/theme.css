@@ -757,36 +757,6 @@ textarea:focus {
   flex-direction: column;
 }
 
-.flow-canvas-tip {
-  align-self: center;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  max-width: 360px;
-  margin: 78px 16px 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 18px;
-  text-align: center;
-}
-.flow-canvas-tip-mark {
-  position: relative;
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
-  border: 1px solid var(--border-default);
-  border-radius: 7px;
-  background: var(--bg-surface);
-}
-.flow-canvas-tip-mark::before {
-  content: "";
-  position: absolute;
-  inset: 6px;
-  border-radius: 50%;
-  background: var(--accent-primary);
-  opacity: 0.8;
-}
-
 .flow-head {
   padding-bottom: 20px;
   margin-bottom: 12px;
@@ -860,32 +830,6 @@ textarea:focus {
 .scope-badge-icon {
   width: 13px;
   height: 13px;
-}
-
-.telemetry-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 500;
-  border-radius: 6px;
-  padding: 2px 8px;
-}
-.telemetry-active {
-  color: var(--status-success);
-  background: rgba(61, 220, 151, 0.1);
-  border: 1px solid rgba(61, 220, 151, 0.3);
-}
-.telemetry-error {
-  color: var(--status-danger);
-  background: rgba(255, 95, 107, 0.1);
-  border: 1px solid rgba(255, 95, 107, 0.3);
-}
-.telemetry-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
 }
 
 /* ==========================================================================
@@ -1174,6 +1118,46 @@ textarea:focus {
 }
 .link-btn:hover {
   text-decoration: underline;
+}
+
+.section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.section-toggle .section-label {
+  flex: 1;
+  text-align: left;
+}
+.section-summary {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.section-chevron svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+  color: var(--text-secondary);
+}
+.mod-side-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.mod-side-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.mod-side-segmented {
+  flex: 0 0 210px;
 }
 
 .inspector-foot {

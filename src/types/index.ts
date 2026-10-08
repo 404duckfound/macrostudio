@@ -2,7 +2,7 @@ export type ActionBlock =
   | { kind: "mouse"; button: string; x: number; y: number }
   | { kind: "delay"; ms: number };
 
-export type KeyBehavior = "tap" | "hold_down" | "release";
+export type KeyBehavior = "tap" | "hold" | "toggle";
 
 export type MacroAction =
   | {
@@ -22,10 +22,16 @@ export interface Macro {
   blocks: ActionBlock[];
 }
 
+export type ModSide = "left" | "right";
+
 export interface Trigger {
   shortcut: string;
   actions: MacroAction[];
   block_key: boolean;
+  fire_on_release: boolean;
+  mod_sides: Record<string, ModSide>;
+  wildcard: boolean;
+  force_hook: boolean;
 }
 
 export interface Profile {

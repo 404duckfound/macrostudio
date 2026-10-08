@@ -29,19 +29,43 @@ const KEY_EVENT_ALIASES: Record<string, string> = {
   ArrowRight: "Right",
 };
 
+export interface CapturedCombo {
+  combo: string;
+  // True while AltGraph is held: the trigger needs left-Ctrl + right-Alt
+  // sides to fire on AltGr alone instead of any Ctrl+Alt.
+  altGr: boolean;
+}
+
 export function keyEventToTrigger(
   e: KeyboardEvent,
   preserveCase = false,
-): string | null {
+): CapturedCombo | null {
   if (e.key === "Escape") return null;
-  if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return null;
-  let key = KEY_EVENT_ALIASES[e.key] ?? e.key;
-  if (key === " ") key = "Space";
-  else if (!preserveCase) {
-    if (key.length === 1) key = key.toUpperCase();
-    else key = key.charAt(0).toUpperCase() + key.slice(1);
+  if (["Control", "Shift", "Alt", "Meta", "AltGraph"].includes(e.key)) {
+    return null;
   }
-  return [...heldModifiers(e), key].join("+");
+  const altGr =
+    typeof e.getModifierState === "function" &&
+    e.getModifierState("AltGraph");
+  let key: string;
+  if (altGr && !preserveCase) {
+    // AltGraph produces a layout char (e.g. "@"); the trigger must name the
+    // physical key, so derive it from the code (KeyM -> M, Digit2 -> 2).
+    const codeKey =
+      /^Key([A-Z])$/.exec(e.code)?.[1] ?? /^Digit([0-9])$/.exec(e.code)?.[1];
+    const raw = codeKey ?? KEY_EVENT_ALIASES[e.key] ?? e.key;
+    if (raw === " ") key = "Space";
+    else if (raw.length === 1) key = raw.toUpperCase();
+    else key = raw.charAt(0).toUpperCase() + raw.slice(1);
+  } else {
+    key = KEY_EVENT_ALIASES[e.key] ?? e.key;
+    if (key === " ") key = "Space";
+    else if (!preserveCase) {
+      if (key.length === 1) key = key.toUpperCase();
+      else key = key.charAt(0).toUpperCase() + key.slice(1);
+    }
+  }
+  return { combo: [...heldModifiers(e), key].join("+"), altGr };
 }
 
 const MOUSE_EVENT_BUTTONS = [
