@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import appIcon from "../../assets/app-icon.png";
 
-// Windows-style caption glyphs: 10x10 grid, 1px stroke, sharp corners.
-// Lucide's Minus/Square/X render at mismatched visual weights; these stay
-// consistent with each other at any size.
+// Windows-style caption glyphs: 10x10 grid rendered at exactly 10px, so
+// one unit maps to one pixel. Orthogonal strokes sit on half-pixel
+// coordinates for crisp 1px edges; diagonals get a slightly heavier stroke
+// because a 1px diagonal only covers ~0.7px per pixel and reads thinner.
 function MinimizeGlyph() {
   return (
     <svg viewBox="0 0 10 10" aria-hidden="true">
@@ -17,10 +18,10 @@ function MaximizeGlyph() {
   return (
     <svg viewBox="0 0 10 10" aria-hidden="true">
       <rect
-        x="1"
-        y="1"
-        width="8"
-        height="8"
+        x="1.5"
+        y="1.5"
+        width="7"
+        height="7"
         fill="none"
         stroke="currentColor"
         strokeWidth="1"
@@ -33,7 +34,7 @@ function RestoreGlyph() {
   return (
     <svg viewBox="0 0 10 10" aria-hidden="true">
       <path
-        d="M3 0.5h6v6M1 2.5h6v6H1z"
+        d="M2.5 0.5h6v6M0.5 2.5h6v6H0.5z"
         fill="none"
         stroke="currentColor"
         strokeWidth="1"
@@ -48,7 +49,7 @@ function CloseGlyph() {
       <path
         d="M1 1l8 8M9 1l-8 8"
         stroke="currentColor"
-        strokeWidth="1"
+        strokeWidth="1.3"
       />
     </svg>
   );
