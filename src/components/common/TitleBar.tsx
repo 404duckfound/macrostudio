@@ -1,7 +1,58 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Copy, Minus, Square, X } from "lucide-react";
 import appIcon from "../../assets/app-icon.png";
+
+// Windows-style caption glyphs: 10x10 grid, 1px stroke, sharp corners.
+// Lucide's Minus/Square/X render at mismatched visual weights; these stay
+// consistent with each other at any size.
+function MinimizeGlyph() {
+  return (
+    <svg viewBox="0 0 10 10" aria-hidden="true">
+      <path d="M1 8.5h8" stroke="currentColor" strokeWidth="1" />
+    </svg>
+  );
+}
+
+function MaximizeGlyph() {
+  return (
+    <svg viewBox="0 0 10 10" aria-hidden="true">
+      <rect
+        x="1"
+        y="1"
+        width="8"
+        height="8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+      />
+    </svg>
+  );
+}
+
+function RestoreGlyph() {
+  return (
+    <svg viewBox="0 0 10 10" aria-hidden="true">
+      <path
+        d="M3 0.5h6v6M1 2.5h6v6H1z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+      />
+    </svg>
+  );
+}
+
+function CloseGlyph() {
+  return (
+    <svg viewBox="0 0 10 10" aria-hidden="true">
+      <path
+        d="M1 1l8 8M9 1l-8 8"
+        stroke="currentColor"
+        strokeWidth="1"
+      />
+    </svg>
+  );
+}
 
 export default function TitleBar() {
   const [maximized, setMaximized] = useState(false);
@@ -86,7 +137,7 @@ export default function TitleBar() {
           title="Minimize"
           onClick={minimize}
         >
-          <Minus aria-hidden="true" />
+          <MinimizeGlyph />
         </button>
         <button
           type="button"
@@ -95,11 +146,7 @@ export default function TitleBar() {
           title={maximized ? "Restore" : "Maximize"}
           onClick={toggleMaximize}
         >
-          {maximized ? (
-            <Copy aria-hidden="true" />
-          ) : (
-            <Square aria-hidden="true" />
-          )}
+          {maximized ? <RestoreGlyph /> : <MaximizeGlyph />}
         </button>
         <button
           type="button"
@@ -108,7 +155,7 @@ export default function TitleBar() {
           title="Close"
           onClick={close}
         >
-          <X aria-hidden="true" />
+          <CloseGlyph />
         </button>
       </div>
     </header>
