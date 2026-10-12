@@ -3,6 +3,7 @@ import { KeyRound } from "lucide-react";
 import { useKeyCapture } from "../../../hooks/useKeyCapture";
 import { keyChipLabel, keyParts } from "../../../lib/keymap";
 import type { KeyBehavior, MacroAction } from "../../../types";
+import KeyPicker from "../KeyPicker";
 import NumberStepper from "./NumberStepper";
 
 type KeyAction = Extract<MacroAction, { type: "key" }>;
@@ -29,6 +30,7 @@ export default function KeyActionEditor({
   onChange: (a: MacroAction) => void;
 }) {
   const [picking, setPicking] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const parts = keyParts(action.key);
   const current =
     BEHAVIORS.find((b) => b.value === action.behavior) ?? BEHAVIORS[0];
@@ -53,19 +55,46 @@ export default function KeyActionEditor({
     });
   }
 
+  function startRecord() {
+    setPickerOpen(false);
+    setPicking(true);
+  }
+
+  function openPicker() {
+    if (picking) return;
+    setPickerOpen((v) => !v);
+  }
+
+  function pickKey(combo: string) {
+    onChange({ ...action, key: combo });
+  }
+
   function clearKey() {
     onChange({ ...action, key: "" });
   }
 
   return (
     <div className="key-editor">
+      <div className="key-picker-wrap">
       <div className={`key-target ${picking ? "key-target-picking" : ""}`}>
         <span className="key-target-icon" aria-hidden="true">
           <KeyRound />
         </span>
         <div className="key-target-text">
           <span className="action-group-label">Key target</span>
-          <div className="key-target-chips">
+          <div
+            className="key-target-chips key-picker-open-area"
+            role="button"
+            tabIndex={picking ? -1 : 0}
+            title="Click to pick a key manually"
+            onClick={openPicker}
+            onKeyDown={(e) => {
+              if ((e.key === "Enter" || e.key === " ") && !picking) {
+                e.preventDefault();
+                openPicker();
+              }
+            }}
+          >
             {picking ? (
               <span className="trigger-recording-hint">
                 Press a key on your keyboard… (Esc to cancel)
@@ -96,11 +125,20 @@ export default function KeyActionEditor({
           <button
             type="button"
             className={`btn-record ${picking ? "btn-record-on" : ""}`}
-            onClick={() => setPicking(true)}
+            onClick={startRecord}
           >
             {picking ? "Listening…" : parts.length > 0 ? "Change Key" : "Record Key"}
           </button>
         </div>
+      </div>
+      <KeyPicker
+        open={pickerOpen && !picking}
+        currentCombo={action.key}
+        preserveCase
+        excludeLeftMouse={false}
+        onSelect={pickKey}
+        onClose={() => setPickerOpen(false)}
+      />
       </div>
 
       <div className="behavior-head">

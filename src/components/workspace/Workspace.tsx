@@ -65,6 +65,7 @@ export default function Workspace() {
   );
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [recording, setRecording] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
 
@@ -72,6 +73,7 @@ export default function Workspace() {
     setDraftTriggers(toDrafts(active?.triggers));
     setSelectedIdx(0);
     setRecording(false);
+    setPickerOpen(false);
   }, [active?.id, active?.triggers]);
 
   const sel = Math.min(selectedIdx, Math.max(0, draftTriggers.length - 1));
@@ -101,6 +103,48 @@ export default function Workspace() {
   );
 
   const cancelCapture = useCallback(() => setRecording(false), []);
+
+  // Manual picker writes use the identical clash rule as Record. Manual
+  // ticks carry no side info, so stale sides for removed modifiers are
+  // pruned; sides for remaining modifiers are kept (AltGr record followed
+  // by a manual tick must not lose its left/right pins).
+  const applyPickerShortcut = useCallback(
+    (combo: string) => {
+      const clash = draftTriggers.some(
+        (x, i) => i !== sel && x.shortcut.trim() === combo.trim(),
+      );
+      if (clash) {
+        setShortcutError(`"${combo.trim()}" is already used by another trigger.`);
+        setPickerOpen(false);
+        return;
+      }
+      setShortcutError(null);
+      const keep = new Set(combo.split("+").map((p) => p.trim()));
+      setDraftTriggers((prev) =>
+        prev.map((x, i) => {
+          if (i !== sel) return x;
+          const mod_sides: Record<string, ModSide> = {};
+          for (const [mod, side] of Object.entries(x.mod_sides ?? {})) {
+            if (keep.has(mod)) mod_sides[mod] = side;
+          }
+          return { ...x, shortcut: combo, mod_sides };
+        }),
+      );
+    },
+    [draftTriggers, sel],
+  );
+
+  function openPicker() {
+    setRecording(false);
+    setShortcutError(null);
+    setPickerOpen(true);
+  }
+
+  function startRecording() {
+    setPickerOpen(false);
+    setShortcutError(null);
+    setRecording(true);
+  }
 
   useKeyCapture(recording, captureShortcut, cancelCapture, {
     ignoreLeftClick: true,
@@ -132,6 +176,7 @@ export default function Workspace() {
     setDraftTriggers((prev) => prev.filter((_, i) => i !== sel));
     setSelectedIdx(Math.max(0, sel - 1));
     setRecording(false);
+    setPickerOpen(false);
   }
 
   function setSingleAction(next: MacroAction | null) {
@@ -189,6 +234,7 @@ export default function Workspace() {
     setDraftTriggers(toDrafts(active?.triggers));
     setSelectedIdx(0);
     setRecording(false);
+    setPickerOpen(false);
     setShortcutError(null);
   }
 
@@ -258,6 +304,7 @@ export default function Workspace() {
                   onClick={() => {
                     setSelectedIdx(i);
                     setRecording(false);
+                    setPickerOpen(false);
                   }}
                   title="Click to select trigger"
                 >
@@ -336,12 +383,13 @@ export default function Workspace() {
                 </div>
                 <ShortcutField
                   parts={selectedChips}
+                  combo={selected?.shortcut ?? ""}
                   recording={recording}
-                  onRecord={() => {
-                    setShortcutError(null);
-                    setRecording(true);
-                  }}
-                  onClear={clearSelectedShortcut}
+                  pickerOpen={pickerOpen}
+                  onRecord={startRecording}
+                  onPickerOpen={openPicker}
+                  onPickerSelect={applyPickerShortcut}
+                  onPickerClose={() => setPickerOpen(false)}
                   error={shortcutError}
                 />
                 {willDropCard && (

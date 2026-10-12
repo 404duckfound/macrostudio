@@ -395,7 +395,7 @@ fn map_trigger_hotkey(
                 "Ctrl" => format!("{angle}^"),
                 "Alt" => format!("{angle}!"),
                 "Shift" => format!("{angle}+"),
-                "Win" => format!("{angle}#"),
+                "Win" | "Meta" => format!("{angle}#"),
                 "MouseLeft" => "LButton".to_string(),
                 "MouseRight" => "RButton".to_string(),
                 "MouseMiddle" => "MButton".to_string(),
@@ -612,6 +612,27 @@ mod tests {
     fn duplicate_triggers_emit_single_hotkey() {
         let out = compile_to_ahk_v2(&[trig("F9", vec![]), trig("F9", vec![])], TEST_TITLE, &[]);
         assert_eq!(out.matches("F9::").count(), 1);
+    }
+
+    // The frontend labels the Windows key "Meta" (see heldModifiers in
+    // keys.ts); it must compile to the Win hotkey prefix, same as "Win".
+    #[test]
+    fn meta_label_maps_to_win_hotkey() {
+        let out = compile_to_ahk_v2(&[trig("Meta+F9", vec![])], TEST_TITLE, &[]);
+        assert!(out.contains("#F9::\n"));
+        assert!(!out.contains("MetaF9"));
+    }
+
+    // F13-F24 pass through the hotkey side verbatim.
+    #[test]
+    fn f13_to_f24_pass_through_hotkey() {
+        let out = compile_to_ahk_v2(&[
+                trig("F13", vec![]),
+                trig("Ctrl+F24", vec![]),
+            ],
+            TEST_TITLE, &[]);
+        assert!(out.contains("\nF13::\n"));
+        assert!(out.contains("\n^F24::\n"));
     }
 
     #[test]
