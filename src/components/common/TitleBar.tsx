@@ -3,13 +3,14 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import appIcon from "../../assets/app-icon.png";
 
 // Windows-style caption glyphs: 10x10 grid rendered at exactly 10px, so
-// one unit maps to one pixel. Orthogonal strokes sit on half-pixel
-// coordinates for crisp 1px edges; diagonals get a slightly heavier stroke
-// because a 1px diagonal only covers ~0.7px per pixel and reads thinner.
+// one unit maps to one pixel. All three glyphs share the same optical
+// center; orthogonal strokes sit on half-pixel coordinates for crisp 1px
+// edges, and diagonals get a slightly heavier stroke because a 1px diagonal
+// only covers ~0.7px per pixel and reads thinner.
 function MinimizeGlyph() {
   return (
     <svg viewBox="0 0 10 10" aria-hidden="true">
-      <path d="M1 8.5h8" stroke="currentColor" strokeWidth="1" />
+      <path d="M1 5.5h8" stroke="currentColor" strokeWidth="1" />
     </svg>
   );
 }
