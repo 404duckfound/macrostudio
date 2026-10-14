@@ -13,7 +13,7 @@ colors:
   on-surface-variant: "c2c6cd"
   inverse-surface: "ffffff"
   inverse-on-surface: "1c2027"
-  outline: "8b9099"
+  outline: "969ba4"
   outline-variant: "2c2f34"
   surface-tint: "2fc3de"
   primary: "2fc3de"
