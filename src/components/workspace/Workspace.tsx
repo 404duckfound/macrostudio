@@ -4,6 +4,8 @@ import {
   AlertCircle,
   AppWindow,
   Ban,
+  Copy,
+  Ellipsis,
   Eye,
   Keyboard,
   Layers,
@@ -66,6 +68,7 @@ export default function Workspace() {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [recording, setRecording] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
 
@@ -75,6 +78,22 @@ export default function Workspace() {
     setRecording(false);
     setPickerOpen(false);
   }, [active?.id, active?.triggers]);
+
+  useEffect(() => {
+    if (openMenuIdx === null) return;
+    function onDocClick() {
+      setOpenMenuIdx(null);
+    }
+    function onDocKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpenMenuIdx(null);
+    }
+    document.addEventListener("click", onDocClick);
+    document.addEventListener("keydown", onDocKey);
+    return () => {
+      document.removeEventListener("click", onDocClick);
+      document.removeEventListener("keydown", onDocKey);
+    };
+  }, [openMenuIdx]);
 
   const sel = Math.min(selectedIdx, Math.max(0, draftTriggers.length - 1));
   const selected = draftTriggers[sel] ?? null;
@@ -167,9 +186,38 @@ export default function Workspace() {
   function addTrigger() {
     setDraftTriggers((prev) => [
       ...prev,
-      { shortcut: "", actions: [], block_key: false, fire_on_release: false, mod_sides: {}, wildcard: false, force_hook: false },
+      { shortcut: "", actions: [], block_key: false, fire_on_release: false, mod_sides: {}, wildcard: false, force_hook: false, enabled: true },
     ]);
     setSelectedIdx(draftTriggers.length);
+  }
+
+  function patchAt(idx: number, patch: (t: Trigger) => Trigger) {
+    setDraftTriggers((prev) => prev.map((x, i) => (i === idx ? patch(x) : x)));
+  }
+
+  function duplicateTrigger(idx: number) {
+    setDraftTriggers((prev) => {
+      const src = prev[idx];
+      if (!src) return prev;
+      const copy: Trigger = {
+        ...src,
+        mod_sides: { ...src.mod_sides },
+        actions: src.actions.map((a) => ({ ...a })),
+      };
+      const next = [...prev];
+      next.splice(idx + 1, 0, copy);
+      return next;
+    });
+    setSelectedIdx(idx + 1);
+    setOpenMenuIdx(null);
+  }
+
+  function deleteTrigger(idx: number) {
+    setDraftTriggers((prev) => prev.filter((_, i) => i !== idx));
+    setSelectedIdx((cur) => Math.max(0, Math.min(cur, draftTriggers.length - 2)));
+    setRecording(false);
+    setPickerOpen(false);
+    setOpenMenuIdx(null);
   }
 
   function removeSelected() {
@@ -295,12 +343,13 @@ export default function Workspace() {
           <div className="trigger-card-list">
             {draftTriggers.map((t, i) => {
               const preview = actionPreviewLabel(t.actions[0], macros);
+              const menuOpen = openMenuIdx === i;
               return (
                 <div
                   key={`${i}-${t.shortcut}`}
                   className={`trigger-card ${i === sel ? "trigger-card-selected" : ""} ${
                     recording && i === sel ? "trigger-card-recording" : ""
-                  }`}
+                  } ${t.enabled ? "" : "trigger-card-off"}`}
                   onClick={() => {
                     setSelectedIdx(i);
                     setRecording(false);
@@ -322,23 +371,94 @@ export default function Workspace() {
                           <Chips parts={parseTrigger(t.shortcut)} />
                         )}
                       </div>
-                      {preview && <span className="trigger-action-pill">{preview}</span>}
+                      {preview ? (
+                        <span className="trigger-action-pill">{preview}</span>
+                      ) : (
+                        <span className="trigger-noaction">No action</span>
+                      )}
                     </div>
                   </div>
-                  <span
-                    className={`trigger-pass ${t.block_key ? "trigger-pass-block" : ""}`}
-                    title={
-                      t.block_key
-                        ? "Original keypress is blocked by Macro Studio"
-                        : "Original keypress passes through to active app (~)"
-                    }
-                  >
-                    {t.block_key ? (
-                      <Ban aria-hidden="true" />
-                    ) : (
-                      <Eye aria-hidden="true" />
-                    )}
-                  </span>
+                  <div className="trigger-card-right">
+                    <span
+                      className={`trigger-pass ${t.block_key ? "trigger-pass-block" : ""}`}
+                      title={
+                        t.block_key
+                          ? "Original keypress is blocked by Macro Studio"
+                          : "Original keypress passes through to active app (~)"
+                      }
+                    >
+                      {t.block_key ? (
+                        <Ban aria-hidden="true" />
+                      ) : (
+                        <Eye aria-hidden="true" />
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={t.enabled}
+                      aria-label={t.enabled ? "Disable trigger" : "Enable trigger"}
+                      title={t.enabled ? "Disable trigger" : "Enable trigger"}
+                      className={`switch switch-sm ${t.enabled ? "switch-on" : ""}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        patchAt(i, (x) => ({ ...x, enabled: !x.enabled }));
+                      }}
+                    >
+                      <span className="switch-thumb" />
+                    </button>
+                    <div className="trigger-menu-wrap">
+                      <button
+                        type="button"
+                        className="rail-dots"
+                        aria-label="Trigger options"
+                        title="Options"
+                        aria-expanded={menuOpen}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuIdx(menuOpen ? null : i);
+                        }}
+                      >
+                        <Ellipsis aria-hidden="true" />
+                      </button>
+                      {menuOpen && (
+                        <div
+                          className="rail-menu"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuIdx(null);
+                          }}
+                        >
+                          <button
+                            type="button"
+                            className="rail-menu-item"
+                            onClick={() => duplicateTrigger(i)}
+                          >
+                            <Copy className="rail-menu-icon" aria-hidden="true" />
+                            Duplicate
+                          </button>
+                          <button
+                            type="button"
+                            className="rail-menu-item"
+                            onClick={() =>
+                              patchAt(i, (x) => ({ ...x, block_key: !x.block_key }))
+                            }
+                          >
+                            {t.block_key ? "Unblock original key" : "Block original key"}
+                          </button>
+                          <div className="rail-menu-divider" />
+                          <button
+                            type="button"
+                            className="rail-menu-item rail-menu-item-danger"
+                            onClick={() => deleteTrigger(i)}
+                          >
+                            <Trash2 className="rail-menu-icon" aria-hidden="true" />
+                            Delete Trigger
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}

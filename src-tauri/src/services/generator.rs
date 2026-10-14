@@ -123,6 +123,14 @@ pub struct Trigger {
     // hotkey itself.
     #[serde(default)]
     pub force_hook: bool,
+    // Whether the trigger fires at all. Missing in JSON written before this
+    // existed, so old triggers default to enabled -- upgrade never silences.
+    #[serde(default = "enabled_default")]
+    pub enabled: bool,
+}
+
+fn enabled_default() -> bool {
+    true
 }
 
 /// Quotes `value` as an AHK double-quoted literal: quotes and backticks are
@@ -163,6 +171,9 @@ pub fn compile_to_ahk_v2(
     let mut seen = std::collections::HashSet::new();
     let blocks: Vec<&Trigger> = triggers
         .iter()
+        // Disabled triggers compile to nothing and must not steal a
+        // deduplication slot from an enabled same-shortcut trigger.
+        .filter(|t| t.enabled)
         .filter(|t| !t.shortcut.trim().is_empty())
         .filter(|t| {
             // Wildcard and release variants are distinct hotkeys; the hook
@@ -421,6 +432,7 @@ mod tests {
             mod_sides: std::collections::HashMap::new(),
             wildcard: false,
             force_hook: false,
+            enabled: true,
         }
     }
 
@@ -433,7 +445,12 @@ mod tests {
             mod_sides: std::collections::HashMap::new(),
             wildcard: false,
             force_hook: false,
+            enabled: true,
         }
+    }
+
+    fn disabled(shortcut: &str) -> Trigger {
+        Trigger { enabled: false, ..trig(shortcut, vec![]) }
     }
 
     const TEST_TITLE: &str = "Test Profile";
@@ -633,6 +650,32 @@ mod tests {
             TEST_TITLE, &[]);
         assert!(out.contains("\nF13::\n"));
         assert!(out.contains("\n^F24::\n"));
+    }
+
+    // Disabled triggers compile to nothing.
+    #[test]
+    fn disabled_triggers_emit_no_hotkey() {
+        let out = compile_to_ahk_v2(&[disabled("F9")], TEST_TITLE, &[]);
+        assert!(!out.contains("::"));
+    }
+
+    // A disabled same-shortcut trigger must not steal the dedup slot: the
+    // enabled one still compiles, in order.
+    #[test]
+    fn disabled_trigger_does_not_steal_dedup_slot() {
+        let out = compile_to_ahk_v2(&[disabled("F9"), trig("F9", vec![])], TEST_TITLE, &[]);
+        assert_eq!(out.matches("F9::").count(), 1);
+    }
+
+    // Triggers written before `enabled` existed parse as enabled: upgrade
+    // must never silence an existing hotkey.
+    #[test]
+    fn trigger_enabled_defaults_to_true() {
+        let old = serde_json::json!({
+            "shortcut": "F9", "block_key": false, "actions": []
+        });
+        let t: Trigger = serde_json::from_value(old).unwrap();
+        assert!(t.enabled);
     }
 
     #[test]

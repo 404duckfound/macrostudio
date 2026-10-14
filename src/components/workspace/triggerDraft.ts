@@ -28,8 +28,13 @@ export function cleanDraft(drafts: Trigger[]): Trigger[] {
   const out: Trigger[] = [];
   for (const t of drafts) {
     const shortcut = t.shortcut.trim();
-    if (!shortcut || seen.has(shortcut)) continue;
-    seen.add(shortcut);
+    if (!shortcut) continue;
+    // Disabled triggers are exempt from dedup dropping: they are kept in
+    // JSON and skipped at compile time, so saving must never delete them.
+    if (t.enabled) {
+      if (seen.has(shortcut)) continue;
+      seen.add(shortcut);
+    }
     out.push({
       shortcut,
       actions: t.actions.filter((a) => !isDroppedAction(a)).map((a) => ({ ...a })),
@@ -38,6 +43,7 @@ export function cleanDraft(drafts: Trigger[]): Trigger[] {
       mod_sides: pruneSides(shortcut, t.mod_sides),
       wildcard: t.wildcard ?? false,
       force_hook: t.force_hook ?? false,
+      enabled: t.enabled ?? true,
     });
   }
   return out;
@@ -52,6 +58,7 @@ export function toDrafts(triggers: Trigger[] | undefined): Trigger[] {
     mod_sides: { ...(t.mod_sides ?? {}) },
     wildcard: t.wildcard ?? false,
     force_hook: t.force_hook ?? false,
+    enabled: t.enabled ?? true,
     actions: t.actions.filter((a) => !isDroppedAction(a)).slice(0, 1).map((a) => ({ ...a })),
   }));
 }
