@@ -8,13 +8,13 @@
   --border-hover: rgba(255, 255, 255, 0.16);
   --text-primary: #ffffff;
   --text-secondary: #c2c6cd;
-  --text-disabled: #8b9099;
+  --text-disabled: #969ba4;
   --accent-primary: #2fc3de;
   --accent-primary-hover: #5fd4e8;
   --accent-on: #06232a;
   --focus-ring: #2fc3de;
   --status-success: #3ddc97;
-  --status-neutral: #8b9099;
+  --status-neutral: #969ba4;
   --status-warning: #ffb02e;
   --status-danger: #ff5f6b;
 }
@@ -302,7 +302,7 @@ textarea:focus {
   justify-content: space-between;
   padding-left: 14px;
   padding-right: 0;
-  background: var(--bg-base);
+  background: rgba(15, 17, 21, 0.75);
   border-bottom: 1px solid var(--border-muted);
   user-select: none;
   -webkit-user-select: none;
@@ -385,7 +385,7 @@ textarea:focus {
    ========================================================================== */
 
 .navbar {
-  background: var(--bg-base);
+  background: rgba(15, 17, 21, 0.72);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -634,8 +634,8 @@ textarea:focus {
 }
 
 .rail-dots {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   min-height: 0;
   flex-shrink: 0;
   border-radius: 6px;
@@ -884,7 +884,7 @@ textarea:focus {
 }
 .trigger-card-recording {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 2px rgba(47, 195, 222, 0.4);
+  animation: record-pulse 1.5s ease-in-out infinite;
 }
 
 .trigger-card-left {
@@ -989,17 +989,20 @@ textarea:focus {
   left: auto;
 }
 
-/* Compact switch for trigger rows (34x20, thumb 14px) */
+/* Compact switch for trigger rows (38x24 target, thumb 18px) */
 .switch-sm {
-  width: 34px;
-  height: 20px;
+  width: 38px;
+  height: 24px;
+  min-height: 24px;
 }
 .switch-sm .switch-thumb {
-  width: 14px;
-  height: 14px;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
 }
 .switch-sm.switch-on .switch-thumb {
-  left: 16px;
+  left: 17px;
 }
 
 .rail-menu-icon {
@@ -1048,7 +1051,7 @@ textarea:focus {
   background: var(--bg-surface);
 }
 .canvas-tab {
-  min-height: 30px;
+  min-height: 32px;
   padding: 0 14px;
   border-radius: 6px;
   background: transparent;
@@ -1189,6 +1192,28 @@ textarea:focus {
 @keyframes pulse-opacity {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+@keyframes record-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(47, 195, 222, 0.9); }
+  50% { box-shadow: 0 0 0 5px rgba(47, 195, 222, 0.15); }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.action-select-pop,
+.key-picker-pop,
+.rail-menu {
+  animation: pop-in 0.15s ease-out;
 }
 
 /* ==========================================================================
@@ -1503,7 +1528,7 @@ textarea:focus {
 }
 .shortcut-card-recording {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 1px var(--accent-primary);
+  animation: record-pulse 1.5s ease-in-out infinite;
 }
 .shortcut-card-error {
   border-color: var(--status-danger);
@@ -1906,7 +1931,7 @@ textarea:focus {
 }
 .key-target-picking {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 1px var(--accent-primary);
+  animation: record-pulse 1.5s ease-in-out infinite;
 }
 
 .key-target-icon {
@@ -2027,9 +2052,9 @@ textarea:focus {
   margin-top: 8px;
 }
 .stepper-btn {
-  width: 30px;
-  height: 30px;
-  min-height: 30px;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
   padding: 0;
   border-radius: 6px;
   border: 1px solid var(--border-default);
@@ -2102,7 +2127,7 @@ textarea:focus {
   border: 1px solid var(--border-default);
 }
 .mouse-seg-btn {
-  min-height: 30px;
+  min-height: 32px;
   padding: 0 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -2904,7 +2929,13 @@ textarea:focus {
 
 @media (prefers-reduced-motion: reduce) {
   .trigger-recording-hint,
-  .modal {
+  .modal,
+  .action-select-pop,
+  .key-picker-pop,
+  .rail-menu,
+  .shortcut-card-recording,
+  .key-target-picking,
+  .trigger-card-recording {
     animation: none;
   }
 }

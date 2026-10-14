@@ -51,6 +51,13 @@ pub fn run() {
         })
         .setup(|app| {
             init_tray(app)?;
+            #[cfg(target_os = "windows")]
+            if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
+                use tauri::window::{Effect, EffectsBuilder};
+                let _ = window.set_effects(
+                    EffectsBuilder::new().effect(Effect::MicaDark).build(),
+                );
+            }
             crate::services::watcher::start_foreground_watcher(app.handle().clone());
             Ok(())
         })
