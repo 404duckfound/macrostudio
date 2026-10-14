@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Ellipsis } from "lucide-react";
+import { AppWindow, Ellipsis, Star } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import Rail from "../common/Rail";
 import ProfileDeleteModal from "./modals/ProfileDeleteModal";
@@ -150,11 +150,29 @@ export default function ProfileRail({
               {p.name}
             </span>
             {defaultId === p.id && (
-              <span className="rail-default-badge">Default</span>
+              <span className="rail-default-star" title="Default profile">
+                <Star aria-hidden="true" fill="currentColor" />
+              </span>
             )}
           </>
         )}
-        renderMeta={(p) => (p.target_exe ? p.target_exe : "All windows")}
+        renderMeta={(p) => (
+          <>
+            <span>
+              {p.triggers.length}{" "}
+              {p.triggers.length === 1 ? "trigger" : "triggers"}
+            </span>
+            <span aria-hidden="true">·</span>
+            {p.target_exe ? (
+              <span className="rail-meta-target" title={`Linked application: ${p.target_exe}`}>
+                <AppWindow aria-hidden="true" />
+                {p.target_exe}
+              </span>
+            ) : (
+              <span>All windows</span>
+            )}
+          </>
+        )}
         renderActions={(p) => (
           <>
             <button
