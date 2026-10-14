@@ -46,6 +46,8 @@ export default function ProfileRail({
     setPinnedId,
     setDefaultId,
   } = useProfileStore();
+  const editingProfileId = useProfileStore((s) => s.editingProfileId);
+  const setEditingProfileId = useProfileStore((s) => s.setEditingProfileId);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   function selectProfile(id: string | null) {
@@ -105,6 +107,13 @@ export default function ProfileRail({
     await refresh();
     selectProfile(copy.id);
   }
+
+  useEffect(() => {
+    if (!editingProfileId) return;
+    const found = profiles.find((p) => p.id === editingProfileId);
+    if (found) setModal({ kind: "form", mode: "edit", profile: found });
+    setEditingProfileId(null);
+  }, [editingProfileId, profiles, setEditingProfileId]);
 
   useEffect(() => {
     if (!openMenuId) return;

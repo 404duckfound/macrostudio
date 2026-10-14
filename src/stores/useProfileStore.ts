@@ -10,6 +10,7 @@ interface ProfileState {
   activeWindow: string;
   focusFallbackMs: number;
   ignoredExes: string[];
+  editingProfileId: string | null;
   setProfiles: (p: Profile[]) => void;
   setMacros: (m: Macro[]) => void;
   setActiveId: (id: string | null) => void;
@@ -20,6 +21,7 @@ interface ProfileState {
   setIgnoredExes: (exes: string[]) => void;
   addIgnoredExe: (exe: string) => void;
   removeIgnoredExe: (exe: string) => void;
+  setEditingProfileId: (id: string | null) => void;
 }
 
 export const DEFAULT_FOCUS_FALLBACK_MS = 750;
@@ -49,6 +51,7 @@ export const useProfileStore = create<ProfileState>((set) => ({
   activeWindow: "Unknown",
   focusFallbackMs: DEFAULT_FOCUS_FALLBACK_MS,
   ignoredExes: [...DEFAULT_IGNORED_EXES],
+  editingProfileId: null,
   setProfiles: (profiles) =>
     set((s) => ({
       profiles,
@@ -80,4 +83,5 @@ export const useProfileStore = create<ProfileState>((set) => ({
         (e) => e.toLowerCase() !== exe.trim().toLowerCase(),
       ),
     })),
+  setEditingProfileId: (editingProfileId) => set({ editingProfileId }),
 }));

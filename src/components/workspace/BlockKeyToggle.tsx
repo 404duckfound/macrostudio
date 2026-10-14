@@ -1,5 +1,3 @@
-import { Ban, Eye } from "lucide-react";
-
 export default function BlockKeyToggle({
   value,
   onChange,
@@ -12,22 +10,16 @@ export default function BlockKeyToggle({
       <div className="block-card-info">
         <div className="block-card-title-row">
           <span className="toggle-title">Block Original Keypress</span>
-          <span className={`toggle-state-badge ${value ? "badge-blocked" : "badge-pass"}`}>
-            {value ? (
-              <>
-                <Ban className="badge-icon" aria-hidden="true" /> Blocked
-              </>
-            ) : (
-              <>
-                <Eye className="badge-icon" aria-hidden="true" /> Pass (~)
-              </>
-            )}
-          </span>
+          {!value && (
+            <span className="toggle-symbol" aria-hidden="true">
+              ~
+            </span>
+          )}
         </div>
         <span className="toggle-sub">
           {value
             ? "Suppresses the native physical key event"
-            : "Allows physical key event to pass through (~)"}
+            : "Allows physical key event to pass through"}
         </span>
       </div>
       <button

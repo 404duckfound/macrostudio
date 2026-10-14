@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   AlertCircle,
-  AppWindow,
   Ban,
+  ChevronDown,
   Copy,
   Ellipsis,
   Eye,
+  Globe,
   Keyboard,
   Layers,
   Plus,
@@ -197,6 +198,10 @@ export default function Workspace() {
     () => cleanDraft(draftTriggers),
     [draftTriggers],
   );
+  const withoutActionCount = useMemo(
+    () => cleanTriggers.filter((t) => t.actions.length === 0).length,
+    [cleanTriggers],
+  );
   const willDropCard = cleanTriggers.length !== draftTriggers.length;
   const dirty =
     active != null && JSON.stringify(cleanTriggers) !== JSON.stringify(active.triggers);
@@ -255,6 +260,23 @@ export default function Workspace() {
 
   function clearSelectedShortcut() {
     patchSelected((x) => ({ ...x, shortcut: "" }));
+  }
+
+  const [flashAction, setFlashAction] = useState(false);
+
+  // Row "+ Assign action": select the row, then bring the inspector's
+  // Action step into view with a brief ring flash.
+  function focusActionStep(idx: number) {
+    setSelectedIdx(idx);
+    setRecording(false);
+    setPickerOpen(false);
+    requestAnimationFrame(() => {
+      document
+        .getElementById("inspector-step-action")
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    setFlashAction(true);
+    window.setTimeout(() => setFlashAction(false), 1300);
   }
 
   function selectActionType(type: MacroAction["type"]) {
@@ -335,22 +357,44 @@ export default function Workspace() {
               <div className="flow-profile-title-row">
                 <h2 className="flow-profile-title">{active.name}</h2>
                 {active.target_exe ? (
-                  <span
-                    className="scope-badge scope-badge-linked"
-                    title={`Linked application: ${active.target_exe}`}
+                  <button
+                    type="button"
+                    className="scope-badge scope-badge-linked scope-badge-btn"
+                    title={`Linked application: ${active.target_exe} — click to change scope`}
+                    onClick={() =>
+                      useProfileStore.getState().setEditingProfileId(active.id)
+                    }
                   >
-                    <AppWindow className="scope-badge-icon" aria-hidden="true" />
+                    <Globe className="scope-badge-icon" aria-hidden="true" />
                     {active.target_exe}
-                  </span>
+                    <ChevronDown className="scope-badge-chevron" aria-hidden="true" />
+                  </button>
                 ) : (
-                  <span className="scope-badge" title="Applies across all windows">
+                  <button
+                    type="button"
+                    className="scope-badge scope-badge-btn"
+                    title="Applies across all windows — click to change scope"
+                    onClick={() =>
+                      useProfileStore.getState().setEditingProfileId(active.id)
+                    }
+                  >
+                    <Globe className="scope-badge-icon" aria-hidden="true" />
                     Global (All Windows)
-                  </span>
+                    <ChevronDown className="scope-badge-chevron" aria-hidden="true" />
+                  </button>
                 )}
               </div>
               <div className="flow-profile-sub-row">
                 <span className="flow-trigger-counter">
                   {cleanTriggers.length} {cleanTriggers.length === 1 ? "trigger" : "triggers"} configured
+                  {withoutActionCount > 0 && (
+                    <>
+                      {" · "}
+                      <span className="flow-without-action">
+                        {withoutActionCount} without action
+                      </span>
+                    </>
+                  )}
                 </span>
                 {dirty && (
                   <span className="flow-dirty-indicator">
@@ -426,18 +470,34 @@ export default function Workspace() {
                       {preview ? (
                         <span className="trigger-action-pill">{preview}</span>
                       ) : (
-                        <span className="trigger-noaction">No action</span>
+                        <button
+                          type="button"
+                          className="trigger-noaction-btn"
+                          title="Assign an action to this trigger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            focusActionStep(i);
+                          }}
+                        >
+                          + Assign action
+                        </button>
                       )}
                     </div>
                   </div>
                   <div className="trigger-card-right">
                     <span
-                      className={`trigger-pass ${t.block_key ? "trigger-pass-block" : ""}`}
-                      title={
+                      role="img"
+                      aria-label={
                         t.block_key
                           ? "Original keypress is blocked by Macro Studio"
-                          : "Original keypress passes through to active app (~)"
+                          : "Original keypress passes through to active app"
                       }
+                      data-tip={
+                        t.block_key
+                          ? "Blocked — Macro Studio swallows the keypress"
+                          : "Pass-through — the keypress reaches the active app (~)"
+                      }
+                      className={`trigger-pass ${t.block_key ? "trigger-pass-block" : ""}`}
                     >
                       {t.block_key ? (
                         <Ban aria-hidden="true" />
@@ -576,18 +636,19 @@ export default function Workspace() {
               </section>
 
               <section className="step-card" aria-label="Step 2: Modifiers">
-                <div className="step-head">
-                  <span className="step-num" aria-hidden="true">2</span>
-                  <span className="step-title">Modifiers</span>
-                </div>
                 <TriggerModifiers
                   key={sel}
                   trigger={selected}
                   onPatch={patchSelected}
+                  stepNum={2}
                 />
               </section>
 
-              <section className="step-card" aria-label="Step 3: Action">
+              <section
+                className={`step-card ${flashAction ? "step-flash" : ""}`}
+                aria-label="Step 3: Action"
+                id="inspector-step-action"
+              >
                 <div className="step-head">
                   <span className="step-num" aria-hidden="true">3</span>
                   <span className="step-title">Action</span>
@@ -624,6 +685,7 @@ export default function Workspace() {
                   <ActionEditor action={single} onChange={setSingleAction} />
                 )}
               </section>
+              <div className="inspector-scroll-fade" aria-hidden="true" />
             </div>
 
             <div className="inspector-foot">

@@ -1,14 +1,5 @@
 import { useState } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  Asterisk,
-  ChevronDown,
-  ChevronUp,
-  Equal,
-  Minus,
-  Zap,
-} from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import type { ModSide, Trigger } from "../../types";
 import BlockKeyToggle from "./BlockKeyToggle";
 import Chips from "./Chips";
@@ -25,9 +16,11 @@ const SIDES: { value: ModSide | ""; label: string }[] = [
 export default function TriggerModifiers({
   trigger,
   onPatch,
+  stepNum,
 }: {
   trigger: Trigger;
   onPatch: (patch: (t: Trigger) => Trigger) => void;
+  stepNum?: number;
 }) {
   const present = trigger.shortcut
     .split("+")
@@ -60,6 +53,11 @@ export default function TriggerModifiers({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
+        {stepNum != null && (
+          <span className="step-num" aria-hidden="true">
+            {stepNum}
+          </span>
+        )}
         <span className="section-label">Trigger Modifiers</span>
         {active.length > 0 ? (
           <span className="section-summary">{active.join(" · ")}</span>
@@ -76,24 +74,16 @@ export default function TriggerModifiers({
             <div className="block-card-info">
               <div className="block-card-title-row">
                 <span className="toggle-title">Fire on release</span>
-                <span
-                  className={`toggle-state-badge ${trigger.fire_on_release ? "badge-on" : "badge-pass"}`}
-                >
-                  {trigger.fire_on_release ? (
-                    <>
-                      <ArrowUp className="badge-icon" aria-hidden="true" /> Up
-                    </>
-                  ) : (
-                    <>
-                      <ArrowDown className="badge-icon" aria-hidden="true" /> Down
-                    </>
-                  )}
-                </span>
+                {trigger.fire_on_release && (
+                  <span className="toggle-symbol" aria-hidden="true">
+                    Up
+                  </span>
+                )}
               </div>
               <span className="toggle-sub">
                 {trigger.fire_on_release
-                  ? "Trigger fires when the key is released (Up suffix)"
-                  : "Trigger fires when the key is pressed"}
+                  ? "Fires when the key is released"
+                  : "Fires when the key is pressed"}
               </span>
             </div>
             <button
@@ -119,24 +109,16 @@ export default function TriggerModifiers({
             <div className="block-card-info">
               <div className="block-card-title-row">
                 <span className="toggle-title">Wildcard</span>
-                <span
-                  className={`toggle-state-badge ${trigger.wildcard ? "badge-on" : "badge-pass"}`}
-                >
-                  {trigger.wildcard ? (
-                    <>
-                      <Asterisk className="badge-icon" aria-hidden="true" /> *
-                    </>
-                  ) : (
-                    <>
-                      <Equal className="badge-icon" aria-hidden="true" /> Exact
-                    </>
-                  )}
-                </span>
+                {trigger.wildcard && (
+                  <span className="toggle-symbol" aria-hidden="true">
+                    *
+                  </span>
+                )}
               </div>
               <span className="toggle-sub">
                 {trigger.wildcard
-                  ? "Fires even when extra modifiers are held (*)"
-                  : "Requires exactly these modifiers"}
+                  ? "Also fires with extra modifiers held"
+                  : "Requires exactly these keys"}
               </span>
             </div>
             <button
@@ -156,23 +138,15 @@ export default function TriggerModifiers({
             <div className="block-card-info">
               <div className="block-card-title-row">
                 <span className="toggle-title">Keyboard hook</span>
-                <span
-                  className={`toggle-state-badge ${trigger.force_hook ? "badge-on" : "badge-pass"}`}
-                >
-                  {trigger.force_hook ? (
-                    <>
-                      <Zap className="badge-icon" aria-hidden="true" /> $
-                    </>
-                  ) : (
-                    <>
-                      <Minus className="badge-icon" aria-hidden="true" /> Normal
-                    </>
-                  )}
-                </span>
+                {trigger.force_hook && (
+                  <span className="toggle-symbol" aria-hidden="true">
+                    $
+                  </span>
+                )}
               </div>
               <span className="toggle-sub">
                 {trigger.force_hook
-                  ? "Send cannot fire this hotkey itself ($)"
+                  ? "Send cannot fire this hotkey"
                   : "Send can fire this hotkey"}
               </span>
             </div>
