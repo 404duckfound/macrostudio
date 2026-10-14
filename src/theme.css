@@ -464,6 +464,7 @@ textarea:focus {
   align-items: center;
   justify-content: space-between;
   padding: 14px 12px 10px 16px;
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .rail-title {
@@ -546,16 +547,6 @@ textarea:focus {
   background: rgba(232, 234, 238, 0.055);
   border-color: var(--border-default);
   color: var(--text-primary);
-}
-.rail-row.active::before {
-  content: "";
-  position: absolute;
-  left: -1px;
-  top: 10px;
-  bottom: 10px;
-  width: 2px;
-  border-radius: 2px;
-  background: var(--accent-primary);
 }
 
 .rail-row-main {
