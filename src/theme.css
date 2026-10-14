@@ -1163,6 +1163,44 @@ textarea:focus {
   gap: 10px;
 }
 
+/* Numbered step cards: 1 When -> 2 Modifiers -> 3 Action */
+.step-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+}
+
+.step-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.step-num {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: var(--accent-on);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
 .section-head {
   display: flex;
   align-items: center;
@@ -1247,17 +1285,31 @@ textarea:focus {
   justify-content: center;
   gap: 8px;
   border-radius: 9px;
-  background: var(--accent-primary);
-  color: #06232a;
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
 }
-.btn-trigger-save:hover:not(:disabled) {
+.btn-trigger-save-dirty {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--accent-on);
+}
+.btn-trigger-save-dirty:hover:not(:disabled) {
   background: var(--accent-primary-hover);
 }
 .btn-trigger-save:disabled {
-  opacity: 0.45;
+  opacity: 0.55;
   cursor: not-allowed;
+}
+
+.save-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-on);
+  flex-shrink: 0;
 }
 
 .btn-trigger-undo,
@@ -1288,6 +1340,10 @@ textarea:focus {
 .btn-trigger-delete:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.btn-trigger-delete {
+  margin-left: 8px;
 }
 
 .btn-trigger-save svg,

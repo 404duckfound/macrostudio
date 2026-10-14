@@ -61,8 +61,10 @@ export default function TriggerModifiers({
         onClick={() => setOpen((v) => !v)}
       >
         <span className="section-label">Trigger Modifiers</span>
-        {active.length > 0 && (
+        {active.length > 0 ? (
           <span className="section-summary">{active.join(" · ")}</span>
+        ) : (
+          <span className="section-summary">None</span>
         )}
         <span className="section-chevron" aria-hidden="true">
           {open ? <ChevronUp /> : <ChevronDown />}

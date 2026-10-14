@@ -488,9 +488,10 @@ export default function Workspace() {
         {selected ? (
           <>
             <div className="inspector-body">
-              <section className="inspector-section">
-                <div className="section-head">
-                  <span className="section-label">Shortcut Trigger</span>
+              <section className="step-card" aria-label="Step 1: When">
+                <div className="step-head">
+                  <span className="step-num" aria-hidden="true">1</span>
+                  <span className="step-title">When</span>
                   {selectedChips.length > 0 && (
                     <button
                       type="button"
@@ -520,15 +521,22 @@ export default function Workspace() {
                 )}
               </section>
 
-              <TriggerModifiers
-                key={sel}
-                trigger={selected}
-                onPatch={patchSelected}
-              />
+              <section className="step-card" aria-label="Step 2: Modifiers">
+                <div className="step-head">
+                  <span className="step-num" aria-hidden="true">2</span>
+                  <span className="step-title">Modifiers</span>
+                </div>
+                <TriggerModifiers
+                  key={sel}
+                  trigger={selected}
+                  onPatch={patchSelected}
+                />
+              </section>
 
-              <section className="inspector-section">
-                <div className="section-head">
-                  <span className="section-label">Automated Action</span>
+              <section className="step-card" aria-label="Step 3: Action">
+                <div className="step-head">
+                  <span className="step-num" aria-hidden="true">3</span>
+                  <span className="step-title">Action</span>
                   {single && (
                     <button
                       type="button"
@@ -567,11 +575,14 @@ export default function Workspace() {
             <div className="inspector-foot">
               <button
                 type="button"
-                className="btn-trigger-save"
+                className={`btn-trigger-save ${dirty ? "btn-trigger-save-dirty" : ""}`}
                 onClick={save}
                 disabled={saving || !dirty}
                 title={dirty ? "Save changes to profile" : "No changes to save"}
               >
+                {dirty && !saving && (
+                  <span className="save-dot" aria-hidden="true" />
+                )}
                 <Save aria-hidden="true" />
                 <span>{saving ? "Saving…" : "Save Changes"}</span>
               </button>
