@@ -18,10 +18,12 @@ import {
 import { useProfileStore } from "../../stores/useProfileStore";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
+import { buildCombo, splitCombo } from "../../lib/keyCatalog";
 import type { Macro, MacroAction, ModSide, Profile, Trigger } from "../../types";
 import ActionEditor from "./actions/ActionEditor";
 import ActionTypeCard from "./actions/ActionTypeCard";
 import Chips from "./Chips";
+import KeyboardMap from "./KeyboardMap";
 import ShortcutField from "./ShortcutField";
 import TriggerModifiers from "./TriggerModifiers";
 import { cleanDraft, toDrafts } from "./triggerDraft";
@@ -69,6 +71,7 @@ export default function Workspace() {
   const [recording, setRecording] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
+  const [canvasTab, setCanvasTab] = useState<"list" | "map">("list");
   const [saving, setSaving] = useState(false);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
 
@@ -170,6 +173,25 @@ export default function Workspace() {
   });
 
   const selectedChips = parseTrigger(selected?.shortcut ?? "");
+  const selectedMain = (() => {
+    const { main } = splitCombo(selected?.shortcut ?? "");
+    return main ? main.toUpperCase() : null;
+  })();
+  const assignedMains = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of draftTriggers) {
+      const { main } = splitCombo(t.shortcut);
+      if (main) set.add(main.toUpperCase());
+    }
+    return set;
+  }, [draftTriggers]);
+
+  // Map assign keeps the selected trigger's modifiers and swaps only the
+  // main key; clash validation is shared with the picker path.
+  function assignMapKey(name: string) {
+    const { modifiers } = splitCombo(selected?.shortcut ?? "");
+    applyPickerShortcut(buildCombo(modifiers, name, false));
+  }
   const single = selected?.actions[0] ?? null;
   const cleanTriggers = useMemo(
     () => cleanDraft(draftTriggers),
@@ -340,6 +362,36 @@ export default function Workspace() {
             </div>
           </div>
 
+          <div className="canvas-tabs" role="tablist" aria-label="Canvas view">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={canvasTab === "list"}
+              className={`canvas-tab ${canvasTab === "list" ? "canvas-tab-on" : ""}`}
+              onClick={() => setCanvasTab("list")}
+            >
+              List
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={canvasTab === "map"}
+              className={`canvas-tab ${canvasTab === "map" ? "canvas-tab-on" : ""}`}
+              onClick={() => setCanvasTab("map")}
+            >
+              Keyboard
+            </button>
+          </div>
+
+          {canvasTab === "map" ? (
+            <KeyboardMap
+              assigned={assignedMains}
+              selectedMain={selectedMain}
+              disabled={!selected || recording}
+              onPick={assignMapKey}
+            />
+          ) : (
+          <>
           <div className="trigger-card-list">
             {draftTriggers.map((t, i) => {
               const preview = actionPreviewLabel(t.actions[0], macros);
@@ -472,6 +524,8 @@ export default function Workspace() {
             <Plus aria-hidden="true" />
             <span>Add new trigger</span>
           </button>
+          </>
+          )}
         </div>
       </div>
 

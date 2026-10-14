@@ -1036,6 +1036,92 @@ textarea:focus {
   display: block;
 }
 
+/* Canvas List | Keyboard tabs */
+.canvas-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  margin-bottom: 12px;
+  align-self: flex-start;
+  border: 1px solid var(--border-default);
+  border-radius: 9px;
+  background: var(--bg-surface);
+}
+.canvas-tab {
+  min-height: 30px;
+  padding: 0 14px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.canvas-tab:hover {
+  color: var(--text-primary);
+}
+.canvas-tab-on {
+  background: var(--accent-primary);
+  color: var(--accent-on);
+}
+
+/* Keyboard map */
+.keymap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+}
+.keymap-row {
+  display: flex;
+  gap: 6px;
+}
+.keymap-key {
+  min-height: 42px;
+  padding: 4px 6px;
+  border-radius: 7px;
+  background: var(--bg-interactive);
+  border: 1px solid var(--border-default);
+  border-bottom-width: 2px;
+  border-bottom-color: rgba(0, 0, 0, 0.55);
+  color: var(--text-primary);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.keymap-key:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+.keymap-key:disabled {
+  cursor: default;
+}
+.keymap-key-deco {
+  opacity: 0.35;
+}
+.keymap-key-assigned {
+  border-color: rgba(47, 195, 222, 0.55);
+  color: var(--accent-primary);
+  box-shadow: 0 0 8px rgba(47, 195, 222, 0.18);
+}
+.keymap-key-selected {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  border-bottom-color: rgba(0, 0, 0, 0.4);
+  color: var(--accent-on);
+  box-shadow: 0 0 12px rgba(47, 195, 222, 0.35);
+}
+.keymap-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 /* ==========================================================================
    Tactile Keycaps (Chips & Kbd)
    ========================================================================== */
