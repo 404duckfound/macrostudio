@@ -837,19 +837,6 @@ textarea:focus {
   width: 13px;
   height: 13px;
 }
-.scope-badge-chevron {
-  width: 12px;
-  height: 12px;
-  color: var(--text-secondary);
-}
-.scope-badge-btn {
-  cursor: pointer;
-  font-size: 11px;
-}
-.scope-badge-btn:hover {
-  border-color: var(--border-hover);
-  color: var(--text-primary);
-}
 
 /* Custom CSS tooltip (no JS): needs position context from the host. */
 [data-tip] {

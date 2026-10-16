@@ -2,12 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   AlertCircle,
+  AppWindow,
   Ban,
-  ChevronDown,
   Copy,
   Ellipsis,
   Eye,
-  Globe,
   Keyboard,
   Layers,
   Plus,
@@ -357,31 +356,17 @@ export default function Workspace() {
               <div className="flow-profile-title-row">
                 <h2 className="flow-profile-title">{active.name}</h2>
                 {active.target_exe ? (
-                  <button
-                    type="button"
-                    className="scope-badge scope-badge-linked scope-badge-btn"
-                    title={`Linked application: ${active.target_exe} — click to change scope`}
-                    onClick={() =>
-                      useProfileStore.getState().setEditingProfileId(active.id)
-                    }
+                  <span
+                    className="scope-badge scope-badge-linked"
+                    title={`Linked application: ${active.target_exe}`}
                   >
-                    <Globe className="scope-badge-icon" aria-hidden="true" />
+                    <AppWindow className="scope-badge-icon" aria-hidden="true" />
                     {active.target_exe}
-                    <ChevronDown className="scope-badge-chevron" aria-hidden="true" />
-                  </button>
+                  </span>
                 ) : (
-                  <button
-                    type="button"
-                    className="scope-badge scope-badge-btn"
-                    title="Applies across all windows — click to change scope"
-                    onClick={() =>
-                      useProfileStore.getState().setEditingProfileId(active.id)
-                    }
-                  >
-                    <Globe className="scope-badge-icon" aria-hidden="true" />
+                  <span className="scope-badge" title="Applies across all windows">
                     Global (All Windows)
-                    <ChevronDown className="scope-badge-chevron" aria-hidden="true" />
-                  </button>
+                  </span>
                 )}
               </div>
               <div className="flow-profile-sub-row">
