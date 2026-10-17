@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   AlertCircle,
-  AppWindow,
   Ban,
   Copy,
   Ellipsis,
@@ -16,6 +15,9 @@ import {
   Undo2,
 } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
+import ProfileHeader from "../profiles/ProfileHeader";
+import ProfileFormModal from "../profiles/modals/ProfileFormModal";
+import SwitchGuard from "../common/SwitchGuard";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
 import { buildCombo, splitCombo } from "../../lib/keyCatalog";
@@ -27,6 +29,8 @@ import KeyboardMap from "./KeyboardMap";
 import ShortcutField from "./ShortcutField";
 import TriggerModifiers from "./TriggerModifiers";
 import { cleanDraft, toDrafts } from "./triggerDraft";
+
+type ActiveRun = { id: string; ok: boolean } | null;
 
 function actionPreviewLabel(
   action: MacroAction | null | undefined,
@@ -58,10 +62,12 @@ function altGrSides(combo: string): Record<string, ModSide> {
   return sides;
 }
 
-export default function Workspace() {
+export default function Workspace({ activeRun }: { activeRun: ActiveRun }) {
   const activeId = useProfileStore((s) => s.activeId);
   const profiles = useProfileStore((s) => s.profiles);
   const macros = useProfileStore((s) => s.macros);
+  const requestSwitch = useProfileStore((s) => s.requestSwitch);
+  const [createOpen, setCreateOpen] = useState(false);
   const active = profiles.find((p) => p.id === activeId) ?? null;
 
   const [draftTriggers, setDraftTriggers] = useState<Trigger[]>(
@@ -321,6 +327,22 @@ export default function Workspace() {
     await persist(cleanTriggers);
   }
 
+  function takePendingSwitch() {
+    const state = useProfileStore.getState();
+    const pending = state.pendingSwitch;
+    if (pending) state.applySwitch(pending.id, pending.source);
+  }
+
+  async function saveThenSwitch() {
+    await save();
+    takePendingSwitch();
+  }
+
+  function discardThenSwitch() {
+    discardChanges();
+    takePendingSwitch();
+  }
+
   function discardChanges() {
     setDraftTriggers(toDrafts(active?.triggers));
     setSelectedIdx(0);
@@ -330,6 +352,7 @@ export default function Workspace() {
   }
 
   if (!active) {
+    const hasProfiles = profiles.length > 0;
     return (
       <main className="workspace">
         <div className="flow-canvas flow-canvas-empty">
@@ -337,12 +360,39 @@ export default function Workspace() {
             <div className="workspace-empty-icon">
               <Layers aria-hidden="true" />
             </div>
-            <h3>No Profile Selected</h3>
+            <h3>{hasProfiles ? "No Profile Selected" : "No Profiles Yet"}</h3>
             <p>
-              Choose a profile from the sidebar to inspect its hotkeys and automation flow, or create a new profile to get started.
+              {hasProfiles
+                ? "Choose a profile to inspect its hotkeys and automation flow, or create a new profile to get started."
+                : "Create your first profile to start binding hotkeys and building automation flows."}
             </p>
+            <button
+              className="btn-primary"
+              type="button"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus aria-hidden="true" />
+              <span>Create Profile</span>
+            </button>
           </div>
         </div>
+        {createOpen && (
+          <ProfileFormModal
+            mode="add"
+            editing={null}
+            profiles={profiles}
+            activeWindow={useProfileStore.getState().activeWindow}
+            onClose={() => setCreateOpen(false)}
+            onSubmit={async (profile) => {
+              await invoke("profile_save", { profile });
+              useProfileStore.getState().setProfiles(
+                await invoke<Profile[]>("profile_list"),
+              );
+              useProfileStore.getState().applySwitch(profile.id, "manual");
+              setCreateOpen(false);
+            }}
+          />
+        )}
       </main>
     );
   }
@@ -351,45 +401,20 @@ export default function Workspace() {
     <main className="workspace">
       <div className="flow-canvas">
         <div className="flow-inner">
-          <div className="flow-head">
-            <div className="flow-profile-header">
-              <div className="flow-profile-title-row">
-                <h2 className="flow-profile-title">{active.name}</h2>
-                {active.target_exe ? (
-                  <span
-                    className="scope-badge scope-badge-linked"
-                    title={`Linked application: ${active.target_exe}`}
-                  >
-                    <AppWindow className="scope-badge-icon" aria-hidden="true" />
-                    {active.target_exe}
-                  </span>
-                ) : (
-                  <span className="scope-badge" title="Applies across all windows">
-                    Global (All Windows)
-                  </span>
-                )}
-              </div>
-              <div className="flow-profile-sub-row">
-                <span className="flow-trigger-counter">
-                  {cleanTriggers.length} {cleanTriggers.length === 1 ? "trigger" : "triggers"} configured
-                  {withoutActionCount > 0 && (
-                    <>
-                      {" · "}
-                      <span className="flow-without-action">
-                        {withoutActionCount} without action
-                      </span>
-                    </>
-                  )}
-                </span>
-                {dirty && (
-                  <span className="flow-dirty-indicator">
-                    <span className="dirty-dot" />
-                    Unsaved changes
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
+          <ProfileHeader
+            active={active}
+            activeRun={activeRun}
+            triggerCount={cleanTriggers.length}
+            withoutActionCount={withoutActionCount}
+            dirty={dirty}
+            onRequestSwitch={(id) => requestSwitch(id, "manual")}
+          />
+          <SwitchGuard
+            dirty={dirty}
+            saving={saving}
+            onSaveAndSwitch={saveThenSwitch}
+            onDiscardAndSwitch={discardThenSwitch}
+          />
 
           <div className="canvas-tabs" role="tablist" aria-label="Canvas view">
             <button

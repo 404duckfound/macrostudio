@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Trash2 } from "lucide-react";
+import { Boxes, Plus, Save } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
-import Rail from "../common/Rail";
+import MacroHeader from "./MacroHeader";
 import type { ActionBlock, Macro, Profile } from "../../types";
 import BlockRow from "../workspace/actions/BlockRow";
 
@@ -22,7 +22,6 @@ export default function MacrosView() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Macro | null>(null);
   const [saving, setSaving] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const saved = macros.find((m) => m.id === selectedId) ?? null;
   const dirty =
@@ -34,7 +33,6 @@ export default function MacrosView() {
     setSelectedId(id);
     const found = macros.find((m) => m.id === id) ?? null;
     setDraft(found ? { ...found, blocks: found.blocks.map((b) => ({ ...b })) } : null);
-    setConfirmDelete(false);
   }
 
   async function refreshMacros(): Promise<void> {
@@ -51,7 +49,6 @@ export default function MacrosView() {
       // freshly created macro directly instead.
       setSelectedId(macro.id);
       setDraft({ ...macro, blocks: [] });
-      setConfirmDelete(false);
     } catch (e) {
       console.error(e);
     } finally {
@@ -86,157 +83,122 @@ export default function MacrosView() {
   // Deleting a macro empties every trigger that referenced it; the triggers
   // themselves stay, with empty actions.
   async function deleteSelected() {
-    if (!selectedId) return;
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
-    setConfirmDelete(false);
-    setSaving(true);
-    try {
-      for (const p of profiles) {
-        if (!p.triggers.some((t) => t.actions.some((a) => a.type === "macro" && a.macro_id === selectedId))) {
-          continue;
-        }
-        const updated = {
-          ...p,
-          triggers: p.triggers.map((t) => ({
-            ...t,
-            actions: t.actions.filter(
-              (a) => !(a.type === "macro" && a.macro_id === selectedId),
-            ),
-          })),
-        };
-        await invoke("profile_save", { profile: updated });
+    if (!selectedId) throw new Error("No macro selected");
+    for (const p of profiles) {
+      if (!p.triggers.some((t) => t.actions.some((a) => a.type === "macro" && a.macro_id === selectedId))) {
+        continue;
       }
-      await invoke("macro_delete", { macroId: selectedId });
-      setProfiles(await invoke<Profile[]>("profile_list"));
-      await refreshMacros();
-      setSelectedId(null);
-      setDraft(null);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setSaving(false);
+      const updated = {
+        ...p,
+        triggers: p.triggers.map((t) => ({
+          ...t,
+          actions: t.actions.filter(
+            (a) => !(a.type === "macro" && a.macro_id === selectedId),
+          ),
+        })),
+      };
+      await invoke("profile_save", { profile: updated });
     }
+    await invoke("macro_delete", { macroId: selectedId });
+    setProfiles(await invoke<Profile[]>("profile_list"));
+    await refreshMacros();
+    setSelectedId(null);
+    setDraft(null);
   }
 
   return (
-    <>
-      <Rail
-        title="Macros"
-        ariaLabel="Macros"
-        addAriaLabel="Add macro"
-        items={macros}
-        selectedId={selectedId}
-        emptyText="No macros found."
-        createLabel="Create Macro"
-        disabled={saving}
-        onSelect={select}
-        onAdd={addMacro}
-        renderName={(m) => (
-          <span className="rail-name-text" title={m.name}>
-            {m.name || "(unnamed)"}
-          </span>
-        )}
-        renderMeta={(m) => blockCountLabel(m.blocks.length)}
-      />
+    <main className="workspace">
+      <div className="flow-canvas">
+        {!draft ? (
+          <div className="flow-canvas-empty">
+            <div className="workspace-empty-state">
+              <div className="workspace-empty-icon">
+                <Boxes aria-hidden="true" />
+              </div>
+              <h3>{macros.length === 0 ? "No Macros Yet" : "No Macro Selected"}</h3>
+              <p>
+                {macros.length === 0
+                  ? "Macros are reusable block lists — mouse clicks, pauses — that triggers can run."
+                  : "Pick a macro to edit its blocks, or create a new one."}
+              </p>
+              <button
+                className="btn-primary"
+                type="button"
+                disabled={saving}
+                onClick={() => void addMacro()}
+              >
+                <Plus aria-hidden="true" />
+                <span>Create Macro</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="macro-editor">
+            <MacroHeader
+              selectedId={selectedId}
+              draft={draft}
+              dirty={dirty}
+              saving={saving}
+              onSelect={select}
+              onChange={setDraft}
+              onCreate={() => void addMacro()}
+              onDelete={deleteSelected}
+            />
 
-      <main className="workspace">
-        <div className="flow-canvas">
-          {!draft ? (
-            <div className="flow-canvas-empty">
-              <p>Select a macro from the rail to edit its blocks, or create a new one.</p>
+            <div className="macro-add-row">
+              <select
+                value=""
+                aria-label="Add block"
+                onChange={(e) => {
+                  const kind = e.target.value as ActionBlock["kind"];
+                  if (kind) addBlock(kind);
+                  e.target.value = "";
+                }}
+              >
+                <option value="">Add block…</option>
+                <option value="mouse">Mouse Click</option>
+                <option value="delay">Pause / Delay</option>
+              </select>
             </div>
-          ) : (
-            <div className="macro-editor">
-              <div className="flow-head">
-                <div className="flow-profile-header">
-                  <div className="flow-profile-title-row">
-                    <h2 className="flow-profile-title">{draft.name || "(unnamed)"}</h2>
-                  </div>
-                  <div className="flow-profile-sub-row">
-                    <span className="flow-trigger-counter">
-                      {blockCountLabel(draft.blocks.length)}
-                    </span>
-                    {dirty && (
-                      <span className="flow-dirty-indicator">
-                        <span className="dirty-dot" aria-hidden="true" />
-                        <span>Unsaved changes</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
+            {draft.blocks.length === 0 ? (
+              <p className="settings-setting-desc">No blocks yet — add keys, mouse clicks, or delays above.</p>
+            ) : (
+              <div className="macro-blocks-list">
+                {draft.blocks.map((b, i) => (
+                  <BlockRow
+                    key={i}
+                    block={b}
+                    onChange={(next) =>
+                      setDraft({
+                        ...draft,
+                        blocks: draft.blocks.map((old, j) => (j === i ? next : old)),
+                      })
+                    }
+                    onDelete={() =>
+                      setDraft({
+                        ...draft,
+                        blocks: draft.blocks.filter((_, j) => j !== i),
+                      })
+                    }
+                  />
+                ))}
               </div>
-              <input
-                value={draft.name}
-                aria-label="Macro name"
-                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                placeholder="Macro name"
-                autoComplete="off"
-              />
-              <div className="macro-add-row">
-                <select
-                  value=""
-                  aria-label="Add block"
-                  onChange={(e) => {
-                    const kind = e.target.value as ActionBlock["kind"];
-                    if (kind) addBlock(kind);
-                    e.target.value = "";
-                  }}
-                >
-                  <option value="">Add block…</option>
-                  <option value="mouse">Mouse Click</option>
-                  <option value="delay">Pause / Delay</option>
-                </select>
-              </div>
-              {draft.blocks.length === 0 ? (
-                <p className="settings-setting-desc">No blocks yet — add keys, mouse clicks, or delays above.</p>
-              ) : (
-                <div className="macro-blocks-list">
-                  {draft.blocks.map((b, i) => (
-                    <BlockRow
-                      key={i}
-                      block={b}
-                      onChange={(next) =>
-                        setDraft({
-                          ...draft,
-                          blocks: draft.blocks.map((old, j) => (j === i ? next : old)),
-                        })
-                      }
-                      onDelete={() =>
-                        setDraft({
-                          ...draft,
-                          blocks: draft.blocks.filter((_, j) => j !== i),
-                        })
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-              <div className="macro-footer">
-                <button
-                  type="button"
-                  className="btn-ghost macro-delete-btn"
-                  onClick={deleteSelected}
-                  disabled={saving}
-                >
-                  <Trash2 className="btn-icon-sm" aria-hidden="true" />
-                  <span>{confirmDelete ? "Click again to confirm" : "Delete"}</span>
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary macro-save-btn"
-                  onClick={saveDraft}
-                  disabled={saving || !dirty}
-                >
-                  <span>Save</span>
-                </button>
-              </div>
+            )}
+            <div className="macro-footer">
+              <span className="macro-footer-count">{blockCountLabel(draft.blocks.length)}</span>
+              <button
+                type="button"
+                className="btn-primary macro-save-btn"
+                onClick={() => void saveDraft()}
+                disabled={saving || !dirty}
+              >
+                <Save aria-hidden="true" />
+                <span>Save</span>
+              </button>
             </div>
-          )}
-        </div>
-      </main>
-    </>
+          </div>
+        )}
+      </div>
+    </main>
   );
 }

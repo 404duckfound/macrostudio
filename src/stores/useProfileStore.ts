@@ -10,6 +10,12 @@ interface ProfileState {
   activeWindow: string;
   focusFallbackMs: number;
   ignoredExes: string[];
+  // Manual selection pins the profile; an automatic window match must not,
+  // otherwise the pinned fallback in useTauriIpc can never win.
+  pendingSwitch: { id: string; source: "manual" | "auto" } | null;
+  // Last switch that actually landed, so listeners can react to the real
+  // change rather than to a request that was still waiting for an answer.
+  lastSwitch: { id: string; source: "manual" | "auto" } | null;
   setProfiles: (p: Profile[]) => void;
   setMacros: (m: Macro[]) => void;
   setActiveId: (id: string | null) => void;
@@ -18,6 +24,9 @@ interface ProfileState {
   setActiveWindow: (exe: string) => void;
   setFocusFallbackMs: (ms: number) => void;
   setIgnoredExes: (exes: string[]) => void;
+  requestSwitch: (id: string, source: "manual" | "auto") => void;
+  applySwitch: (id: string, source: "manual" | "auto") => void;
+  clearPendingSwitch: () => void;
   addIgnoredExe: (exe: string) => void;
   removeIgnoredExe: (exe: string) => void;
 }
@@ -49,6 +58,8 @@ export const useProfileStore = create<ProfileState>((set) => ({
   activeWindow: "Unknown",
   focusFallbackMs: DEFAULT_FOCUS_FALLBACK_MS,
   ignoredExes: [...DEFAULT_IGNORED_EXES],
+  pendingSwitch: null,
+  lastSwitch: null,
   setProfiles: (profiles) =>
     set((s) => ({
       profiles,
@@ -72,6 +83,15 @@ export const useProfileStore = create<ProfileState>((set) => ({
   setActiveWindow: (activeWindow) => set({ activeWindow }),
   setFocusFallbackMs: (focusFallbackMs) => set({ focusFallbackMs }),
   setIgnoredExes: (exes) => set({ ignoredExes: normalizeExeList(exes) }),
+  requestSwitch: (id, source) => set({ pendingSwitch: { id, source } }),
+  applySwitch: (id, source) =>
+    set((s) => ({
+      activeId: id,
+      pinnedId: source === "manual" ? id : s.pinnedId,
+      pendingSwitch: null,
+      lastSwitch: { id, source },
+    })),
+  clearPendingSwitch: () => set({ pendingSwitch: null }),
   addIgnoredExe: (exe) =>
     set((s) => ({ ignoredExes: normalizeExeList([...s.ignoredExes, exe]) })),
   removeIgnoredExe: (exe) =>

@@ -3,7 +3,6 @@ import { useTauriIpc } from "./hooks/useTauriIpc";
 import { useProfileRunner } from "./hooks/useProfileRunner";
 import TitleBar from "./components/common/TitleBar";
 import Navbar, { type NavView } from "./components/common/Navbar";
-import ProfileRail from "./components/profiles/ProfileRail";
 import Workspace from "./components/workspace/Workspace";
 import MacrosView from "./components/macros/MacrosView";
 import SettingsView from "./components/settings/SettingsView";
@@ -22,10 +21,7 @@ function App() {
         <Navbar view={view} onView={setView} />
         <div className="app-content">
           {view === "profiles" ? (
-            <>
-              <ProfileRail activeRun={activeRun} />
-              <Workspace />
-            </>
+            <Workspace activeRun={activeRun} />
           ) : view === "macros" ? (
             <MacrosView />
           ) : (

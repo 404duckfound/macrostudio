@@ -3,6 +3,8 @@ interface ModalFooterProps {
   onCancel: () => void;
   submitLabel: string;
   danger?: boolean;
+  extraLabel?: string;
+  onExtra?: () => void;
 }
 
 export default function ModalFooter({
@@ -10,6 +12,8 @@ export default function ModalFooter({
   onCancel,
   submitLabel,
   danger,
+  extraLabel,
+  onExtra,
 }: ModalFooterProps) {
   return (
     <div className="modal-foot">
@@ -20,6 +24,11 @@ export default function ModalFooter({
         <button className="btn-ghost" type="button" onClick={onCancel}>
           Cancel
         </button>
+        {extraLabel && onExtra && (
+          <button className="btn-ghost" type="button" onClick={onExtra} disabled={saving}>
+            {extraLabel}
+          </button>
+        )}
         <button
           className={danger ? "btn-danger" : "btn-primary"}
           type="submit"

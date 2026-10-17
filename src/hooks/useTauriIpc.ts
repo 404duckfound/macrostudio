@@ -109,6 +109,7 @@ export function useTauriIpc() {
     defaultId,
     focusFallbackMs,
     ignoredExes,
+    lastSwitch,
   } = useProfileStore();
   const loadedRef = useRef(false);
   const healingRef = useRef(false);
@@ -167,8 +168,9 @@ export function useTauriIpc() {
     if (!match) return;
     const state = useProfileStore.getState();
     if (state.activeId === match.id) return;
-    state.setActiveId(match.id);
-    notifyProfileSwitch(match);
+    // Routed through the request queue so an unsaved trigger edit can ask
+    // before the workspace actually switches profiles.
+    state.requestSwitch(match.id, "auto");
   }, [match]);
 
   useEffect(() => {
@@ -180,11 +182,18 @@ export function useTauriIpc() {
         (state.defaultId && profiles.find((p) => p.id === state.defaultId)) ||
         profiles[0];
       if (!target || target.id === state.activeId) return;
-      state.setActiveId(target.id);
-      notifyProfileSwitch(target);
+      state.requestSwitch(target.id, "auto");
     }, focusFallbackMs);
     return () => window.clearTimeout(timer);
   }, [match, profiles, focusFallbackMs]);
+
+  // Notifications fire on the switch that actually landed, not on the request:
+  // a switch held back by unsaved changes must stay silent until it happens.
+  useEffect(() => {
+    if (!lastSwitch) return;
+    const profile = profiles.find((p) => p.id === lastSwitch.id);
+    if (profile) notifyProfileSwitch(profile);
+  }, [lastSwitch, profiles]);
 
   useEffect(() => {
     if (profiles.length === 0) return;

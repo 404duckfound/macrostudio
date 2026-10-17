@@ -437,35 +437,6 @@ textarea:focus {
   color: var(--text-primary);
 }
 
-/* ==========================================================================
-   Profile Rail (228px Sidebar)
-   ========================================================================== */
-
-.rail {
-  width: 228px;
-  flex-shrink: 0;
-  background: var(--bg-surface);
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  border-right: 1px solid var(--border-muted);
-}
-
-.rail-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  flex-shrink: 0;
-  padding: 0 12px 0 16px;
-}
-
-.rail-title {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--text-secondary);
-}
 
 .rail-add {
   width: 28px;
@@ -491,158 +462,10 @@ textarea:focus {
   display: block;
 }
 
-.rail-list {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 4px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
 
-.rail-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 24px 8px;
-  gap: 10px;
-  color: var(--text-disabled);
-  font-size: 12px;
-}
-.rail-empty-btn {
-  min-height: 32px;
-  font-size: 12px;
-  gap: 6px;
-  padding: 0 10px;
-}
-
-.rail-row {
+.rail-menu-wrap {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 48px;
-  padding: 6px 10px;
-  border-radius: 9px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  color: var(--text-secondary);
-}
-.rail-row:hover {
-  background: var(--bg-surface-elevated);
-  color: var(--text-primary);
-}
-.rail-row.active {
-  background: rgba(47, 195, 222, 0.04);
-  border-color: var(--border-default);
-  color: var(--text-primary);
-}
-
-.rail-row-main {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-.rail-row-name {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.rail-name-text {
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.rail-row.active .rail-name-text {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.rail-row-meta {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  color: var(--text-disabled);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.rail-row.active .rail-row-meta {
-  color: var(--text-secondary);
-}
-
-.rail-run-dot {
-  width: 6px;
-  height: 6px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--status-success);
-  box-shadow: 0 0 6px var(--status-success);
-}
-.rail-run-dot-error {
-  background: var(--status-danger);
-  box-shadow: 0 0 6px var(--status-danger);
-}
-
-.rail-default-star {
   display: inline-flex;
-  align-items: center;
-  color: var(--text-secondary);
-  flex-shrink: 0;
-}
-.rail-default-star svg {
-  width: 13px;
-  height: 13px;
-  display: block;
-}
-
-.rail-meta-target {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.rail-meta-target svg {
-  width: 11px;
-  height: 11px;
-  flex-shrink: 0;
-}
-
-.rail-dots {
-  width: 32px;
-  height: 32px;
-  min-height: 0;
-  flex-shrink: 0;
-  border-radius: 6px;
-  color: var(--text-disabled);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-.rail-dots:hover {
-  background: var(--bg-interactive);
-  color: var(--text-primary);
-}
-.rail-dots svg {
-  width: 16px;
-  height: 16px;
-  display: block;
 }
 
 .rail-menu {
@@ -656,6 +479,12 @@ textarea:focus {
   border-radius: 9px;
   padding: 4px;
   box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.55);
+}
+
+/* Header menus open below-right instead of below-left (the rail anchor is gone). */
+.rail-menu-right {
+  left: 0;
+  right: auto;
 }
 
 .rail-menu-item {
@@ -787,6 +616,168 @@ textarea:focus {
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.01em;
+}
+
+.flow-run-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--status-success);
+  box-shadow: 0 0 6px var(--status-success);
+}
+.flow-run-dot-error {
+  background: var(--status-danger);
+  box-shadow: 0 0 6px var(--status-danger);
+}
+
+.flow-default-star {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.flow-default-star svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+/* ==========================================================================
+   Select Menu (profile / macro picker in the canvas header)
+   ========================================================================== */
+
+.select-menu {
+  position: relative;
+  max-width: 320px;
+  flex-shrink: 0;
+}
+
+.select-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 9px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-align: left;
+}
+.select-menu-btn:hover:not(:disabled) {
+  background: var(--bg-surface-elevated);
+  border-color: var(--border-hover);
+}
+.select-menu-btn-open {
+  border-color: var(--accent-primary);
+}
+
+.select-menu-btn-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.select-menu-chevron {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--text-disabled);
+  display: block;
+}
+
+.select-menu-list {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  z-index: 60;
+  width: max(100%, 280px);
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.6);
+}
+
+.select-menu-empty {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-disabled);
+}
+
+.select-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  color: var(--text-secondary);
+  text-align: left;
+}
+.select-menu-item:hover {
+  background: var(--bg-interactive);
+  color: var(--text-primary);
+}
+.select-menu-item-active {
+  background: rgba(47, 195, 222, 0.06);
+  color: var(--text-primary);
+}
+
+.select-menu-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--status-success);
+  box-shadow: 0 0 6px var(--status-success);
+}
+.select-menu-dot-error {
+  background: var(--status-danger);
+  box-shadow: 0 0 6px var(--status-danger);
+}
+
+.select-menu-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.select-menu-item-label {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.select-menu-item-active .select-menu-item-label {
+  font-weight: 600;
+}
+.select-menu-item-meta {
+  font-size: 11px;
+  color: var(--text-disabled);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-menu-check {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--accent-primary);
+  display: block;
 }
 
 .flow-profile-sub-row {
@@ -1019,21 +1010,7 @@ textarea:focus {
   left: auto;
 }
 
-/* Compact switch for trigger rows (38x24 target, thumb 18px) */
-.switch-sm {
-  width: 38px;
-  height: 24px;
-  min-height: 24px;
-}
-.switch-sm .switch-thumb {
-  top: 3px;
-  left: 3px;
-  width: 18px;
-  height: 18px;
-}
-.switch-sm.switch-on .switch-thumb {
-  left: 17px;
-}
+/* (switch-sm lives next to .switch so its width wins on equal specificity) */
 
 .rail-menu-icon {
   width: 14px;
@@ -1718,7 +1695,7 @@ textarea:focus {
 .switch-thumb {
   position: absolute;
   top: 2px;
-  left: 2px;
+  left: 1px;
   width: 18px;
   height: 18px;
   border-radius: 9999px;
@@ -1726,9 +1703,26 @@ textarea:focus {
   transition: left 0.18s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.18s ease;
 }
 .switch-on .switch-thumb {
-  left: 22px;
+  left: 23px;
   background: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Compact switch for trigger rows (38x24 target, thumb 18px).
+   Must stay after .switch: equal specificity, later rule wins. */
+.switch-sm {
+  width: 38px;
+  height: 24px;
+  min-height: 24px;
+}
+.switch-sm .switch-thumb {
+  top: 2px;
+  left: 1px;
+  width: 18px;
+  height: 18px;
+}
+.switch-sm.switch-on .switch-thumb {
+  left: 17px;
 }
 
 /* ==========================================================================
@@ -2971,6 +2965,10 @@ textarea:focus {
 }
 .macro-save-btn {
   min-height: 36px;
+}
+.macro-footer-count {
+  font-size: 12px;
+  color: var(--text-disabled);
 }
 
 @media (prefers-reduced-motion: reduce) {
