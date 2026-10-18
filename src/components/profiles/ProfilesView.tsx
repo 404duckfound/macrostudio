@@ -7,9 +7,10 @@ import ProfileFormModal from "./modals/ProfileFormModal";
 import SwitchGuard from "../common/ui/SwitchGuard";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
-import { buildCombo, splitCombo } from "../../lib/keyCatalog";
+import { splitCombo } from "../../lib/keyCatalog";
 import type { MacroAction, ModSide, Profile, Trigger } from "../../types";
 import KeyboardMap from "./KeyboardMap";
+import KeyMatchPicker from "./KeyMatchPicker";
 import TriggerInspector from "./triggers/inspector/TriggerInspector";
 import TriggerList from "./triggers/list/TriggerList";
 import { cleanDraft, toDrafts } from "./triggers/triggerDraft";
@@ -156,11 +157,68 @@ export default function ProfilesView({ activeRun }: { activeRun: ActiveRun }) {
     return set;
   }, [draftTriggers]);
 
-  // Map assign keeps the selected trigger's modifiers and swaps only the
-  // main key; clash validation is shared with the picker path.
-  function assignMapKey(name: string) {
-    const { modifiers } = splitCombo(selected?.shortcut ?? "");
-    applyPickerShortcut(buildCombo(modifiers, name, false));
+  // Main key -> draft indices. Several triggers can share one main key
+  // (Ctrl+P and Shift+P both land on P), so this is a list, not a map to one.
+  const triggersByMain = useMemo(() => {
+    const map = new Map<string, number[]>();
+    draftTriggers.forEach((t, index) => {
+      const { main } = splitCombo(t.shortcut);
+      if (!main) return;
+      const key = main.toUpperCase();
+      const list = map.get(key);
+      if (list) list.push(index);
+      else map.set(key, [index]);
+    });
+    return map;
+  }, [draftTriggers]);
+
+  const [matchPicker, setMatchPicker] = useState<{
+    mainKey: string;
+    indices: number[];
+    anchor: { top: number; right: number };
+  } | null>(null);
+
+  function openEmptyOn(mainKey: string) {
+    // An unfinished card is still being filled in: rewrite its key instead of
+    // piling up another empty one. Pressing five keys should not leave five
+    // cards behind.
+    if (selected && selected.actions.length === 0) {
+      setDraftTriggers((prev) =>
+        prev.map((x, i) =>
+          i === sel ? { ...x, shortcut: mainKey, mod_sides: {} } : x,
+        ),
+      );
+      return;
+    }
+    setDraftTriggers((prev) => [
+      ...prev,
+      {
+        shortcut: mainKey,
+        actions: [],
+        block_key: false,
+        fire_on_release: false,
+        mod_sides: {},
+        wildcard: false,
+        force_hook: false,
+        enabled: true,
+      },
+    ]);
+    setSelectedIdx(draftTriggers.length);
+  }
+
+  // The map navigates and starts triggers; it never reassigns the selected one.
+  function mapKeyDown(name: string, anchor: { top: number; right: number }) {
+    const indices = triggersByMain.get(name.toUpperCase()) ?? [];
+    if (indices.length === 1) {
+      selectTriggerAt(indices[0]);
+      return;
+    }
+    if (indices.length > 1) {
+      setMatchPicker({ mainKey: name.toUpperCase(), indices, anchor });
+      return;
+    }
+    setMatchPicker(null);
+    openEmptyOn(name.toUpperCase());
   }
   const single = selected?.actions[0] ?? null;
   const cleanTriggers = useMemo(
@@ -410,8 +468,8 @@ export default function ProfilesView({ activeRun }: { activeRun: ActiveRun }) {
             <KeyboardMap
               assigned={assignedMains}
               selectedMain={selectedMain}
-              disabled={!selected || recording}
-              onPick={assignMapKey}
+              disabled={recording}
+              onPick={mapKeyDown}
             />
           ) : (
             <TriggerList
@@ -432,6 +490,25 @@ export default function ProfilesView({ activeRun }: { activeRun: ActiveRun }) {
               onDelete={deleteTrigger}
               onToggleMenu={(i) => setOpenMenuIdx(openMenuIdx === i ? null : i)}
               onAdd={addTrigger}
+            />
+          )}
+          {matchPicker && (
+            <KeyMatchPicker
+              matches={matchPicker.indices.map((index) => ({
+                trigger: draftTriggers[index],
+                index,
+              }))}
+              mainKey={matchPicker.mainKey}
+              anchor={matchPicker.anchor}
+              onPick={(index) => {
+                selectTriggerAt(index);
+                setMatchPicker(null);
+              }}
+              onCreate={() => {
+                openEmptyOn(matchPicker.mainKey);
+                setMatchPicker(null);
+              }}
+              onClose={() => setMatchPicker(null)}
             />
           )}
         </div>

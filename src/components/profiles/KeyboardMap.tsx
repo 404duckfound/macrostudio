@@ -11,7 +11,8 @@ export default function KeyboardMap({
   /** Uppercase main key of the selected trigger, if any. */
   selectedMain: string | null;
   disabled: boolean;
-  onPick: (name: string) => void;
+  /** Receives the key name and where it was pressed, to anchor a chooser. */
+  onPick: (name: string, anchor: { top: number; right: number }) => void;
 }) {
   return (
     <div className="keymap" role="group" aria-label="Keyboard map">
@@ -36,11 +37,13 @@ export default function KeyboardMap({
                   k.name == null
                     ? k.label
                     : isAssigned
-                      ? `${k.name} is assigned — click to use for selected trigger`
-                      : `Assign ${k.name} to selected trigger`
+                      ? `${k.name} is in use — click to edit that trigger`
+                      : `Start a new trigger on ${k.name}`
                 }
-                onClick={() => {
-                  if (k.name != null) onPick(k.name);
+                onClick={(e) => {
+                  if (k.name == null) return;
+                  const r = e.currentTarget.getBoundingClientRect();
+                  onPick(k.name, { top: r.bottom + 4, right: r.right });
                 }}
               >
                 {k.label}
@@ -50,8 +53,8 @@ export default function KeyboardMap({
         </div>
       ))}
       <p className="keymap-hint">
-        Click a key to assign it to the selected trigger. Highlighted keys are
-        already in use.
+        Click a key to jump to the trigger that uses it, or to start a new one
+        on that key. Highlighted keys are already in use.
       </p>
     </div>
   );

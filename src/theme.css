@@ -386,6 +386,9 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 12px rgba(47, 195, 222, 0.35);
 }
 .keymap-hint { margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
+/* Chooser for several triggers sharing one main key. Anchored from the key's
+   rect, so it must not scroll with the map. */
+.key-match-picker { position: fixed; z-index: 70; min-width: 190px; }
 
 /* Tactile Keycaps (Chips & Kbd) */
 .chips-wrapper { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }

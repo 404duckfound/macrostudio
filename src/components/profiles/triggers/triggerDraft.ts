@@ -29,8 +29,12 @@ export function cleanDraft(drafts: Trigger[]): Trigger[] {
   for (const t of drafts) {
     const shortcut = t.shortcut.trim();
     if (!shortcut) continue;
-    // Disabled triggers are exempt from dedup dropping: they are kept in
-    // JSON and skipped at compile time, so saving must never delete them.
+    // An enabled trigger with no action does nothing, so saving must not
+    // leave it behind: it would sit in JSON forever as a dead key.
+    if (t.enabled && t.actions.length === 0) continue;
+    // Disabled triggers are exempt from both drops: they are kept in JSON and
+    // skipped at compile time, so saving must never delete a trigger the user
+    // only parked temporarily.
     if (t.enabled) {
       if (seen.has(shortcut)) continue;
       seen.add(shortcut);

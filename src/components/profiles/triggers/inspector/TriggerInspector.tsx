@@ -108,8 +108,8 @@ export default function TriggerInspector(props: TriggerInspectorProps) {
                 <div className="inline-warn" role="alert">
                   <AlertCircle className="warn-icon" aria-hidden="true" />
                   <span>
-                    A trigger has an empty or duplicated shortcut. It will be
-                    omitted on save.
+                    A trigger has an empty or duplicated shortcut, or no action
+                    yet. It will be omitted on save.
                   </span>
                 </div>
               )}

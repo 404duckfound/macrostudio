@@ -194,8 +194,8 @@ export default function ProfileHeader({
               <span className="flow-without-action">
                 {withoutActionCount}{" "}
                 {withoutActionCount === 1
-                  ? "trigger without action"
-                  : "triggers without action"}
+                  ? "trigger has no action and will be dropped on save"
+                  : "triggers have no action and will be dropped on save"}
               </span>
             )}
             {dirty && (
