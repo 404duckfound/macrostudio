@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useProfileStore } from "../stores/useProfileStore";
-import { macroSignature } from "../components/workspace/triggers/triggerDraft";
+import { macroSignature } from "../components/profiles/triggers/triggerDraft";
 import type { Trigger } from "../types";
 
 const POLL_MS = 2000;

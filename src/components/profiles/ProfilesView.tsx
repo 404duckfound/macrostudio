@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Layers, Plus } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import ProfileHeader from "./ProfileHeader";
-import ProfileFormModal from "../profiles/modals/ProfileFormModal";
+import ProfileFormModal from "./modals/ProfileFormModal";
 import SwitchGuard from "../common/ui/SwitchGuard";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
@@ -26,7 +26,7 @@ function altGrSides(combo: string): Record<string, ModSide> {
   return sides;
 }
 
-export default function Workspace({ activeRun }: { activeRun: ActiveRun }) {
+export default function ProfilesView({ activeRun }: { activeRun: ActiveRun }) {
   const activeId = useProfileStore((s) => s.activeId);
   const profiles = useProfileStore((s) => s.profiles);
   const macros = useProfileStore((s) => s.macros);

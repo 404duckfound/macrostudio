@@ -3,7 +3,7 @@ import { useTauriIpc } from "./hooks/useTauriIpc";
 import { useProfileRunner } from "./hooks/useProfileRunner";
 import TitleBar from "./components/common/chrome/TitleBar";
 import Navbar, { type NavView } from "./components/common/chrome/Navbar";
-import Workspace from "./components/workspace/Workspace";
+import ProfilesView from "./components/profiles/ProfilesView";
 import MacrosView from "./components/macros/MacrosView";
 import SettingsView from "./components/settings/SettingsView";
 import "./theme.css";
@@ -22,7 +22,7 @@ function App() {
       <div className="app-body-row">
         <div className="app-content">
           {view === "profiles" ? (
-            <Workspace activeRun={activeRun} />
+            <ProfilesView activeRun={activeRun} />
           ) : view === "macros" ? (
             <MacrosView />
           ) : (
