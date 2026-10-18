@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { AlertTriangle } from "lucide-react";
-import { useProfileStore } from "../../stores/useProfileStore";
+import { useProfileStore } from "../../../stores/useProfileStore";
 import Modal from "./Modal";
 import ModalFooter from "./ModalFooter";
 

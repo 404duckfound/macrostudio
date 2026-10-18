@@ -1,6 +1,6 @@
 import { Boxes } from "lucide-react";
-import Modal from "../common/Modal";
-import ModalFooter from "../common/ModalFooter";
+import Modal from "../common/ui/Modal";
+import ModalFooter from "../common/ui/ModalFooter";
 import type { Macro } from "../../types";
 
 interface MacroDeleteModalProps {

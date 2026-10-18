@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import type { ModSide, Trigger } from "../../types";
-import BlockKeyToggle from "./BlockKeyToggle";
+import type { ModSide, Trigger } from "../../../../types";
 import Chips from "./Chips";
-import { pruneSides } from "./triggerDraft";
+import { pruneSides } from "../triggerDraft";
 
 const MODIFIERS = ["Ctrl", "Shift", "Alt", "Win", "Meta"] as const;
 
@@ -99,12 +98,37 @@ export default function TriggerModifiers({
               <span className="switch-thumb" />
             </button>
           </div>
-          <BlockKeyToggle
-            value={trigger.block_key}
-            onChange={(block_key) =>
-              onPatch((t) => ({ ...t, block_key }))
-            }
-          />
+          {/* `block_key` is not a modifier, but it reads as one here: the same
+              row shape, the same switch, one more line in the Modifiers step. */}
+          <div className="block-card">
+            <div className="block-card-info">
+              <div className="block-card-title-row">
+                <span className="toggle-title">Block Original Keypress</span>
+                {!trigger.block_key && (
+                  <span className="toggle-symbol" aria-hidden="true">
+                    ~
+                  </span>
+                )}
+              </div>
+              <span className="toggle-sub">
+                {trigger.block_key
+                  ? "Suppresses the native physical key event"
+                  : "Allows physical key event to pass through"}
+              </span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-label="Block Original Keypress"
+              aria-checked={trigger.block_key}
+              className={`switch ${trigger.block_key ? "switch-on" : ""}`}
+              onClick={() =>
+                onPatch((t) => ({ ...t, block_key: !t.block_key }))
+              }
+            >
+              <span className="switch-thumb" />
+            </button>
+          </div>
           <div className="block-card">
             <div className="block-card-info">
               <div className="block-card-title-row">

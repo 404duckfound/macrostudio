@@ -1,4 +1,4 @@
-import type { Macro, MacroAction, ModSide, Trigger } from "../../types";
+import type { Macro, MacroAction, ModSide, Trigger } from "../../../types";
 
 // Actions the UI can no longer edit or compile (removed types like custom
 // and keys, or unknown future ones) are dropped on clean/save, mirroring the

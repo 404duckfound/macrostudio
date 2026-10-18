@@ -3,8 +3,8 @@ import { KeyRound } from "lucide-react";
 import { useKeyCapture } from "../../../hooks/useKeyCapture";
 import { keyChipLabel, keyParts } from "../../../lib/keymap";
 import type { KeyBehavior, MacroAction } from "../../../types";
-import KeyPicker from "../KeyPicker";
-import NumberStepper from "../../common/NumberStepper";
+import KeyPicker from "../triggers/fields/KeyPicker";
+import NumberStepper from "../../common/ui/NumberStepper";
 
 type KeyAction = Extract<MacroAction, { type: "key" }>;
 

@@ -1,4 +1,4 @@
-import { keyChipLabel } from "../../lib/keymap";
+import { keyChipLabel } from "../../../../lib/keymap";
 
 export default function Chips({ parts }: { parts: string[] }) {
   if (parts.length === 0)

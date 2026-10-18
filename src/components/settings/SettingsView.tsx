@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Cpu, FolderOpen, Info, Monitor, Plus, RotateCcw, X } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
-import NumberStepper from "../common/NumberStepper";
+import NumberStepper from "../common/ui/NumberStepper";
 
 export default function SettingsView() {
   const focusFallbackMs = useProfileStore((s) => s.focusFallbackMs);

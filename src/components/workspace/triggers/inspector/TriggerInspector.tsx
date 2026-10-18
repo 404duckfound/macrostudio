@@ -6,11 +6,11 @@ import {
   Trash2,
   Undo2,
 } from "lucide-react";
-import type { MacroAction, Trigger } from "../../types";
-import ActionEditor from "./actions/ActionEditor";
-import ActionTypeCard from "./actions/ActionTypeCard";
-import ShortcutField from "./ShortcutField";
-import TriggerModifiers from "./TriggerModifiers";
+import type { MacroAction, Trigger } from "../../../../types";
+import ActionEditor from "../../actions/ActionEditor";
+import ActionTypeCard from "../../actions/ActionTypeCard";
+import ShortcutField from "../fields/ShortcutField";
+import TriggerModifiers from "../fields/TriggerModifiers";
 
 interface TriggerInspectorProps {
   selected: Trigger | undefined;

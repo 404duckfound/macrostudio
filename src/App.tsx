@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTauriIpc } from "./hooks/useTauriIpc";
 import { useProfileRunner } from "./hooks/useProfileRunner";
-import TitleBar from "./components/common/TitleBar";
-import Navbar, { type NavView } from "./components/common/Navbar";
+import TitleBar from "./components/common/chrome/TitleBar";
+import Navbar, { type NavView } from "./components/common/chrome/Navbar";
 import Workspace from "./components/workspace/Workspace";
 import MacrosView from "./components/macros/MacrosView";
 import SettingsView from "./components/settings/SettingsView";

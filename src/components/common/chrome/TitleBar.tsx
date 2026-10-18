@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import appIcon from "../../assets/app-icon.png";
+import appIcon from "../../../assets/app-icon.png";
 
 // Windows-style caption glyphs: 10x10 grid rendered at exactly 10px, so
 // one unit maps to one pixel. All three glyphs share the same optical

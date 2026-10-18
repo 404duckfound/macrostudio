@@ -4,15 +4,15 @@ import { Layers, Plus } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import ProfileHeader from "./ProfileHeader";
 import ProfileFormModal from "../profiles/modals/ProfileFormModal";
-import SwitchGuard from "../common/SwitchGuard";
+import SwitchGuard from "../common/ui/SwitchGuard";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
 import { buildCombo, splitCombo } from "../../lib/keyCatalog";
 import type { MacroAction, ModSide, Profile, Trigger } from "../../types";
 import KeyboardMap from "./KeyboardMap";
-import TriggerInspector from "./TriggerInspector";
-import TriggerList from "./TriggerList";
-import { cleanDraft, toDrafts } from "./triggerDraft";
+import TriggerInspector from "./triggers/inspector/TriggerInspector";
+import TriggerList from "./triggers/list/TriggerList";
+import { cleanDraft, toDrafts } from "./triggers/triggerDraft";
 
 type ActiveRun = { id: string; ok: boolean } | null;
 

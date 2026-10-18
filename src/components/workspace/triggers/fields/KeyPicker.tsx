@@ -8,7 +8,7 @@ import {
   splitCombo,
   MODIFIERS,
   type KeyCategoryId,
-} from "../../lib/keyCatalog";
+} from "../../../../lib/keyCatalog";
 
 interface KeyPickerProps {
   open: boolean;

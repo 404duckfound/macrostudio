@@ -1,6 +1,6 @@
 import { AppWindow } from "lucide-react";
-import Modal from "../../common/Modal";
-import ModalFooter from "../../common/ModalFooter";
+import Modal from "../../common/ui/Modal";
+import ModalFooter from "../../common/ui/ModalFooter";
 import type { Profile } from "../../../types";
 
 interface DeleteProfileModalProps {

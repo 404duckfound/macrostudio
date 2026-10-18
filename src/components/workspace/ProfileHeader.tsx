@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Plus } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
-import SelectMenu from "../common/SelectMenu";
+import SelectMenu from "../common/ui/SelectMenu";
 import ProfileDeleteModal from "../profiles/modals/ProfileDeleteModal";
 import ProfileFormModal from "../profiles/modals/ProfileFormModal";
 import type { Profile, Trigger } from "../../types";

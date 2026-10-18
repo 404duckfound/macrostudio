@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Pencil } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
-import SelectMenu from "../common/SelectMenu";
+import SelectMenu from "../common/ui/SelectMenu";
 import MacroDeleteModal from "./MacroDeleteModal";
 import type { ActionBlock, Macro } from "../../types";
 

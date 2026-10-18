@@ -1,7 +1,7 @@
 import { Ban, Copy, Ellipsis, Eye, Keyboard, Plus, Trash2 } from "lucide-react";
-import { parseTrigger } from "../../lib/keys";
-import type { Macro, MacroAction, Trigger } from "../../types";
-import Chips from "./Chips";
+import { parseTrigger } from "../../../../lib/keys";
+import type { Macro, MacroAction, Trigger } from "../../../../types";
+import Chips from "../fields/Chips";
 
 function actionPreviewLabel(
   action: MacroAction | null | undefined,
