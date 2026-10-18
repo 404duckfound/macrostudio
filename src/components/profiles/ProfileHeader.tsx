@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { AppWindow, Pencil, Star } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import SelectMenu from "../common/SelectMenu";
 import ProfileDeleteModal from "./modals/ProfileDeleteModal";
@@ -9,17 +9,17 @@ import type { Profile, Trigger } from "../../types";
 
 type ModalState =
   | { kind: "form"; mode: "add" }
-  | { kind: "form"; mode: "edit" }
-  | { kind: "delete" }
+  | { kind: "form"; mode: "edit"; profile: Profile }
+  | { kind: "delete"; profile: Profile }
   | null;
 
 interface ProfileHeaderProps {
-  active: Profile;
   activeRun: { id: string; ok: boolean } | null;
-  triggerCount: number;
   withoutActionCount: number;
   dirty: boolean;
   onRequestSwitch: (id: string) => void;
+  /** Right-aligned slot for the canvas view switcher. */
+  tabs?: ReactNode;
 }
 
 async function refresh(): Promise<Profile[]> {
@@ -41,43 +41,21 @@ function cloneTriggers(triggers: Trigger[]): Trigger[] {
   }));
 }
 
-function pluralTriggers(n: number): string {
-  return `${n} ${n === 1 ? "trigger" : "triggers"}`;
-}
-
 export default function ProfileHeader({
-  active,
   activeRun,
-  triggerCount,
   withoutActionCount,
   dirty,
   onRequestSwitch,
+  tabs,
 }: ProfileHeaderProps) {
   const profiles = useProfileStore((s) => s.profiles);
   const activeId = useProfileStore((s) => s.activeId);
   const defaultId = useProfileStore((s) => s.defaultId);
   const activeWindow = useProfileStore((s) => s.activeWindow);
   const setDefaultId = useProfileStore((s) => s.setDefaultId);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [modal, setModal] = useState<ModalState>(null);
   const [saving, setSaving] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    function onDocClick() {
-      setMenuOpen(false);
-    }
-    function onDocKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setMenuOpen(false);
-    }
-    document.addEventListener("click", onDocClick);
-    document.addEventListener("keydown", onDocKey);
-    return () => {
-      document.removeEventListener("click", onDocClick);
-      document.removeEventListener("keydown", onDocKey);
-    };
-  }, [menuOpen]);
 
   function closeModal() {
     setModal(null);
@@ -88,14 +66,8 @@ export default function ProfileHeader({
   // saving a profile cannot lose the unsaved edits the guard protects.
   async function saveProfile(profile: Profile, isNew: boolean) {
     await invoke("profile_save", { profile });
-    const list = await refresh();
-    if (isNew) {
-      useProfileStore
-        .getState()
-        .applySwitch(profile.id, "manual");
-    } else if (list.length > 0) {
-      setMenuOpen(false);
-    }
+    await refresh();
+    if (isNew) useProfileStore.getState().applySwitch(profile.id, "manual");
     closeModal();
   }
 
@@ -104,7 +76,7 @@ export default function ProfileHeader({
     setSaving(true);
     setDeleteError("");
     try {
-      const deleted = active.id;
+      const deleted = modal.profile.id;
       await invoke("profile_delete", { profileId: deleted });
       const list = await refresh();
       const state = useProfileStore.getState();
@@ -135,16 +107,7 @@ export default function ProfileHeader({
     };
     await invoke("profile_save", { profile: copy });
     await refresh();
-    setMenuOpen(false);
     onRequestSwitch(copy.id);
-  }
-
-  function optionMeta(p: Profile): string {
-    const parts: string[] = [];
-    if (defaultId === p.id) parts.push("Default");
-    parts.push(pluralTriggers(p.triggers.length));
-    parts.push(p.target_exe ?? "All windows");
-    return parts.join(" · ");
   }
 
   return (
@@ -157,78 +120,36 @@ export default function ProfileHeader({
               value={activeId}
               onSelect={onRequestSwitch}
               placeholder="Select a profile…"
+              footerAction={{
+                label: "New Profile",
+                icon: <Plus aria-hidden="true" />,
+                onRun: () => setModal({ kind: "form", mode: "add" }),
+              }}
               options={profiles.map((p) => ({
                 value: p.id,
                 label: p.name,
-                meta: optionMeta(p),
+                meta: p.target_exe ?? "Global (All Windows)",
+                starred: defaultId === p.id,
                 dot:
                   activeRun?.id === p.id ? (activeRun.ok ? "ok" : "error") : undefined,
+                dotLabel:
+                  activeRun?.id === p.id
+                    ? activeRun.ok
+                      ? "Engine Running"
+                      : "Engine Failed"
+                    : undefined,
               }))}
-            />
-            {active.target_exe ? (
-              <span
-                className="scope-badge scope-badge-linked"
-                title={`Linked application: ${active.target_exe}`}
-              >
-                <AppWindow className="scope-badge-icon" aria-hidden="true" />
-                {active.target_exe}
-              </span>
-            ) : (
-              <span className="scope-badge" title="Applies across all windows">
-                Global (All Windows)
-              </span>
-            )}
-            {activeRun && (
-              <span
-                role="img"
-                aria-label={activeRun.ok ? "Engine Running" : "Engine Failed"}
-                title={activeRun.ok ? "Engine Running" : "Engine Failed"}
-                className={`flow-run-dot ${
-                  activeRun.ok ? "" : "flow-run-dot-error"
-                }`}
-              />
-            )}
-            {defaultId === active.id && (
-              <span className="flow-default-star" title="Default profile">
-                <Star aria-hidden="true" fill="currentColor" />
-              </span>
-            )}
-            <div className="rail-menu-wrap">
-              <button
-                className="rail-add"
-                type="button"
-                aria-label="Profile options"
-                title="Profile options"
-                aria-expanded={menuOpen}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen((o) => !o);
-                }}
-              >
-                <Pencil aria-hidden="true" />
-              </button>
-              {menuOpen && (
-                <div
-                  className="rail-menu rail-menu-right"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
+              renderOptionActions={(id, close) => {
+                const p = profiles.find((x) => x.id === id);
+                if (!p) return null;
+                return (
+                  <>
+                    <button
                     className="rail-menu-item"
                     type="button"
                     onClick={() => {
-                      setMenuOpen(false);
-                      setModal({ kind: "form", mode: "add" });
-                    }}
-                  >
-                    New Profile
-                  </button>
-                  <div className="rail-menu-divider" />
-                  <button
-                    className="rail-menu-item"
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setModal({ kind: "form", mode: "edit" });
+                      close();
+                      setModal({ kind: "form", mode: "edit", profile: p });
                     }}
                   >
                     Edit Profile
@@ -236,17 +157,17 @@ export default function ProfileHeader({
                   <button
                     className="rail-menu-item"
                     type="button"
-                    onClick={() => void duplicateProfile(active)}
+                    onClick={() => void duplicateProfile(p)}
                   >
                     Duplicate
                   </button>
                   <button
                     className="rail-menu-item"
                     type="button"
-                    disabled={defaultId === active.id}
+                    disabled={defaultId === p.id}
                     onClick={() => {
-                      setDefaultId(active.id);
-                      setMenuOpen(false);
+                      setDefaultId(p.id);
+                      close();
                     }}
                   >
                     Make default
@@ -256,28 +177,27 @@ export default function ProfileHeader({
                     className="rail-menu-item rail-menu-item-danger"
                     type="button"
                     onClick={() => {
-                      setMenuOpen(false);
-                      setModal({ kind: "delete" });
+                      close();
+                      setModal({ kind: "delete", profile: p });
                     }}
                   >
                     Delete Profile
                   </button>
-                </div>
-              )}
-            </div>
+                  </>
+                );
+              }}
+            />
+            {tabs}
           </div>
           <div className="flow-profile-sub-row">
-            <span className="flow-trigger-counter">
-              {triggerCount} {triggerCount === 1 ? "trigger" : "triggers"} configured
-              {withoutActionCount > 0 && (
-                <>
-                  {" · "}
-                  <span className="flow-without-action">
-                    {withoutActionCount} without action
-                  </span>
-                </>
-              )}
-            </span>
+            {withoutActionCount > 0 && (
+              <span className="flow-without-action">
+                {withoutActionCount}{" "}
+                {withoutActionCount === 1
+                  ? "trigger without action"
+                  : "triggers without action"}
+              </span>
+            )}
             {dirty && (
               <span className="flow-dirty-indicator">
                 <span className="dirty-dot" aria-hidden="true" />
@@ -291,7 +211,7 @@ export default function ProfileHeader({
       {modal?.kind === "form" && (
         <ProfileFormModal
           mode={modal.mode}
-          editing={modal.mode === "edit" ? active : null}
+          editing={modal.mode === "edit" ? modal.profile : null}
           profiles={profiles}
           activeWindow={activeWindow}
           onClose={closeModal}
@@ -301,7 +221,7 @@ export default function ProfileHeader({
 
       {modal?.kind === "delete" && (
         <ProfileDeleteModal
-          profile={active}
+          profile={modal.profile}
           saving={saving}
           error={deleteError}
           onClose={closeModal}

@@ -402,12 +402,32 @@ export default function Workspace({ activeRun }: { activeRun: ActiveRun }) {
       <div className="flow-canvas">
         <div className="flow-inner">
           <ProfileHeader
-            active={active}
             activeRun={activeRun}
-            triggerCount={cleanTriggers.length}
             withoutActionCount={withoutActionCount}
             dirty={dirty}
             onRequestSwitch={(id) => requestSwitch(id, "manual")}
+            tabs={
+              <div className="canvas-tabs" role="tablist" aria-label="Canvas view">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={canvasTab === "list"}
+                  className={`canvas-tab ${canvasTab === "list" ? "canvas-tab-on" : ""}`}
+                  onClick={() => setCanvasTab("list")}
+                >
+                  List
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={canvasTab === "map"}
+                  className={`canvas-tab ${canvasTab === "map" ? "canvas-tab-on" : ""}`}
+                  onClick={() => setCanvasTab("map")}
+                >
+                  Keyboard
+                </button>
+              </div>
+            }
           />
           <SwitchGuard
             dirty={dirty}
@@ -415,27 +435,6 @@ export default function Workspace({ activeRun }: { activeRun: ActiveRun }) {
             onSaveAndSwitch={saveThenSwitch}
             onDiscardAndSwitch={discardThenSwitch}
           />
-
-          <div className="canvas-tabs" role="tablist" aria-label="Canvas view">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={canvasTab === "list"}
-              className={`canvas-tab ${canvasTab === "list" ? "canvas-tab-on" : ""}`}
-              onClick={() => setCanvasTab("list")}
-            >
-              List
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={canvasTab === "map"}
-              className={`canvas-tab ${canvasTab === "map" ? "canvas-tab-on" : ""}`}
-              onClick={() => setCanvasTab("map")}
-            >
-              Keyboard
-            </button>
-          </div>
 
           {canvasTab === "map" ? (
             <KeyboardMap

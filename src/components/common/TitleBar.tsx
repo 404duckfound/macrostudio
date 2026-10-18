@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import appIcon from "../../assets/app-icon.png";
 
@@ -56,7 +56,11 @@ function CloseGlyph() {
   );
 }
 
-export default function TitleBar() {
+export default function TitleBar({
+  children,
+}: {
+  children?: ReactNode;
+}) {
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
@@ -128,6 +132,9 @@ export default function TitleBar() {
           Macro Studio
         </span>
       </div>
+      {/* Centered independently of the two side clusters, so a wider title or
+          a maximized window cannot shift it off-center. */}
+      <div className="titlebar-center">{children}</div>
       <div
         className="titlebar-controls"
         onDoubleClick={(e) => e.stopPropagation()}

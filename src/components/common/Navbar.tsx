@@ -1,6 +1,19 @@
+import type { ReactNode } from "react";
 import { Boxes, Layers, Settings } from "lucide-react";
 
 export type NavView = "profiles" | "macros" | "settings";
+
+interface NavItem {
+  view: NavView;
+  label: string;
+  icon: ReactNode;
+}
+
+const ITEMS: NavItem[] = [
+  { view: "profiles", label: "Profiles", icon: <Layers aria-hidden="true" /> },
+  { view: "macros", label: "Macros", icon: <Boxes aria-hidden="true" /> },
+  { view: "settings", label: "Settings", icon: <Settings aria-hidden="true" /> },
+];
 
 export default function Navbar({
   view,
@@ -11,38 +24,19 @@ export default function Navbar({
 }) {
   return (
     <nav className="navbar" aria-label="Main">
-      <div className="navbar-items">
+      {ITEMS.map((item) => (
         <button
+          key={item.view}
           type="button"
-          className={`navbar-btn ${view === "profiles" ? "active" : ""}`}
-          aria-current={view === "profiles" ? "page" : undefined}
-          title="Profiles"
-          onClick={() => onView("profiles")}
+          className={`navbar-btn ${view === item.view ? "active" : ""}`}
+          aria-current={view === item.view ? "page" : undefined}
+          title={item.label}
+          onClick={() => onView(item.view)}
         >
-          <Layers aria-hidden="true" />
-          <span>Profiles</span>
+          {item.icon}
+          <span>{item.label}</span>
         </button>
-        <button
-          type="button"
-          className={`navbar-btn ${view === "macros" ? "active" : ""}`}
-          aria-current={view === "macros" ? "page" : undefined}
-          title="Macros"
-          onClick={() => onView("macros")}
-        >
-          <Boxes aria-hidden="true" />
-          <span>Macros</span>
-        </button>
-        <button
-          type="button"
-          className={`navbar-btn ${view === "settings" ? "active" : ""}`}
-          aria-current={view === "settings" ? "page" : undefined}
-          title="Settings"
-          onClick={() => onView("settings")}
-        >
-          <Settings aria-hidden="true" />
-          <span>Settings</span>
-        </button>
-      </div>
+      ))}
     </nav>
   );
 }

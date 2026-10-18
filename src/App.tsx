@@ -15,10 +15,11 @@ function App() {
 
   return (
     <div className="app-shell">
-      <TitleBar />
+      <TitleBar>
+        <Navbar view={view} onView={setView} />
+      </TitleBar>
       {error && <div className="run-error">{error}</div>}
       <div className="app-body-row">
-        <Navbar view={view} onView={setView} />
         <div className="app-content">
           {view === "profiles" ? (
             <Workspace activeRun={activeRun} />
