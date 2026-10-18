@@ -174,9 +174,6 @@ export default function ProfilesView({
               macros={macros}
               openMenuIdx={openMenuIdx}
               onSelect={editor.selectTriggerAt}
-              onToggleEnabled={(i) =>
-                editor.patchAt(i, (x) => ({ ...x, enabled: !x.enabled }))
-              }
               onFocusAction={editor.focusActionStep}
               onDuplicate={editor.duplicateTrigger}
               onToggleBlock={(i) =>

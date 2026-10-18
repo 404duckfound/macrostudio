@@ -36,7 +36,6 @@ function cloneTriggers(triggers: Trigger[]): Trigger[] {
     mod_sides: { ...t.mod_sides },
     wildcard: t.wildcard,
     force_hook: t.force_hook,
-    enabled: t.enabled ?? true,
     actions: t.actions.map((a) => ({ ...a })),
   }));
 }

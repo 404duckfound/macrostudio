@@ -30,7 +30,6 @@ interface TriggerListProps {
   macros: Macro[];
   openMenuIdx: number | null;
   onSelect: (idx: number) => void;
-  onToggleEnabled: (idx: number) => void;
   onFocusAction: (idx: number) => void;
   onDuplicate: (idx: number) => void;
   onToggleBlock: (idx: number) => void;
@@ -46,7 +45,6 @@ export default function TriggerList({
   macros,
   openMenuIdx,
   onSelect,
-  onToggleEnabled,
   onFocusAction,
   onDuplicate,
   onToggleBlock,
@@ -65,7 +63,7 @@ export default function TriggerList({
               key={`${i}-${t.shortcut}`}
               className={`trigger-card ${i === selectedIdx ? "trigger-card-selected" : ""} ${
                 recording && i === selectedIdx ? "trigger-card-recording" : ""
-              } ${t.enabled ? "" : "trigger-card-off"}`}
+              }`}
               onClick={() => onSelect(i)}
               title="Click to select trigger"
             >
@@ -117,20 +115,6 @@ export default function TriggerList({
                 >
                   {t.block_key ? <Ban aria-hidden="true" /> : <Eye aria-hidden="true" />}
                 </span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={t.enabled}
-                  aria-label={t.enabled ? "Disable trigger" : "Enable trigger"}
-                  title={t.enabled ? "Disable trigger" : "Enable trigger"}
-                  className={`switch switch-sm ${t.enabled ? "switch-on" : ""}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleEnabled(i);
-                  }}
-                >
-                  <span className="switch-thumb" />
-                </button>
                 <div className="trigger-menu-wrap">
                   <button
                     type="button"

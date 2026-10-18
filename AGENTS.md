@@ -7,7 +7,7 @@ Tauri v2 + React 19 + Zustand + Vite 8 desktop app (Windows-first). Design token
 - Package manager is **pnpm** (`pnpm-lock.yaml`; no npm/yarn lock).
 - Frontend verify: `pnpm build` (= `tsc && vite build`). **No frontend tests, no linter, no CI workflows exist.**
 - Rust verify: `cargo check --manifest-path src-tauri/Cargo.toml` — keep it warning-free.
-- Rust tests: `cargo test --manifest-path src-tauri/Cargo.toml` — **70 tests**, all inline `#[cfg(test)]` modules (most in `services/generator.rs`). Run them whenever you touch `generator.rs`, `ahk_manager.rs`, `watcher.rs` or the commands.
+- Rust tests: `cargo test --manifest-path src-tauri/Cargo.toml` — **68 tests**, all inline `#[cfg(test)]` modules (most in `services/generator.rs`). Run them whenever you touch `generator.rs`, `ahk_manager.rs`, `watcher.rs` or the commands.
 - Dev: `pnpm tauri dev` — Vite port `1420` is fixed (`strictPort: true`); `src-tauri/` is excluded from Vite watch (Rust changes recompile but don't reload the webview; config/capability changes need a full `tauri dev` restart).
 
 ## Backend layout (`src-tauri/src/`)

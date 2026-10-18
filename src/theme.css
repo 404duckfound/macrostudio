@@ -324,7 +324,6 @@ input:focus, select:focus, textarea:focus {
 .trigger-pass svg { width: 14px; height: 14px; display: block; }
 .trigger-pass-block { color: var(--status-danger); border-color: rgba(255, 95, 107, 0.3); background: rgba(255, 95, 107, 0.12); }
 .trigger-card-right { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.trigger-card-off .trigger-card-left { opacity: 0.45; }
 .trigger-noaction-btn {
   font-size: 11px; font-weight: 600; color: var(--status-warning);
   background: rgba(255, 176, 46, 0.1); border: 1px solid rgba(255, 176, 46, 0.3);
@@ -340,7 +339,6 @@ input:focus, select:focus, textarea:focus {
 .trigger-menu-wrap { position: relative; }
 .trigger-menu-wrap .rail-menu { left: auto; }
 
-/* (switch-sm lives next to .switch so its width wins on equal specificity) */
 .rail-menu-icon { width: 14px; height: 14px; display: block; }
 .trigger-add-placeholder {
   width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -574,11 +572,6 @@ input:focus, select:focus, textarea:focus {
   transition: left 0.18s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.18s ease;
 }
 .switch-on .switch-thumb { left: 23px; background: #ffffff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
-
-/* Compact switch for trigger rows (38x24 target, thumb 18px). Must stay after .switch: equal specificity, later rule wins. */
-.switch-sm { width: 38px; height: 24px; min-height: 24px; }
-.switch-sm .switch-thumb { top: 2px; left: 1px; width: 18px; height: 18px; }
-.switch-sm.switch-on .switch-thumb { left: 17px; }
 
 /* Action Type Card & Dropdown Popover */
 .action-select { position: relative; width: 100%; }

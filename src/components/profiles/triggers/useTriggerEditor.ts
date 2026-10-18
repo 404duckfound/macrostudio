@@ -29,7 +29,6 @@ function blankTrigger(shortcut = ""): Trigger {
     mod_sides: {},
     wildcard: false,
     force_hook: false,
-    enabled: true,
   };
 }
 

@@ -32,7 +32,6 @@ export interface Trigger {
   mod_sides: Record<string, ModSide>;
   wildcard: boolean;
   force_hook: boolean;
-  enabled: boolean;
 }
 
 export interface Profile {
