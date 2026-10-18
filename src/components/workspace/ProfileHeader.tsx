@@ -3,8 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { Plus } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import SelectMenu from "../common/SelectMenu";
-import ProfileDeleteModal from "./modals/ProfileDeleteModal";
-import ProfileFormModal from "./modals/ProfileFormModal";
+import ProfileDeleteModal from "../profiles/modals/ProfileDeleteModal";
+import ProfileFormModal from "../profiles/modals/ProfileFormModal";
 import type { Profile, Trigger } from "../../types";
 
 type ModalState =

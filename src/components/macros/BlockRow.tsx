@@ -1,6 +1,6 @@
 import { Clock, Mouse, Trash2 } from "lucide-react";
-import type { ActionBlock } from "../../../types";
-import { MouseInput } from "./MouseInput";
+import type { ActionBlock } from "../../types";
+import { MouseInput } from "../workspace/actions/MouseInput";
 
 function BlockIcon({ kind }: { kind: ActionBlock["kind"] }) {
   if (kind === "mouse") return <Mouse className="block-icon" aria-hidden="true" />;

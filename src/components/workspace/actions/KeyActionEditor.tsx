@@ -4,7 +4,7 @@ import { useKeyCapture } from "../../../hooks/useKeyCapture";
 import { keyChipLabel, keyParts } from "../../../lib/keymap";
 import type { KeyBehavior, MacroAction } from "../../../types";
 import KeyPicker from "../KeyPicker";
-import NumberStepper from "./NumberStepper";
+import NumberStepper from "../../common/NumberStepper";
 
 type KeyAction = Extract<MacroAction, { type: "key" }>;
 

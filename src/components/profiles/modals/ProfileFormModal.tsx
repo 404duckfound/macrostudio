@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { AppWindow } from "lucide-react";
 import Modal from "../../common/Modal";
 import ModalFooter from "../../common/ModalFooter";
-import ProfileScopeField from "./fields/ProfileScopeField";
+import ProfileScopeField from "../ProfileScopeField";
 import type { Profile } from "../../../types";
 
 type FormMode = "add" | "edit";

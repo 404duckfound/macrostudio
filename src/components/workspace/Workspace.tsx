@@ -15,7 +15,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
-import ProfileHeader from "../profiles/ProfileHeader";
+import ProfileHeader from "./ProfileHeader";
 import ProfileFormModal from "../profiles/modals/ProfileFormModal";
 import SwitchGuard from "../common/SwitchGuard";
 import { useKeyCapture } from "../../hooks/useKeyCapture";

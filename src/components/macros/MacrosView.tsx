@@ -4,7 +4,7 @@ import { Boxes, Plus, Save } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import MacroHeader from "./MacroHeader";
 import type { ActionBlock, Macro, Profile } from "../../types";
-import BlockRow from "../workspace/actions/BlockRow";
+import BlockRow from "./BlockRow";
 
 function blankMacro(): Macro {
   return { id: crypto.randomUUID(), name: "New macro", blocks: [] };
