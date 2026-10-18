@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import type { MacroAction } from "../../../types";
 
-export type ActionTypeValue = MacroAction["type"];
+type ActionTypeValue = MacroAction["type"];
 
 interface ActionTypeMeta {
   value: ActionTypeValue;
@@ -20,7 +20,7 @@ interface ActionTypeMeta {
   desc: string;
 }
 
-export const ACTION_TYPES: ActionTypeMeta[] = [
+const ACTION_TYPES: ActionTypeMeta[] = [
   {
     value: "key",
     title: "Keyboard Press",

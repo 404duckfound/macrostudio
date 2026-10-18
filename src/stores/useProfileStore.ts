@@ -31,7 +31,7 @@ interface ProfileState {
   removeIgnoredExe: (exe: string) => void;
 }
 
-export const DEFAULT_FOCUS_FALLBACK_MS = 750;
+const DEFAULT_FOCUS_FALLBACK_MS = 750;
 
 export const DEFAULT_IGNORED_EXES: string[] = [];
 

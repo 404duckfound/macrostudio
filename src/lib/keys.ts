@@ -29,7 +29,7 @@ const KEY_EVENT_ALIASES: Record<string, string> = {
   ArrowRight: "Right",
 };
 
-export interface CapturedCombo {
+interface CapturedCombo {
   combo: string;
   // True while AltGraph is held: the trigger needs left-Ctrl + right-Alt
   // sides to fire on AltGr alone instead of any Ctrl+Alt.

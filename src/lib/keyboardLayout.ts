@@ -3,7 +3,7 @@
 // spellings); `null` marks a decorative key that cannot be assigned
 // (wide Shift keys). `w` is the flex width in key units.
 
-export interface MapKey {
+interface MapKey {
   label: string;
   name: string | null;
   w: number;

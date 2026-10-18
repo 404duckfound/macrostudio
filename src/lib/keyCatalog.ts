@@ -8,13 +8,13 @@
 
 export type KeyCategoryId = "keyboard" | "fkeys" | "mouse";
 
-export interface KeyCategory {
+interface KeyCategory {
   id: KeyCategoryId;
   title: string;
   desc: string;
 }
 
-export interface KeyEntry {
+interface KeyEntry {
   /** Exact string written into the combo (AHK-compatible spelling). */
   name: string;
   /** Lowercase search haystack: name aliases + plain-language words. */
@@ -30,12 +30,6 @@ export const KEY_CATEGORIES: KeyCategory[] = [
 
 /** Modifier tick values in canonical combo order (matches keys.ts heldModifiers). */
 export const MODIFIERS = ["Ctrl", "Shift", "Alt", "Meta"] as const;
-export type ModifierTick = (typeof MODIFIERS)[number];
-
-/** Frontend label for a tick. The backend maps "Meta" to Win/LWin. */
-export function modifierLabel(mod: string): string {
-  return mod;
-}
 
 const LETTERS = Array.from({ length: 26 }, (_, i) =>
   String.fromCharCode(65 + i),
@@ -125,7 +119,7 @@ const MOUSE: KeyEntry[] = [
   { name: "MouseX2", keywords: "mousex2 mouse x2 side extra back xbutton2", category: "mouse" },
 ];
 
-export const KEY_ENTRIES: KeyEntry[] = [
+const KEY_ENTRIES: KeyEntry[] = [
   ...LETTERS,
   ...DIGITS,
   ...SPECIAL,
@@ -159,7 +153,7 @@ export function searchKeys(
   ).slice(0, 60);
 }
 
-export function isModifier(part: string): boolean {
+function isModifier(part: string): boolean {
   return (MODIFIERS as readonly string[]).includes(part);
 }
 
@@ -177,7 +171,7 @@ export function splitCombo(combo: string): {
 }
 
 /** Trigger side uppercases single chars ("a" -> "A"); action side preserves. */
-export function normalizeMainKey(main: string, preserveCase: boolean): string {
+function normalizeMainKey(main: string, preserveCase: boolean): string {
   if (!preserveCase && main.length === 1) return main.toUpperCase();
   return main;
 }

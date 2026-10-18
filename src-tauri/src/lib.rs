@@ -1,5 +1,4 @@
 pub mod commands;
-pub mod events;
 pub mod services;
 pub mod state;
 
@@ -29,7 +28,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             ahk_start_profile,
             ahk_stop_profile,
-            ahk_compile_preview,
             ahk_running_profiles,
             profile_list,
             profile_save,
@@ -37,7 +35,6 @@ pub fn run() {
             macro_list,
             macro_save,
             macro_delete,
-            system_active_pids,
             system_visible_window_exes,
         ])
         .on_window_event(|window, event| {

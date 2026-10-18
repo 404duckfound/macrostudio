@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Check, ChevronDown, MoreHorizontal, Star } from "lucide-react";
 
-export interface SelectOption {
+interface SelectOption {
   value: string;
   label: string;
   meta?: string;

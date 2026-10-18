@@ -5,16 +5,17 @@ Tauri v2 + React 19 + Zustand + Vite 8 desktop app (Windows-first). Design token
 ## Commands (run in `macro-studio/`)
 
 - Package manager is **pnpm** (`pnpm-lock.yaml`; no npm/yarn lock).
-- Frontend verify: `pnpm build` (= `tsc && vite build`). This is also the only "test" — **no tests, no linter, no CI workflows exist**.
+- Frontend verify: `pnpm build` (= `tsc && vite build`). **No frontend tests, no linter, no CI workflows exist.**
 - Rust verify: `cargo check --manifest-path src-tauri/Cargo.toml` — keep it warning-free.
+- Rust tests: `cargo test --manifest-path src-tauri/Cargo.toml` — **70 tests**, all inline `#[cfg(test)]` modules (most in `services/generator.rs`). Run them whenever you touch `generator.rs`, `ahk_manager.rs`, `watcher.rs` or the commands.
 - Dev: `pnpm tauri dev` — Vite port `1420` is fixed (`strictPort: true`); `src-tauri/` is excluded from Vite watch (Rust changes recompile but don't reload the webview; config/capability changes need a full `tauri dev` restart).
 
 ## Backend layout (`src-tauri/src/`)
 
 - `main.rs` is entry-point only; all wiring lives in `lib.rs` (`run()`).
-- Modules: `commands/` (IPC `#[tauri::command]`), `services/` (`ahk_manager`, `generator`, `watcher`), `state/` (`AppState`), `events/` (event-name constants).
+- Modules: `commands/` (IPC `#[tauri::command]`), `services/` (`ahk_manager`, `generator`, `watcher`), `state/` (`AppState`). There is no `events/` module: the `active-window-changed` name is a string literal in both `watcher.rs` and `useTauriIpc.ts`.
 - **New command = add fn in `commands/` + register it in `generate_handler!` in `lib.rs`** (forgetting this gives a runtime "command not found", not a compile error). If it touches fs/dialog/store/shortcut, also add the plugin permission in `src-tauri/capabilities/default.json`.
-- IPC: request-response via `invoke` (see `src/hooks/useTauriIpc.ts` + components); backend→frontend events via `listen("active-window-changed")` (const in `events/mod.rs`, string literal in `watcher.rs`).
+- IPC: request-response via `invoke` (see `src/hooks/useTauriIpc.ts` + components); backend→frontend events via `listen("active-window-changed")` — the name is a string literal in `watcher.rs`, keep it in sync with the `listen` call in `useTauriIpc.ts`.
 
 ## Gotchas (verified against current code)
 
@@ -30,9 +31,11 @@ Tauri v2 + React 19 + Zustand + Vite 8 desktop app (Windows-first). Design token
 
 ## Frontend conventions
 
-- Shell: `App.tsx` = full-width `TitleBar` on top (frameless, 38px, logo + white title text left, min/max/close right, 1px bottom border, needs `core:window:allow-*` permissions) + row below with `Navbar` on the left (66px Profiles-only icon rail) and `ProfileRail` (228px, `bg-base`, single 1px right divider) + `Workspace` (Stitch: flow canvas with Configured Triggers + 400px Trigger Inspector). Builder panel removed — trigger editing lives in `Workspace/Workspace.tsx` (Record Key + Kaydet saves).
+- Shell: `App.tsx` = `TitleBar` on top (frameless, 38px, logo + white title text left, min/max/close right, 1px bottom border, needs `core:window:allow-*` permissions) and, **inside it**, the `Navbar` (Profiles / Macros / Settings as horizontal pills, absolutely centered by `.titlebar-center`). Below is `Workspace` / `MacrosView` / `SettingsView`. **There is no side rail** — the profile and macro lists were replaced by `SelectMenu` popovers in the canvas header, so profile selection, add/edit/duplicate/make-default/delete and the engine status dot all live in `components/workspace/ProfileHeader.tsx`.
+- Folder ownership means "which screen renders this": `BlockRow` sits in `macros/` (only `MacrosView` renders it), `NumberStepper` in `common/` (Settings + KeyActionEditor), `ProfileHeader` in `workspace/`.
 - **Closing the main window hides it to the tray** (`on_window_event` → `WindowEvent::CloseRequested` → `prevent_close()` + `hide()`); AHK keeps running. Real quit is the tray's `Exit`, which is the only path that fires `RunEvent::Exit` and therefore `AhkProcessManager::stop_all()`. Window is restored by the tray's `Show Macro Studio` item **or** a left double-click on the tray icon; the single-instance plugin's focus callback reuses the same `show_main_window()` helper.
-- `Workspace` layout: canvas header row carries profile badge + Sil + Kaydet (dirty-gated); `Add New Trigger` is the dashed button under the cards; inspector has Shortcut (Record Key) + Block Original Keypress + Actions. Trigger cards are icon + kbd chips only (no title text).
-- Profile semantics: `target_exe: null` = applies to **all** windows; add/edit modal has **no trigger field** (new profiles default to one `F9` trigger) and owns the target-exe picker (visible windows via `system_visible_window_exes`/EnumWindows or active-window capture); each trigger carries its own shortcut + actions, edited in `Workspace` inspector (card click selects, Record Key + Kaydet saves).
+- `Workspace` layout: canvas header carries the profile `SelectMenu` (name + default star + engine dot + scope) with the List/Keyboard tabs pinned right, and a warning line only when a trigger has no action. Trigger cards are icon + kbd chips; `Add new trigger` is the dashed button under them. The 400px right dock (`.inspector`) holds the step cards: When → Modifiers → Action.
+- **Profile switching is gated.** `useTauriIpc` never writes `activeId` for a window match or the pinned fallback; it queues the request in the store (`requestSwitch`). `SwitchGuard` applies it — immediately when the workspace is clean, otherwise after Save / Discard / Cancel. An unanswered request is applied on unmount so it cannot get stuck. A manual switch also sets `pinnedId`; an automatic one must not, or the 750ms pinned fallback can never win. Notifications fire on `lastSwitch` (the switch that actually landed), not on the request.
+- Profile semantics: `target_exe: null` = applies to **all** windows; the add/edit modal owns the target-exe picker (visible windows via `system_visible_window_exes`/EnumWindows or active-window capture); each trigger carries its own shortcut + actions, edited in the `Workspace` inspector.
 - `defaultId` (default-profile selection) is **frontend-only Zustand state, deliberately not persisted** — `useTauriIpc.ts` self-heals a `Default` all-windows profile (`target_exe: null`) at startup and whenever the last all-windows profile is deleted; explicit "Make default" on a targeted profile is never overridden.
 - Global `contextmenu` is suppressed in `main.tsx` (right-click menus intentionally disabled).

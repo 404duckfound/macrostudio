@@ -539,8 +539,7 @@ input:focus, select:focus, textarea:focus {
 }
 .inline-warn .warn-icon { width: 15px; height: 15px; flex-shrink: 0; }
 
-/* BlockKeyToggle Card */
-
+/* BlockCard rows — BlockKeyToggle + TriggerModifiers, shared */
 /* Flat option rows inside step cards: no card chrome, thin dividers. */
 .step-card .block-card {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -776,6 +775,18 @@ input:focus, select:focus, textarea:focus {
 .delay-input:focus { box-shadow: none; }
 .delay-unit { font-size: 11px; color: var(--text-disabled); margin-left: 6px; }
 
+/* Macro Editor (MacrosView shell around the block list) */
+.macro-editor { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.macro-editor input { min-height: 36px; font-size: 13px; }
+.macro-add-row select { width: 100%; min-height: 36px; font-size: 13px; }
+.macro-blocks-list { display: flex; flex-direction: column; gap: 8px; }
+.macro-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-top: 12px; border-top: 1px solid var(--border-muted);
+}
+.macro-save-btn { min-height: 36px; }
+.macro-footer-count { font-size: 12px; color: var(--text-disabled); }
+
 /* Modals & Overlays */
 .modal-scrim {
   position: fixed; inset: 0; z-index: 100; background: rgba(0, 0, 0, 0.72);
@@ -927,19 +938,6 @@ input:focus, select:focus, textarea:focus {
   padding: 6px 6px 6px 12px;
 }
 .settings-ignore-remove { min-height: 28px; padding: 0 8px; }
-.macro-editor { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.macro-editor input { min-height: 36px; font-size: 13px; }
-.macro-add-row select { width: 100%; min-height: 36px; font-size: 13px; }
-.macro-blocks-list { display: flex; flex-direction: column; gap: 8px; }
-.macro-footer {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding-top: 12px; border-top: 1px solid var(--border-muted);
-}
-.macro-save-btn { min-height: 36px; }
-.macro-footer-count { font-size: 12px; color: var(--text-disabled); }
-@media (prefers-reduced-motion: reduce) {
-  .trigger-recording-hint, .modal, .action-select-pop, .key-picker-pop, .rail-menu, .shortcut-card-recording, .key-target-picking, .trigger-card-recording, .step-flash { animation: none; }
-}
 
 /* Key Picker (manual key select dropdown) */
 .key-picker-wrap { position: relative; }
@@ -986,3 +984,9 @@ input:focus, select:focus, textarea:focus {
 }
 .key-picker-tick:hover { color: var(--text-primary); border-color: var(--border-hover); }
 .key-picker-tick-on { background: rgba(47, 195, 222, 0.15); border-color: var(--accent-primary); color: var(--accent-primary); }
+
+/* Reduced motion — one block for every animated thing above, kept last so a
+   selector added later is covered by listing it here. */
+@media (prefers-reduced-motion: reduce) {
+  .trigger-recording-hint, .modal, .action-select-pop, .key-picker-pop, .rail-menu, .shortcut-card-recording, .key-target-picking, .trigger-card-recording, .step-flash { animation: none; }
+}
