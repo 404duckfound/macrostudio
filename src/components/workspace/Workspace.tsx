@@ -1,19 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import {
-  AlertCircle,
-  Ban,
-  Copy,
-  Ellipsis,
-  Eye,
-  Keyboard,
-  Layers,
-  Plus,
-  Save,
-  SlidersHorizontal,
-  Trash2,
-  Undo2,
-} from "lucide-react";
+import { Layers, Plus } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import ProfileHeader from "./ProfileHeader";
 import ProfileFormModal from "../profiles/modals/ProfileFormModal";
@@ -21,36 +8,13 @@ import SwitchGuard from "../common/SwitchGuard";
 import { useKeyCapture } from "../../hooks/useKeyCapture";
 import { parseTrigger } from "../../lib/keys";
 import { buildCombo, splitCombo } from "../../lib/keyCatalog";
-import type { Macro, MacroAction, ModSide, Profile, Trigger } from "../../types";
-import ActionEditor from "./actions/ActionEditor";
-import ActionTypeCard from "./actions/ActionTypeCard";
-import Chips from "./Chips";
+import type { MacroAction, ModSide, Profile, Trigger } from "../../types";
 import KeyboardMap from "./KeyboardMap";
-import ShortcutField from "./ShortcutField";
-import TriggerModifiers from "./TriggerModifiers";
+import TriggerInspector from "./TriggerInspector";
+import TriggerList from "./TriggerList";
 import { cleanDraft, toDrafts } from "./triggerDraft";
 
 type ActiveRun = { id: string; ok: boolean } | null;
-
-function actionPreviewLabel(
-  action: MacroAction | null | undefined,
-  macros: Macro[],
-): string | null {
-  if (!action) return null;
-  switch (action.type) {
-    case "key":
-      return action.key ? `Key: ${action.key}` : "Key: (empty)";
-    case "mouse":
-      return `Mouse: ${action.button}`;
-    case "macro": {
-      if (!action.macro_id) return "Macro: (empty)";
-      const found = macros.find((m) => m.id === action.macro_id);
-      return found ? `Macro: ${found.name || "(unnamed)"}` : "Macro: (deleted)";
-    }
-    case "script":
-      return "AHK Script";
-  }
-}
 
 // AltGr is LeftCtrl + RightAlt physically: pin the recorded combo to those
 // sides so the trigger fires on AltGr alone instead of any Ctrl+Alt.
@@ -210,6 +174,12 @@ export default function Workspace({ activeRun }: { activeRun: ActiveRun }) {
   const willDropCard = cleanTriggers.length !== draftTriggers.length;
   const dirty =
     active != null && JSON.stringify(cleanTriggers) !== JSON.stringify(active.triggers);
+
+  function selectTriggerAt(idx: number) {
+    setSelectedIdx(idx);
+    setRecording(false);
+    setPickerOpen(false);
+  }
 
   function patchSelected(patch: (t: Trigger) => Trigger) {
     setDraftTriggers((prev) => prev.map((x, i) => (i === sel ? patch(x) : x)));
@@ -444,315 +414,54 @@ export default function Workspace({ activeRun }: { activeRun: ActiveRun }) {
               onPick={assignMapKey}
             />
           ) : (
-          <>
-          <div className="trigger-card-list">
-            {draftTriggers.map((t, i) => {
-              const preview = actionPreviewLabel(t.actions[0], macros);
-              const menuOpen = openMenuIdx === i;
-              return (
-                <div
-                  key={`${i}-${t.shortcut}`}
-                  className={`trigger-card ${i === sel ? "trigger-card-selected" : ""} ${
-                    recording && i === sel ? "trigger-card-recording" : ""
-                  } ${t.enabled ? "" : "trigger-card-off"}`}
-                  onClick={() => {
-                    setSelectedIdx(i);
-                    setRecording(false);
-                    setPickerOpen(false);
-                  }}
-                  title="Click to select trigger"
-                >
-                  <div className="trigger-card-left">
-                    <div className="trigger-icon">
-                      <Keyboard aria-hidden="true" />
-                    </div>
-                    <div className="trigger-card-content">
-                      <div className="trigger-chips">
-                        {recording && i === sel ? (
-                          <span className="trigger-recording-hint">
-                            Press a key or shortcut… (Esc to cancel)
-                          </span>
-                        ) : (
-                          <Chips parts={parseTrigger(t.shortcut)} />
-                        )}
-                      </div>
-                      {preview ? (
-                        <span className="trigger-action-pill">{preview}</span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="trigger-noaction-btn"
-                          title="Assign an action to this trigger"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            focusActionStep(i);
-                          }}
-                        >
-                          + Assign action
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="trigger-card-right">
-                    <span
-                      role="img"
-                      aria-label={
-                        t.block_key
-                          ? "Original keypress is blocked by Macro Studio"
-                          : "Original keypress passes through to active app"
-                      }
-                      data-tip={
-                        t.block_key
-                          ? "Blocked — Macro Studio swallows the keypress"
-                          : "Pass-through — the keypress reaches the active app (~)"
-                      }
-                      className={`trigger-pass ${t.block_key ? "trigger-pass-block" : ""}`}
-                    >
-                      {t.block_key ? (
-                        <Ban aria-hidden="true" />
-                      ) : (
-                        <Eye aria-hidden="true" />
-                      )}
-                    </span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={t.enabled}
-                      aria-label={t.enabled ? "Disable trigger" : "Enable trigger"}
-                      title={t.enabled ? "Disable trigger" : "Enable trigger"}
-                      className={`switch switch-sm ${t.enabled ? "switch-on" : ""}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        patchAt(i, (x) => ({ ...x, enabled: !x.enabled }));
-                      }}
-                    >
-                      <span className="switch-thumb" />
-                    </button>
-                    <div className="trigger-menu-wrap">
-                      <button
-                        type="button"
-                        className="rail-dots"
-                        aria-label="Trigger options"
-                        title="Options"
-                        aria-expanded={menuOpen}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenMenuIdx(menuOpen ? null : i);
-                        }}
-                      >
-                        <Ellipsis aria-hidden="true" />
-                      </button>
-                      {menuOpen && (
-                        <div
-                          className="rail-menu"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuIdx(null);
-                          }}
-                        >
-                          <button
-                            type="button"
-                            className="rail-menu-item"
-                            onClick={() => duplicateTrigger(i)}
-                          >
-                            <Copy className="rail-menu-icon" aria-hidden="true" />
-                            Duplicate
-                          </button>
-                          <button
-                            type="button"
-                            className="rail-menu-item"
-                            onClick={() =>
-                              patchAt(i, (x) => ({ ...x, block_key: !x.block_key }))
-                            }
-                          >
-                            {t.block_key ? "Unblock original key" : "Block original key"}
-                          </button>
-                          <div className="rail-menu-divider" />
-                          <button
-                            type="button"
-                            className="rail-menu-item rail-menu-item-danger"
-                            onClick={() => deleteTrigger(i)}
-                          >
-                            <Trash2 className="rail-menu-icon" aria-hidden="true" />
-                            Delete Trigger
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <button
-            type="button"
-            className="trigger-add-placeholder"
-            onClick={addTrigger}
-          >
-            <Plus aria-hidden="true" />
-            <span>Add new trigger</span>
-          </button>
-          </>
+            <TriggerList
+              triggers={draftTriggers}
+              selectedIdx={sel}
+              recording={recording}
+              macros={macros}
+              openMenuIdx={openMenuIdx}
+              onSelect={selectTriggerAt}
+              onToggleEnabled={(i) =>
+                patchAt(i, (x) => ({ ...x, enabled: !x.enabled }))
+              }
+              onFocusAction={focusActionStep}
+              onDuplicate={duplicateTrigger}
+              onToggleBlock={(i) =>
+                patchAt(i, (x) => ({ ...x, block_key: !x.block_key }))
+              }
+              onDelete={deleteTrigger}
+              onToggleMenu={(i) => setOpenMenuIdx(openMenuIdx === i ? null : i)}
+              onAdd={addTrigger}
+            />
           )}
         </div>
       </div>
 
-      <aside className="inspector">
-        <div className="inspector-head">
-          <div className="inspector-head-left">
-            <h3>Trigger Inspector</h3>
-          </div>
-          {dirty && (
-            <span className="inspector-dirty-tag">Modified</span>
-          )}
-        </div>
-
-        {selected ? (
-          <>
-            <div className="inspector-body">
-              <section className="step-card" aria-label="Step 1: When">
-                <div className="step-head">
-                  <span className="step-num" aria-hidden="true">1</span>
-                  <span className="step-title">When</span>
-                  {selectedChips.length > 0 && (
-                    <button
-                      type="button"
-                      className="link-btn"
-                      onClick={clearSelectedShortcut}
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                <ShortcutField
-                  parts={selectedChips}
-                  combo={selected?.shortcut ?? ""}
-                  recording={recording}
-                  pickerOpen={pickerOpen}
-                  onRecord={startRecording}
-                  onPickerOpen={openPicker}
-                  onPickerSelect={applyPickerShortcut}
-                  onPickerClose={() => setPickerOpen(false)}
-                  error={shortcutError}
-                />
-                {willDropCard && (
-                  <div className="inline-warn" role="alert">
-                    <AlertCircle className="warn-icon" aria-hidden="true" />
-                    <span>A trigger has an empty or duplicated shortcut. It will be omitted on save.</span>
-                  </div>
-                )}
-              </section>
-
-              <section className="step-card" aria-label="Step 2: Modifiers">
-                <TriggerModifiers
-                  key={sel}
-                  trigger={selected}
-                  onPatch={patchSelected}
-                  stepNum={2}
-                />
-              </section>
-
-              <section
-                className={`step-card ${flashAction ? "step-flash" : ""}`}
-                aria-label="Step 3: Action"
-                id="inspector-step-action"
-              >
-                <div className="step-head">
-                  <span className="step-num" aria-hidden="true">3</span>
-                  <span className="step-title">Action</span>
-                  {single && (
-                    <button
-                      type="button"
-                      className="link-btn"
-                      onClick={() => setSingleAction(null)}
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                <ActionTypeCard
-                  value={single?.type ?? ""}
-                  onSelect={(kind) => {
-                    if (kind === "") setSingleAction(null);
-                    else selectActionType(kind);
-                  }}
-                />
-                {single?.type === "key" && single.key.length === 0 && (
-                  <div className="inline-warn">
-                    <AlertCircle className="warn-icon" aria-hidden="true" />
-                    <span>Pick a key target, otherwise this trigger will execute nothing.</span>
-                  </div>
-                )}
-                {!single && (
-                  <div className="inline-warn">
-                    <AlertCircle className="warn-icon" aria-hidden="true" />
-                    <span>No action selected — this trigger will execute nothing.</span>
-                  </div>
-                )}
-                {single && (
-                  <ActionEditor action={single} onChange={setSingleAction} />
-                )}
-              </section>
-              <div className="inspector-scroll-fade" aria-hidden="true" />
-            </div>
-
-            <div className="inspector-foot">
-              <button
-                type="button"
-                className={`btn-trigger-save ${dirty ? "btn-trigger-save-dirty" : ""}`}
-                onClick={save}
-                disabled={saving || !dirty}
-                title={dirty ? "Save changes to profile" : "No changes to save"}
-              >
-                {dirty && !saving && (
-                  <span className="save-dot" aria-hidden="true" />
-                )}
-                <Save aria-hidden="true" />
-                <span>{saving ? "Saving…" : "Save Changes"}</span>
-              </button>
-              <button
-                type="button"
-                className="btn-trigger-undo"
-                onClick={discardChanges}
-                disabled={!dirty || saving}
-                title={dirty ? "Discard unsaved changes" : "No unsaved changes"}
-                aria-label="Discard unsaved changes"
-              >
-                <Undo2 aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="btn-trigger-delete"
-                onClick={removeSelected}
-                disabled={!selected}
-                title="Delete this trigger"
-                aria-label="Delete this trigger"
-              >
-                <Trash2 aria-hidden="true" />
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="inspector-empty-state">
-            <div className="inspector-empty-icon">
-              <SlidersHorizontal aria-hidden="true" />
-            </div>
-            <h4>No Trigger Selected</h4>
-            <p>
-              Select a trigger card from the canvas to edit its shortcut key and macro actions, or add a new trigger.
-            </p>
-            <button
-              type="button"
-              className="btn-secondary inspector-empty-btn"
-              onClick={addTrigger}
-            >
-              <Plus aria-hidden="true" />
-              <span>Add Trigger</span>
-            </button>
-          </div>
-        )}
-      </aside>
+      <TriggerInspector
+        selected={selected}
+        selectedIdx={sel}
+        selectedChips={selectedChips}
+        single={single}
+        dirty={dirty}
+        saving={saving}
+        recording={recording}
+        pickerOpen={pickerOpen}
+        willDropCard={willDropCard}
+        flashAction={flashAction}
+        shortcutError={shortcutError}
+        onStartRecording={startRecording}
+        onPickerOpen={openPicker}
+        onPickerSelect={applyPickerShortcut}
+        onPickerClose={() => setPickerOpen(false)}
+        onClearShortcut={clearSelectedShortcut}
+        onPatchSelected={patchSelected}
+        onSelectActionType={selectActionType}
+        onSetSingleAction={setSingleAction}
+        onSave={save}
+        onDiscard={discardChanges}
+        onRemoveSelected={removeSelected}
+        onAddTrigger={addTrigger}
+      />
     </main>
   );
 }
