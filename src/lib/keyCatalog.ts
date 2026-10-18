@@ -176,6 +176,17 @@ function normalizeMainKey(main: string, preserveCase: boolean): string {
   return main;
 }
 
+/** True when two combos name the same hotkey, ignoring modifier order. */
+export function sameCombo(a: string, b: string): boolean {
+  const pa = splitCombo(a);
+  const pb = splitCombo(b);
+  if (!pa.main || !pb.main) return false;
+  if (pa.main.toUpperCase() !== pb.main.toUpperCase()) return false;
+  const ma = new Set(pa.modifiers);
+  const mb = new Set(pb.modifiers);
+  return ma.size === mb.size && [...ma].every((m) => mb.has(m));
+}
+
 export function buildCombo(
   ticks: string[],
   main: string,

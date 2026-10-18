@@ -9,12 +9,29 @@ export interface KeyCaptureOptions {
   ignoreLeftClick?: boolean;
 }
 
+// A capture owns the keyboard while it runs. Other listeners (the keyboard
+// map's physical press) must stay out of the way, so the flag is global
+// rather than per-hook.
+let captureDepth = 0;
+
+export function isKeyCapturing(): boolean {
+  return captureDepth > 0;
+}
+
 export function useKeyCapture(
   active: boolean,
   onCapture: (combo: string, altGr?: boolean) => void,
   onCancel: () => void,
   { preserveCase = false, ignoreLeftClick = false }: KeyCaptureOptions = {},
 ) {
+  useEffect(() => {
+    if (!active) return;
+    captureDepth++;
+    return () => {
+      captureDepth--;
+    };
+  }, [active]);
+
   useEffect(() => {
     if (!active) return;
     function onKey(e: KeyboardEvent) {

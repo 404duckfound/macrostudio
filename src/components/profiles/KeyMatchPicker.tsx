@@ -7,6 +7,8 @@ interface KeyMatchPickerProps {
   matches: { trigger: Trigger; index: number }[];
   /** Main key the user pressed, e.g. "P". */
   mainKey: string;
+  /** Shortcut the create row writes; a physical press keeps its modifiers. */
+  createCombo: string;
   /** Viewport coords of the pressed key, for fixed positioning. */
   anchor: { top: number; right: number };
   onPick: (index: number) => void;
@@ -22,6 +24,7 @@ interface KeyMatchPickerProps {
 export default function KeyMatchPicker({
   matches,
   mainKey,
+  createCombo,
   anchor,
   onPick,
   onCreate,
@@ -65,7 +68,7 @@ export default function KeyMatchPicker({
         onClick={onCreate}
       >
         <Plus className="rail-menu-icon" aria-hidden="true" />
-        Create new trigger on {mainKey}
+        Create new trigger on {createCombo}
       </button>
     </div>
   );

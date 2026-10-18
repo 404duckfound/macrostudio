@@ -28,6 +28,7 @@ export default function KeyboardMap({
               <button
                 key={k.label + ri}
                 type="button"
+                data-map-key={k.name ?? undefined}
                 style={{ flexGrow: k.w, flexBasis: 0 }}
                 className={`keymap-key ${isAssigned ? "keymap-key-assigned" : ""} ${
                   isSelected ? "keymap-key-selected" : ""
@@ -53,8 +54,8 @@ export default function KeyboardMap({
         </div>
       ))}
       <p className="keymap-hint">
-        Click a key to jump to the trigger that uses it, or to start a new one
-        on that key. Highlighted keys are already in use.
+        Click a key, or just press it, to jump to the trigger that uses it —
+        or to start a new one on that key. Highlighted keys are already in use.
       </p>
     </div>
   );

@@ -5,7 +5,7 @@ import {
   type KeyCaptureOptions,
 } from "../../../hooks/useKeyCapture";
 import { parseTrigger } from "../../../lib/keys";
-import { splitCombo } from "../../../lib/keyCatalog";
+import { sameCombo, splitCombo } from "../../../lib/keyCatalog";
 import { useProfileStore } from "../../../stores/useProfileStore";
 import type { MacroAction, ModSide, Profile, Trigger } from "../../../types";
 import { cleanDraft, toDrafts } from "./triggerDraft";
@@ -51,6 +51,8 @@ export function useTriggerEditor(active: Profile | null) {
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
   const [matchPicker, setMatchPicker] = useState<{
     mainKey: string;
+    /** Shortcut the chooser's create row writes, so a physical press keeps its modifiers. */
+    createCombo: string;
     indices: number[];
     anchor: { top: number; right: number };
   } | null>(null);
@@ -219,15 +221,22 @@ export function useTriggerEditor(active: Profile | null) {
     setSelectedIdx(draftTriggers.length);
   }
 
-  function openEmptyOn(mainKey: string) {
+  function openEmptyOn(shortcut: string, altGr = false) {
     // An unfinished card is still being filled in: rewrite its key instead of
     // piling up another empty one. Pressing five keys should not leave five
     // cards behind.
     if (selected && selected.actions.length === 0) {
-      patchSelected((x) => ({ ...x, shortcut: mainKey, mod_sides: {} }));
+      patchSelected((x) => ({
+        ...x,
+        shortcut,
+        mod_sides: altGr ? altGrSides(shortcut) : {},
+      }));
       return;
     }
-    setDraftTriggers((prev) => [...prev, blankTrigger(mainKey)]);
+    setDraftTriggers((prev) => [
+      ...prev,
+      { ...blankTrigger(shortcut), mod_sides: altGr ? altGrSides(shortcut) : {} },
+    ]);
     setSelectedIdx(draftTriggers.length);
   }
 
@@ -239,11 +248,60 @@ export function useTriggerEditor(active: Profile | null) {
       return;
     }
     if (indices.length > 1) {
-      setMatchPicker({ mainKey: name.toUpperCase(), indices, anchor });
+      setMatchPicker({
+        mainKey: name.toUpperCase(),
+        createCombo: name.toUpperCase(),
+        indices,
+        anchor,
+      });
       return;
     }
     setMatchPicker(null);
     openEmptyOn(name.toUpperCase());
+  }
+
+  // The chooser is anchored to the map key that was pressed; a physical press
+  // has no pointer rect, so the rendered cell is the anchor.
+  function mapCellAnchor(mainKey: string): { top: number; right: number } {
+    const cell = document.querySelector<HTMLElement>(
+      `[data-map-key="${CSS.escape(mainKey)}"]`,
+    );
+    if (!cell) return { top: 0, right: 0 };
+    const r = cell.getBoundingClientRect();
+    return { top: r.bottom + 4, right: r.right };
+  }
+
+  // A physical key press on the keyboard map. The main key picks the trigger
+  // - the same rule the map cell uses - and the modifiers only survive when
+  // a new trigger has to be created, because there the pressed combo is
+  // what the user asked for.
+  function pressKey(combo: string, altGr: boolean) {
+    const { main } = splitCombo(combo);
+    if (!main) return;
+    const key = main.toUpperCase();
+    const exact = draftTriggers.findIndex((t) => sameCombo(t.shortcut, combo));
+    if (exact >= 0) {
+      selectTriggerAt(exact);
+      setMatchPicker(null);
+      return;
+    }
+    const indices = triggersByMain.get(key) ?? [];
+    if (indices.length === 1) {
+      selectTriggerAt(indices[0]);
+      setMatchPicker(null);
+      return;
+    }
+    if (indices.length > 1) {
+      setMatchPicker({
+        mainKey: key,
+        createCombo: combo,
+        indices,
+        anchor: mapCellAnchor(key),
+      });
+      return;
+    }
+    setMatchPicker(null);
+    openEmptyOn(combo, altGr);
   }
 
   function duplicateTrigger(idx: number) {
@@ -372,6 +430,7 @@ export function useTriggerEditor(active: Profile | null) {
     addTrigger,
     openEmptyOn,
     mapKeyDown,
+    pressKey,
     duplicateTrigger,
     deleteTrigger,
     removeSelected,

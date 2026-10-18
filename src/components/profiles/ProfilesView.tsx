@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Layers, Plus } from "lucide-react";
+import { useKeyNav } from "../../hooks/useKeyNav";
 import { useProfileStore } from "../../stores/useProfileStore";
 import ProfileHeader from "./ProfileHeader";
 import ProfileFormModal from "./modals/ProfileFormModal";
@@ -49,6 +50,13 @@ export default function ProfilesView({
     save,
     discardChanges,
   } = editor;
+
+  // The Keyboard tab is the only surface where a bare key press is a command,
+  // so physical navigation stays off everywhere else.
+  useKeyNav(
+    canvasTab === "map" && !recording && !pickerOpen,
+    editor.pressKey,
+  );
 
   function takePendingSwitch() {
     const state = useProfileStore.getState();
@@ -186,13 +194,14 @@ export default function ProfilesView({
                 index,
               }))}
               mainKey={matchPicker.mainKey}
+              createCombo={matchPicker.createCombo}
               anchor={matchPicker.anchor}
               onPick={(index) => {
                 editor.selectTriggerAt(index);
                 editor.setMatchPicker(null);
               }}
               onCreate={() => {
-                editor.openEmptyOn(matchPicker.mainKey);
+                editor.openEmptyOn(matchPicker.createCombo);
                 editor.setMatchPicker(null);
               }}
               onClose={() => editor.setMatchPicker(null)}
