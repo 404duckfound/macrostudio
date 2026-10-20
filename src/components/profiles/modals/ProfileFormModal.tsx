@@ -255,6 +255,10 @@ export default function ProfileFormModal({
               />
             </div>
           )}
+          <p className="modal-hint">
+            Raw AutoHotkey is always available: a trigger's Script action runs
+            whatever you write, layers or not.
+          </p>
         </div>
         {error && <span className="modal-error">{error}</span>}
         <ModalFooter
