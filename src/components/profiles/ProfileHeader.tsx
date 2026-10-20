@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Plus } from "lucide-react";
+import { Copy, Pencil, Plus, Star, Trash2 } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import SelectMenu from "../common/ui/SelectMenu";
 import ProfileDeleteModal from "./modals/ProfileDeleteModal";
@@ -13,13 +13,35 @@ type ModalState =
   | { kind: "delete"; profile: Profile }
   | null;
 
+interface DropSummary {
+  total: number;
+  noAction: number;
+  duplicate: number;
+  emptyShortcut: number;
+}
+
 interface ProfileHeaderProps {
   activeRun: { id: string; ok: boolean } | null;
-  withoutActionCount: number;
+  dropSummary: DropSummary;
   dirty: boolean;
   onRequestSwitch: (id: string) => void;
   /** Right-aligned slot for the canvas view switcher. */
   tabs?: ReactNode;
+}
+
+/** One line naming every reason a save will omit a draft card. */
+function dropMessage({ total, noAction, duplicate, emptyShortcut }: DropSummary): string {
+  if (total === 1) {
+    if (noAction === 1) return "1 trigger has no action and will be dropped on save";
+    if (duplicate === 1)
+      return "1 trigger repeats a shortcut and will be dropped on save";
+    return "1 trigger has no shortcut and will be dropped on save";
+  }
+  const reasons: string[] = [];
+  if (noAction > 0) reasons.push(`${noAction} without an action`);
+  if (duplicate > 0) reasons.push(`${duplicate} with a duplicate shortcut`);
+  if (emptyShortcut > 0) reasons.push(`${emptyShortcut} without a shortcut`);
+  return `${total} triggers will be dropped on save (${reasons.join(", ")})`;
 }
 
 async function refresh(): Promise<Profile[]> {
@@ -42,7 +64,7 @@ function cloneTriggers(triggers: Trigger[]): Trigger[] {
 
 export default function ProfileHeader({
   activeRun,
-  withoutActionCount,
+  dropSummary,
   dirty,
   onRequestSwitch,
   tabs,
@@ -144,66 +166,73 @@ export default function ProfileHeader({
                 return (
                   <>
                     <button
-                    className="rail-menu-item"
-                    type="button"
-                    onClick={() => {
-                      close();
-                      setModal({ kind: "form", mode: "edit", profile: p });
-                    }}
-                  >
-                    Edit Profile
-                  </button>
-                  <button
-                    className="rail-menu-item"
-                    type="button"
-                    onClick={() => void duplicateProfile(p)}
-                  >
-                    Duplicate
-                  </button>
-                  <button
-                    className="rail-menu-item"
-                    type="button"
-                    disabled={defaultId === p.id}
-                    onClick={() => {
-                      setDefaultId(p.id);
-                      close();
-                    }}
-                  >
-                    Make default
-                  </button>
-                  <div className="rail-menu-divider" />
-                  <button
-                    className="rail-menu-item rail-menu-item-danger"
-                    type="button"
-                    onClick={() => {
-                      close();
-                      setModal({ kind: "delete", profile: p });
-                    }}
-                  >
-                    Delete Profile
-                  </button>
+                      className="rail-menu-item"
+                      type="button"
+                      onClick={() => {
+                        close();
+                        setModal({ kind: "form", mode: "edit", profile: p });
+                      }}
+                    >
+                      <Pencil className="rail-menu-icon" aria-hidden="true" />
+                      Edit Profile
+                    </button>
+                    <button
+                      className="rail-menu-item"
+                      type="button"
+                      onClick={() => void duplicateProfile(p)}
+                    >
+                      <Copy className="rail-menu-icon" aria-hidden="true" />
+                      Duplicate
+                    </button>
+                    <button
+                      className="rail-menu-item"
+                      type="button"
+                      disabled={defaultId === p.id}
+                      onClick={() => {
+                        setDefaultId(p.id);
+                        close();
+                      }}
+                    >
+                      <Star
+                        className="rail-menu-icon"
+                        aria-hidden="true"
+                        fill={defaultId === p.id ? "currentColor" : "none"}
+                      />
+                      Make default
+                    </button>
+                    <div className="rail-menu-divider" />
+                    <button
+                      className="rail-menu-item rail-menu-item-danger"
+                      type="button"
+                      onClick={() => {
+                        close();
+                        setModal({ kind: "delete", profile: p });
+                      }}
+                    >
+                      <Trash2 className="rail-menu-icon" aria-hidden="true" />
+                      Delete Profile
+                    </button>
                   </>
                 );
               }}
             />
-            {tabs}
-          </div>
-          <div className="flow-profile-sub-row">
-            {withoutActionCount > 0 && (
-              <span className="flow-without-action">
-                {withoutActionCount}{" "}
-                {withoutActionCount === 1
-                  ? "trigger has no action and will be dropped on save"
-                  : "triggers have no action and will be dropped on save"}
-              </span>
-            )}
+            {/* Sits on the profile selector's row: an empty second row used to
+                leave a gap under the header even when nothing was shown. */}
             {dirty && (
               <span className="flow-dirty-indicator">
                 <span className="dirty-dot" aria-hidden="true" />
                 Unsaved changes
               </span>
             )}
+            {tabs}
           </div>
+          {dropSummary.total > 0 && (
+            <div className="flow-profile-sub-row">
+              <span className="flow-without-action">
+                {dropMessage(dropSummary)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

@@ -3,7 +3,7 @@
 // spellings); `null` marks a decorative key that cannot be assigned
 // (wide Shift keys). `w` is the flex width in key units.
 
-interface MapKey {
+export interface MapKey {
   label: string;
   name: string | null;
   w: number;
@@ -72,4 +72,14 @@ export const KEYBOARD_ROWS: MapKey[][] = [
     { label: "Shift", name: null, w: 2.75 },
   ],
   [{ label: "Space", name: "Space", w: 8 }],
+];
+
+// Mouse buttons are not part of the keyboard grid but live on the same tab:
+// the side column renders them with the same keycap language.
+export const MOUSE_KEYS: MapKey[] = [
+  { label: "Left", name: "MouseLeft", w: 1 },
+  { label: "Right", name: "MouseRight", w: 1 },
+  { label: "Middle", name: "MouseMiddle", w: 1 },
+  { label: "X1", name: "MouseX1", w: 1 },
+  { label: "X2", name: "MouseX2", w: 1 },
 ];

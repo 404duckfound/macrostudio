@@ -47,6 +47,56 @@ export function cleanDraft(drafts: Trigger[]): Trigger[] {
   return out;
 }
 
+export interface DraftDropReport {
+  /** Draft indices `cleanDraft` will omit on save, in list order. */
+  dropped: number[];
+  /** Draft indices whose shortcut repeats one that survived, so it is dropped. */
+  duplicates: number[];
+  noAction: number;
+  duplicate: number;
+  emptyShortcut: number;
+  total: number;
+}
+
+/**
+ * Mirrors `cleanDraft`'s filters so the editor can warn about the cards a save
+ * will drop. Without this the only duplicate-shortcut signal was the silent
+ * disappearance of the second card after saving.
+ */
+export function draftDropReport(drafts: Trigger[]): DraftDropReport {
+  const seen = new Set<string>();
+  const report: DraftDropReport = {
+    dropped: [],
+    duplicates: [],
+    noAction: 0,
+    duplicate: 0,
+    emptyShortcut: 0,
+    total: 0,
+  };
+  drafts.forEach((t, index) => {
+    const shortcut = t.shortcut.trim();
+    if (!shortcut) {
+      report.dropped.push(index);
+      report.emptyShortcut += 1;
+      return;
+    }
+    if (t.actions.length === 0) {
+      report.dropped.push(index);
+      report.noAction += 1;
+      return;
+    }
+    if (seen.has(shortcut)) {
+      report.dropped.push(index);
+      report.duplicates.push(index);
+      report.duplicate += 1;
+      return;
+    }
+    seen.add(shortcut);
+  });
+  report.total = report.dropped.length;
+  return report;
+}
+
 export function toDrafts(triggers: Trigger[] | undefined): Trigger[] {
   if (!triggers?.length) return [];
   return triggers.map((t) => ({

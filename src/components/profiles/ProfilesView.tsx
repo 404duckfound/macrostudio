@@ -8,7 +8,7 @@ import ProfileFormModal from "./modals/ProfileFormModal";
 import SwitchGuard from "../common/ui/SwitchGuard";
 import type { Profile } from "../../types";
 import KeyboardMap from "./KeyboardMap";
-import KeyMatchPicker from "./KeyMatchPicker";
+import KeyMatchPicker, { KeyModifierPicker } from "./KeyMatchPicker";
 import TriggerInspector from "./triggers/inspector/TriggerInspector";
 import TriggerList from "./triggers/list/TriggerList";
 import { useTriggerEditor } from "./triggers/useTriggerEditor";
@@ -36,13 +36,14 @@ export default function ProfilesView({
     selectedChips,
     selectedMain,
     assignedMains,
-    withoutActionCount,
+    dropReport,
     willDropCard,
     dirty,
     recording,
     pickerOpen,
     openMenuIdx,
     matchPicker,
+    modifierPicker,
     saving,
     shortcutError,
     flashAction,
@@ -54,7 +55,7 @@ export default function ProfilesView({
   // The Keyboard tab is the only surface where a bare key press is a command,
   // so physical navigation stays off everywhere else.
   useKeyNav(
-    canvasTab === "map" && !recording && !pickerOpen,
+    canvasTab === "map" && !recording && !pickerOpen && modifierPicker === null,
     editor.pressKey,
   );
 
@@ -126,7 +127,7 @@ export default function ProfilesView({
         <div className="flow-inner">
           <ProfileHeader
             activeRun={activeRun}
-            withoutActionCount={withoutActionCount}
+            dropSummary={dropReport}
             dirty={dirty}
             onRequestSwitch={(id) => requestSwitch(id, "manual")}
             tabs={
@@ -164,7 +165,10 @@ export default function ProfilesView({
               assigned={assignedMains}
               selectedMain={selectedMain}
               disabled={recording}
+              triggers={draftTriggers}
+              selectedIdx={selectedIdx}
               onPick={editor.mapKeyDown}
+              onSelectTrigger={editor.selectTriggerAt}
             />
           ) : (
             <TriggerList
@@ -173,12 +177,10 @@ export default function ProfilesView({
               recording={recording}
               macros={macros}
               openMenuIdx={openMenuIdx}
+              duplicateIndices={dropReport.duplicates}
               onSelect={editor.selectTriggerAt}
               onFocusAction={editor.focusActionStep}
               onDuplicate={editor.duplicateTrigger}
-              onToggleBlock={(i) =>
-                editor.patchAt(i, (x) => ({ ...x, block_key: !x.block_key }))
-              }
               onDelete={editor.deleteTrigger}
               onToggleMenu={editor.toggleMenu}
               onAdd={editor.addTrigger}
@@ -202,6 +204,14 @@ export default function ProfilesView({
                 editor.setMatchPicker(null);
               }}
               onClose={() => editor.setMatchPicker(null)}
+            />
+          )}
+          {modifierPicker && (
+            <KeyModifierPicker
+              mainKey={modifierPicker.mainKey}
+              anchor={modifierPicker.anchor}
+              onCreate={editor.createOnMain}
+              onClose={() => editor.setModifierPicker(null)}
             />
           )}
         </div>

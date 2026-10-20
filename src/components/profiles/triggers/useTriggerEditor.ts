@@ -8,7 +8,7 @@ import { parseTrigger } from "../../../lib/keys";
 import { sameCombo, splitCombo } from "../../../lib/keyCatalog";
 import { useProfileStore } from "../../../stores/useProfileStore";
 import type { MacroAction, ModSide, Profile, Trigger } from "../../../types";
-import { cleanDraft, toDrafts } from "./triggerDraft";
+import { cleanDraft, draftDropReport, toDrafts } from "./triggerDraft";
 
 // AltGr is LeftCtrl + RightAlt physically: pin the recorded combo to those
 // sides so the trigger fires on AltGr alone instead of any Ctrl+Alt.
@@ -55,8 +55,14 @@ export function useTriggerEditor(active: Profile | null) {
     indices: number[];
     anchor: { top: number; right: number };
   } | null>(null);
+  // Map clicks have no modifiers of their own, so the click path asks first.
+  // Physical presses already carry their combo and skip this.
+  const [modifierPicker, setModifierPicker] = useState<{
+    mainKey: string;
+    anchor: { top: number; right: number };
+  } | null>(null);
   const [saving, setSaving] = useState(false);
-  const [shortcutError, setShortcutError] = useState<string | null>(null);
+  const [captureError, setCaptureError] = useState<string | null>(null);
   const [flashAction, setFlashAction] = useState(false);
 
   useEffect(() => {
@@ -64,6 +70,8 @@ export function useTriggerEditor(active: Profile | null) {
     setSelectedIdx(0);
     setRecording(false);
     setPickerOpen(false);
+    setMatchPicker(null);
+    setModifierPicker(null);
   }, [active?.id, active?.triggers]);
 
   useEffect(() => {
@@ -91,11 +99,11 @@ export function useTriggerEditor(active: Profile | null) {
         (x, i) => i !== sel && x.shortcut.trim() === combo.trim(),
       );
       if (clash) {
-        setShortcutError(`"${combo.trim()}" is already used by another trigger.`);
+        setCaptureError(`"${combo.trim()}" is already used by another trigger.`);
         setRecording(false);
         return;
       }
-      setShortcutError(null);
+      setCaptureError(null);
       setDraftTriggers((prev) =>
         prev.map((x, i) =>
           i === sel
@@ -124,11 +132,11 @@ export function useTriggerEditor(active: Profile | null) {
         (x, i) => i !== sel && x.shortcut.trim() === combo.trim(),
       );
       if (clash) {
-        setShortcutError(`"${combo.trim()}" is already used by another trigger.`);
+        setCaptureError(`"${combo.trim()}" is already used by another trigger.`);
         setPickerOpen(false);
         return;
       }
-      setShortcutError(null);
+      setCaptureError(null);
       const keep = new Set(combo.split("+").map((p) => p.trim()));
       setDraftTriggers((prev) =>
         prev.map((x, i) => {
@@ -149,13 +157,15 @@ export function useTriggerEditor(active: Profile | null) {
 
   function openPicker() {
     setRecording(false);
-    setShortcutError(null);
+    setCaptureError(null);
+    setModifierPicker(null);
     setPickerOpen(true);
   }
 
   function startRecording() {
     setPickerOpen(false);
-    setShortcutError(null);
+    setCaptureError(null);
+    setModifierPicker(null);
     setRecording(true);
   }
 
@@ -190,11 +200,19 @@ export function useTriggerEditor(active: Profile | null) {
   }, [draftTriggers]);
 
   const cleanTriggers = useMemo(() => cleanDraft(draftTriggers), [draftTriggers]);
-  const withoutActionCount = useMemo(
-    () => cleanTriggers.filter((t) => t.actions.length === 0).length,
-    [cleanTriggers],
+  // Save silently omitted cards that had no action or repeated a shortcut.
+  // The report makes both visible: the header counts them and the inspector
+  // shows the same red clash message a rejected Record/Key Picker combo gets.
+  const dropReport = useMemo(
+    () => draftDropReport(draftTriggers),
+    [draftTriggers],
   );
-  const willDropCard = cleanTriggers.length !== draftTriggers.length;
+  const willDropCard = dropReport.total > 0;
+  const duplicateConflict = useMemo(() => {
+    const t = draftTriggers[sel];
+    if (!t || !dropReport.duplicates.includes(sel)) return null;
+    return `"${t.shortcut.trim()}" is already used by another trigger.`;
+  }, [draftTriggers, sel, dropReport]);
   const dirty =
     active != null &&
     JSON.stringify(cleanTriggers) !== JSON.stringify(active.triggers);
@@ -203,16 +221,11 @@ export function useTriggerEditor(active: Profile | null) {
     setSelectedIdx(idx);
     setRecording(false);
     setPickerOpen(false);
+    setModifierPicker(null);
   }
 
   function patchSelected(patch: (t: Trigger) => Trigger) {
     setDraftTriggers((prev) => prev.map((x, i) => (i === sel ? patch(x) : x)));
-  }
-
-  function patchAt(idx: number, patch: (t: Trigger) => Trigger) {
-    setDraftTriggers((prev) =>
-    prev.map((x, i) => (i === idx ? patch(x) : x)),
-  );
   }
 
   function addTrigger() {
@@ -241,22 +254,40 @@ export function useTriggerEditor(active: Profile | null) {
 
   // The map navigates and starts triggers; it never reassigns the selected one.
   function mapKeyDown(name: string, anchor: { top: number; right: number }) {
+    // Lookups are case-insensitive, but the combo must keep the canonical
+    // spelling: the generator matches "MouseLeft" exactly, not "MOUSELEFT".
     const indices = triggersByMain.get(name.toUpperCase()) ?? [];
     if (indices.length === 1) {
       selectTriggerAt(indices[0]);
       return;
     }
     if (indices.length > 1) {
+      setModifierPicker(null);
       setMatchPicker({
         mainKey: name.toUpperCase(),
-        createCombo: name.toUpperCase(),
+        createCombo: name,
         indices,
         anchor,
       });
       return;
     }
     setMatchPicker(null);
-    openEmptyOn(name.toUpperCase());
+    setModifierPicker({ mainKey: name, anchor });
+  }
+
+  // Pointer path: the map has no modifier state, so the chosen combo goes
+  // through the same clash rule as Record and the manual Key Picker.
+  function createOnMain(combo: string): string | null {
+    const clash = draftTriggers.some((x) => sameCombo(x.shortcut, combo));
+    if (clash) return `"${combo}" is already used by another trigger.`;
+    setCaptureError(null);
+    // Always adds a card: the physical-press path rewrites an unfinished one,
+    // but the map flow is a deliberate creation and must not drop what the
+    // user just built.
+    setDraftTriggers((prev) => [...prev, blankTrigger(combo)]);
+    setSelectedIdx(draftTriggers.length);
+    setModifierPicker(null);
+    return null;
   }
 
   // The chooser is anchored to the map key that was pressed; a physical press
@@ -275,6 +306,7 @@ export function useTriggerEditor(active: Profile | null) {
   // a new trigger has to be created, because there the pressed combo is
   // what the user asked for.
   function pressKey(combo: string, altGr: boolean) {
+    setModifierPicker(null);
     const { main } = splitCombo(combo);
     if (!main) return;
     const key = main.toUpperCase();
@@ -316,6 +348,11 @@ export function useTriggerEditor(active: Profile | null) {
       next.splice(idx + 1, 0, copy);
       return next;
     });
+    // The copy keeps the source shortcut by design; the duplicate warning is
+    // derived from the draft list, so it appears on the new card immediately
+    // and disappears as soon as the user gives it its own combo.
+    setCaptureError(null);
+    setRecording(false);
     setSelectedIdx(idx + 1);
     setOpenMenuIdx(null);
   }
@@ -388,7 +425,9 @@ export function useTriggerEditor(active: Profile | null) {
     setSelectedIdx(0);
     setRecording(false);
     setPickerOpen(false);
-    setShortcutError(null);
+    setMatchPicker(null);
+    setModifierPicker(null);
+    setCaptureError(null);
   }
 
   async function save() {
@@ -413,22 +452,23 @@ export function useTriggerEditor(active: Profile | null) {
     selectedMain,
     assignedMains,
     cleanTriggers,
-    withoutActionCount,
+    dropReport,
     willDropCard,
     dirty,
     recording,
     pickerOpen,
     openMenuIdx,
     matchPicker,
+    modifierPicker,
     saving,
-    shortcutError,
+    shortcutError: captureError ?? duplicateConflict,
     flashAction,
     selectTriggerAt,
     patchSelected,
-    patchAt,
     addTrigger,
     openEmptyOn,
     mapKeyDown,
+    createOnMain,
     pressKey,
     duplicateTrigger,
     deleteTrigger,
@@ -441,6 +481,7 @@ export function useTriggerEditor(active: Profile | null) {
       setOpenMenuIdx(openMenuIdx === idx ? null : idx),
     setPickerOpen,
     setMatchPicker,
+    setModifierPicker,
     startRecording,
     openPicker,
     applyPickerShortcut,
