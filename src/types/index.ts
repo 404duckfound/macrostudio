@@ -39,5 +39,4 @@ export interface Profile {
   name: string;
   triggers: Trigger[];
   target_exe: string | null;
-  enabled: boolean;
 }

@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Cpu, FolderOpen, Info, Monitor, Plus, RotateCcw, X } from "lucide-react";
-import { useProfileStore } from "../../stores/useProfileStore";
+import {
+  DEFAULT_FOCUS_FALLBACK_MS,
+  useProfileStore,
+} from "../../stores/useProfileStore";
 import NumberStepper from "../common/ui/NumberStepper";
 
 export default function SettingsView() {
@@ -59,11 +62,11 @@ export default function SettingsView() {
                 <button
                   type="button"
                   className="btn-ghost settings-reset-btn"
-                  onClick={() => setFocusFallbackMs(100)}
-                  title="Reset to default 100ms"
+                  onClick={() => setFocusFallbackMs(DEFAULT_FOCUS_FALLBACK_MS)}
+                  title={`Reset to default ${DEFAULT_FOCUS_FALLBACK_MS}ms`}
                 >
                   <RotateCcw className="btn-icon-sm" aria-hidden="true" />
-                  <span>Reset to 100ms</span>
+                  <span>Reset to {DEFAULT_FOCUS_FALLBACK_MS}ms</span>
                 </button>
               </div>
             </div>

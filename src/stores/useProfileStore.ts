@@ -31,7 +31,9 @@ interface ProfileState {
   removeIgnoredExe: (exe: string) => void;
 }
 
-const DEFAULT_FOCUS_FALLBACK_MS = 750;
+// The single source of truth for the focus-fallback delay. Settings resets to
+// this value, and a missing settings.json key falls back to it.
+export const DEFAULT_FOCUS_FALLBACK_MS = 750;
 
 export const DEFAULT_IGNORED_EXES: string[] = [];
 

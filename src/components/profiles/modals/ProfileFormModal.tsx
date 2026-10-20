@@ -105,7 +105,6 @@ export default function ProfileFormModal({
               name: cleanName,
               triggers: [],
               target_exe: cleanTarget,
-              enabled: true,
             },
         editing === null,
       );

@@ -8,6 +8,7 @@ import {
   sendNotification,
 } from "@tauri-apps/plugin-notification";
 import {
+  DEFAULT_FOCUS_FALLBACK_MS,
   DEFAULT_IGNORED_EXES,
   normalizeExeList,
   useProfileStore,
@@ -16,13 +17,17 @@ import type { Macro, Profile } from "../types";
 
 const SETTINGS_PATH = "settings.json";
 const IGNORED_KEY = "ignoredExes";
+const FOCUS_FALLBACK_KEY = "focusFallbackMs";
 
 let settingsStore: Promise<Store> | null = null;
 function getSettingsStore() {
   if (!settingsStore) {
     settingsStore = load(SETTINGS_PATH, {
       autoSave: true,
-      defaults: { [IGNORED_KEY]: DEFAULT_IGNORED_EXES },
+      defaults: {
+        [IGNORED_KEY]: DEFAULT_IGNORED_EXES,
+        [FOCUS_FALLBACK_KEY]: DEFAULT_FOCUS_FALLBACK_MS,
+      },
     });
   }
   return settingsStore;
@@ -63,7 +68,6 @@ function buildDefaultProfile(): Profile {
     name: DEFAULT_NAME,
     triggers: [],
     target_exe: null,
-    enabled: true,
   };
 }
 
@@ -104,6 +108,7 @@ export function useTauriIpc() {
     setMacros,
     setActiveWindow,
     setIgnoredExes,
+    setFocusFallbackMs,
     profiles,
     activeWindow,
     defaultId,
@@ -119,9 +124,16 @@ export function useTauriIpc() {
     ensureDefaultProfile().then(setProfiles).catch(console.error);
     invoke<Macro[]>("macro_list").then(setMacros).catch(console.error);
     getSettingsStore()
-      .then((s) => s.get<string[]>(IGNORED_KEY))
-      .then((val) => {
-        if (Array.isArray(val)) setIgnoredExes(normalizeExeList(val));
+      .then(async (s) => {
+        const [exes, fallback] = await Promise.all([
+          s.get<string[]>(IGNORED_KEY),
+          s.get<number>(FOCUS_FALLBACK_KEY),
+        ]);
+        if (Array.isArray(exes)) setIgnoredExes(normalizeExeList(exes));
+        // A hand-edited or older settings.json may miss the key, or hold a
+        // value that is not a number: both keep the store default (750 ms).
+        if (typeof fallback === "number" && Number.isFinite(fallback))
+          setFocusFallbackMs(fallback);
       })
       .catch(console.error)
       .finally(() => {
@@ -135,7 +147,7 @@ export function useTauriIpc() {
     return () => {
       unlisten.then((f) => f());
     };
-  }, [setProfiles, setMacros, setActiveWindow, setIgnoredExes]);
+  }, [setProfiles, setMacros, setActiveWindow, setIgnoredExes, setFocusFallbackMs]);
 
   useEffect(() => {
     if (!settingsLoadedRef.current) return;
@@ -143,6 +155,13 @@ export function useTauriIpc() {
       .then((s) => s.set(IGNORED_KEY, ignoredExes))
       .catch(console.error);
   }, [ignoredExes]);
+
+  useEffect(() => {
+    if (!settingsLoadedRef.current) return;
+    getSettingsStore()
+      .then((s) => s.set(FOCUS_FALLBACK_KEY, focusFallbackMs))
+      .catch(console.error);
+  }, [focusFallbackMs]);
 
   useEffect(() => {
     if (!loadedRef.current) {
@@ -160,8 +179,7 @@ export function useTauriIpc() {
   }, [profiles, setProfiles]);
 
   const match = profiles.find(
-    (p) =>
-      p.enabled && p.target_exe?.toLowerCase() === activeWindow.toLowerCase(),
+    (p) => p.target_exe?.toLowerCase() === activeWindow.toLowerCase(),
   );
 
   useEffect(() => {

@@ -10,12 +10,6 @@ pub struct Profile {
     #[serde(default)]
     pub triggers: Vec<Trigger>,
     pub target_exe: Option<String>,
-    #[serde(default = "default_true")]
-    pub enabled: bool,
-}
-
-fn default_true() -> bool {
-    true
 }
 
 fn profiles_dir() -> Result<std::path::PathBuf, String> {
@@ -82,6 +76,30 @@ mod tests {
     #[test]
     fn corrupt_json_entry_is_skipped() {
         assert!(serde_json::from_str::<Profile>("not json{{{").is_err());
+    }
+
+    // `enabled` never had a UI: every profile was saved as true and only the
+    // window matcher read it. Files written by that version still carry the
+    // field, so serde must keep ignoring it instead of dropping the profile.
+    #[test]
+    fn stale_profile_enabled_is_ignored() {
+        let old = r#"{"id":"x","name":"N","enabled":false,
+            "target_exe":null,"triggers":[]}"#;
+        let p: Profile = serde_json::from_str(old).unwrap();
+        assert_eq!(p.name, "N");
+        assert!(p.triggers.is_empty());
+    }
+
+    #[test]
+    fn profile_saves_without_enabled_field() {
+        let p = Profile {
+            id: "x".into(),
+            name: "N".into(),
+            triggers: vec![],
+            target_exe: None,
+        };
+        let json = serde_json::to_string(&p).unwrap();
+        assert!(!json.contains("\"enabled\""));
     }
 
     // Triggers written before blocking moved down from the profile have no

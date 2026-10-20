@@ -7,6 +7,13 @@ import { isKeyCapturing } from "./useKeyCapture";
  * Chords the webview and the window own. Macro triggers may legitimately be
  * "Ctrl+C" or "Ctrl+S", so only the chords that would reload the window,
  * open devtools or close it stay out of the map.
+ *
+ * Ctrl+W is deliberately absent. WebView2 keeps Close Tab / Close Window
+ * (Ctrl+W, Ctrl+F4, Ctrl+Shift+W) and F11 turned off unless the app handles
+ * NewWindowRequested (Microsoft's WebView2 browser-features page, "Shortcuts
+ * turned off except when event not handled"), so Ctrl+W never closes this
+ * window. Reserving it only made a user's Ctrl+W trigger unreachable by a
+ * physical press, which is the bug this list must not create.
  */
 const RESERVED = new Set([
   "Ctrl+R",
@@ -14,7 +21,6 @@ const RESERVED = new Set([
   "Ctrl+Shift+I",
   "Ctrl+Shift+J",
   "Ctrl+Shift+C",
-  "Ctrl+W",
   "F5",
   "F11",
   "F12",
