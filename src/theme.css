@@ -396,11 +396,10 @@ input:focus, select:focus, textarea:focus {
 .kbd {
   display: inline-block; padding: 3px 8px 4px; border-radius: 6px;
   background: var(--bg-interactive); border: 1px solid var(--border-default);
-  border-bottom-width: 2px; border-bottom-color: rgba(0, 0, 0, 0.55);
+  border-bottom-width: 2px;
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); font-family: "JetBrains Mono", monospace;
   font-size: 12px; font-weight: 600; color: var(--text-primary); line-height: 1.2;
 }
-.kbd-last { color: var(--text-primary); border-color: var(--border-default); }
 .trigger-recording-hint { font-size: 12px; color: var(--accent-primary); font-weight: 500; animation: pulse-opacity 1.5s infinite; }
 .trigger-empty-hint { font-size: 12px; color: var(--text-disabled); font-style: italic; }
 @keyframes pulse-opacity {

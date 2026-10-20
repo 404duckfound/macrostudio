@@ -8,9 +8,7 @@ export default function Chips({ parts }: { parts: string[] }) {
       {parts.map((c, i) => (
         <span key={`${c}-${i}`} className="kbd-row">
           {i > 0 && <span className="kbd-plus">+</span>}
-          <kbd className={`kbd ${i === parts.length - 1 ? "kbd-last" : ""}`}>
-            {keyChipLabel(c)}
-          </kbd>
+          <kbd className="kbd">{keyChipLabel(c)}</kbd>
         </span>
       ))}
     </span>

@@ -105,7 +105,7 @@ export default function KeyActionEditor({
               parts.map((p, i) => (
                 <span key={`${p}-${i}`} className="kbd-row">
                   {i > 0 && <span className="kbd-plus">+</span>}
-                  <kbd className="kbd kbd-last">{keyChipLabel(p)}</kbd>
+                  <kbd className="kbd">{keyChipLabel(p)}</kbd>
                 </span>
               ))
             )}
