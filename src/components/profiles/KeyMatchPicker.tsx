@@ -79,6 +79,8 @@ interface KeyModifierPickerProps {
   /** Main key clicked on the map. */
   mainKey: string;
   anchor: { top: number; right: number };
+  /** Modifiers held during the click; they start ticked. */
+  modifiers?: string[];
   /**
    * Creates the trigger for the chosen combo. Returns an error message when
    * another card already owns it, or null on success (the parent closes us).
@@ -97,11 +99,12 @@ interface KeyModifierPickerProps {
 export function KeyModifierPicker({
   mainKey,
   anchor,
+  modifiers = [],
   onCreate,
   onClose,
 }: KeyModifierPickerProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [ticks, setTicks] = useState<string[]>([]);
+  const [ticks, setTicks] = useState<string[]>(modifiers);
   const [error, setError] = useState<string | null>(null);
   const combo = buildCombo(ticks, mainKey, false);
 

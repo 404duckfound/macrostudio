@@ -14,9 +14,32 @@ interface KeyboardMapProps {
   /** Draft triggers, for the mouse-button mini list. */
   triggers: Trigger[];
   selectedIdx: number;
-  /** Receives the key name and where it was pressed, to anchor a chooser. */
-  onPick: (name: string, anchor: { top: number; right: number }) => void;
+  /**
+   * Receives the key name, where it was pressed, and the modifiers held
+   * during the click: holding a modifier means the user wants a combination,
+   * not the trigger that already owns the key.
+   */
+  onPick: (
+    name: string,
+    anchor: { top: number; right: number },
+    modifiers: string[],
+  ) => void;
   onSelectTrigger: (idx: number) => void;
+}
+
+/** The modifiers a click was made with, in the spellings the key picker uses. */
+function heldModifiers(e: {
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+  metaKey: boolean;
+}): string[] {
+  const mods: string[] = [];
+  if (e.ctrlKey) mods.push("Ctrl");
+  if (e.shiftKey) mods.push("Shift");
+  if (e.altKey) mods.push("Alt");
+  if (e.metaKey) mods.push("Meta");
+  return mods;
 }
 
 export default function KeyboardMap({
@@ -34,9 +57,13 @@ export default function KeyboardMap({
       splitCombo(trigger.shortcut).main?.startsWith("Mouse"),
     );
 
-  function pick(name: string, el: HTMLButtonElement) {
+  function pick(
+    name: string,
+    el: HTMLButtonElement,
+    modifiers: string[] = [],
+  ) {
     const r = el.getBoundingClientRect();
-    onPick(name, { top: r.bottom + 4, right: r.right });
+    onPick(name, { top: r.bottom + 4, right: r.right }, modifiers);
   }
 
   return (
@@ -70,7 +97,7 @@ export default function KeyboardMap({
                   }
                   onClick={(e) => {
                     if (k.name == null) return;
-                    pick(k.name, e.currentTarget);
+                    pick(k.name, e.currentTarget, heldModifiers(e));
                   }}
                 >
                   {k.label}
@@ -103,7 +130,7 @@ export default function KeyboardMap({
                       ? `${name} is in use — click to edit that trigger`
                       : `Start a new trigger on ${name}`
                   }
-                  onClick={(e) => pick(name, e.currentTarget)}
+                  onClick={(e) => pick(name, e.currentTarget, heldModifiers(e))}
                 >
                   {k.label}
                 </button>

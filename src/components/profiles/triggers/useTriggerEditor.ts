@@ -60,6 +60,8 @@ export function useTriggerEditor(active: Profile | null) {
   const [modifierPicker, setModifierPicker] = useState<{
     mainKey: string;
     anchor: { top: number; right: number };
+    /** Modifiers held during the click; they start ticked in the picker. */
+    modifiers: string[];
   } | null>(null);
   const [saving, setSaving] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
@@ -279,15 +281,24 @@ export function useTriggerEditor(active: Profile | null) {
   }
 
   // The map navigates and starts triggers; it never reassigns the selected one.
-  function mapKeyDown(name: string, anchor: { top: number; right: number }) {
+  //
+  // A click with a modifier held means the user wants a *combination* on that
+  // key, not the trigger that already owns it -- so the modifier picker opens
+  // even for a key that is taken, and the clash rule decides whether the
+  // combination can be created.
+  function mapKeyDown(
+    name: string,
+    anchor: { top: number; right: number },
+    modifiers: string[] = [],
+  ) {
     // Lookups are case-insensitive, but the combo must keep the canonical
     // spelling: the generator matches "MouseLeft" exactly, not "MOUSELEFT".
     const indices = triggersByMain.get(name.toUpperCase()) ?? [];
-    if (indices.length === 1) {
+    if (modifiers.length === 0 && indices.length === 1) {
       selectTriggerAt(indices[0]);
       return;
     }
-    if (indices.length > 1) {
+    if (modifiers.length === 0 && indices.length > 1) {
       setModifierPicker(null);
       setMatchPicker({
         mainKey: name.toUpperCase(),
@@ -298,7 +309,7 @@ export function useTriggerEditor(active: Profile | null) {
       return;
     }
     setMatchPicker(null);
-    setModifierPicker({ mainKey: name, anchor });
+    setModifierPicker({ mainKey: name, anchor, modifiers });
   }
 
   // Pointer path: the map has no modifier state, so the chosen combo goes

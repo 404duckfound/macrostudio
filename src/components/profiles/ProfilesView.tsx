@@ -212,6 +212,7 @@ export default function ProfilesView({
             <KeyModifierPicker
               mainKey={modifierPicker.mainKey}
               anchor={modifierPicker.anchor}
+              modifiers={modifierPicker.modifiers}
               onCreate={editor.createOnMain}
               onClose={() => editor.setModifierPicker(null)}
             />
