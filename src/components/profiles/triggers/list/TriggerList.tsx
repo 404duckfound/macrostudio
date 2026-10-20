@@ -9,13 +9,14 @@ import {
   Ellipsis,
   Eye,
   Keyboard,
+  Layers,
   Mouse,
   Plus,
   Trash2,
 } from "lucide-react";
 import { parseTrigger } from "../../../../lib/keys";
 import { splitCombo } from "../../../../lib/keyCatalog";
-import type { Macro, MacroAction, Trigger } from "../../../../types";
+import type { Layer, Macro, MacroAction, Trigger } from "../../../../types";
 import Chips from "../fields/Chips";
 
 function actionPreviewLabel(
@@ -43,6 +44,8 @@ interface TriggerListProps {
   selectedIdx: number;
   recording: boolean;
   macros: Macro[];
+  /** The profile's layers, for the badge on the cards. */
+  layers: Layer[];
   openMenuIdx: number | null;
   /** Draft indices whose shortcut repeats an earlier card; save omits them. */
   duplicateIndices: number[];
@@ -59,6 +62,7 @@ export default function TriggerList({
   selectedIdx,
   recording,
   macros,
+  layers,
   openMenuIdx,
   duplicateIndices,
   onSelect,
@@ -165,6 +169,19 @@ export default function TriggerList({
                         >
                           <AlertTriangle aria-hidden="true" />
                           Duplicate shortcut
+                        </span>
+                      )}
+                      {t.layer && (
+                        <span
+                          className="trigger-layer-chip"
+                          data-tip={`This trigger only fires while ${
+                            layers.find((l) => l.id === t.layer)?.activator ??
+                            "the layer key"
+                          } is held`}
+                        >
+                          <Layers aria-hidden="true" />
+                          {layers.find((l) => l.id === t.layer)?.name ??
+                            "Layer"}
                         </span>
                       )}
                     </div>

@@ -6,9 +6,10 @@ import {
   Trash2,
   Undo2,
 } from "lucide-react";
-import type { MacroAction, Trigger } from "../../../../types";
+import type { Layer, MacroAction, Trigger } from "../../../../types";
 import ActionEditor from "../../actions/ActionEditor";
 import ActionTypeCard from "../../actions/ActionTypeCard";
+import LayerSelect from "../fields/LayerSelect";
 import ShortcutField from "../fields/ShortcutField";
 import TriggerModifiers from "../fields/TriggerModifiers";
 
@@ -17,6 +18,8 @@ interface TriggerInspectorProps {
   selectedIdx: number;
   selectedChips: string[];
   single: MacroAction | null;
+  /** The profile's layers, for the layer picker. */
+  layers: Layer[];
   dirty: boolean;
   saving: boolean;
   recording: boolean;
@@ -44,6 +47,7 @@ export default function TriggerInspector(props: TriggerInspectorProps) {
     selectedIdx,
     selectedChips,
     single,
+    layers,
     dirty,
     saving,
     recording,
@@ -104,6 +108,16 @@ export default function TriggerInspector(props: TriggerInspectorProps) {
                 onPickerClose={onPickerClose}
                 error={shortcutError}
               />
+              <div className="inspector-layer-row">
+                <span className="inspector-layer-label">Layer</span>
+                <LayerSelect
+                  value={selected.layer ?? null}
+                  layers={layers}
+                  onChange={(layerId) =>
+                    onPatchSelected((t) => ({ ...t, layer: layerId }))
+                  }
+                />
+              </div>
               {willDropCard && (
                 <div className="inline-warn" role="alert">
                   <AlertCircle className="warn-icon" aria-hidden="true" />

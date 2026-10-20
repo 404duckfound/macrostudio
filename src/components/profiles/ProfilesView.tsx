@@ -177,6 +177,7 @@ export default function ProfilesView({
               selectedIdx={selectedIdx}
               recording={recording}
               macros={macros}
+              layers={active?.layers ?? []}
               openMenuIdx={openMenuIdx}
               duplicateIndices={dropReport.duplicates}
               onSelect={editor.selectTriggerAt}
@@ -223,6 +224,7 @@ export default function ProfilesView({
         selectedIdx={selectedIdx}
         selectedChips={selectedChips}
         single={selected?.actions[0] ?? null}
+        layers={active?.layers ?? []}
         dirty={dirty}
         saving={saving}
         recording={recording}

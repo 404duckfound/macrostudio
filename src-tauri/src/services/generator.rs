@@ -190,9 +190,16 @@ pub fn compile_to_ahk_v2(
     // alone: keying on shortcut+prefix would let one trigger blocked and another
     // passthrough both survive, emitting `,::` and `~,::` for the same key.
     let mut seen = std::collections::HashSet::new();
+    let known_layers: std::collections::HashSet<&str> =
+        layers.iter().map(|l| l.id.as_str()).collect();
     let blocks: Vec<&Trigger> = triggers
         .iter()
-        .filter(|t| t.layer.is_none())
+        // A trigger whose layer no longer exists falls back to the normal
+        // layer: it must never fall out of the script.
+        .filter(|t| match t.layer.as_deref() {
+            None => true,
+            Some(id) => !known_layers.contains(id),
+        })
         .filter(|t| !t.shortcut.trim().is_empty())
         .filter(|t| {
             // Wildcard and release variants are distinct hotkeys; the hook
@@ -1276,6 +1283,22 @@ mod tests {
         );
         assert!(!out.contains("HotIf"));
         assert!(!out.contains("Layer0_"));
+    }
+
+    // A trigger whose layer was deleted must not vanish from the script: it
+    // falls back to the normal layer.
+    #[test]
+    fn trigger_with_a_deleted_layer_falls_back_to_normal() {
+        let out = compile_to_ahk_v2(
+            &[layered("gone", "P", vec![Action::Script {
+                code: "Send(\"still here\")".to_string(),
+            }])],
+            TEST_TITLE,
+            &[],
+            &[layer("caps", "Caps", "CapsLock")],
+        );
+        assert!(out.contains("P::\n{\n    Send(\"still here\")\n}\n"));
+        assert!(!out.contains("HotIf"));
     }
 
     // Old trigger JSON has no layer field: it belongs to the normal layer.

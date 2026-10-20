@@ -329,6 +329,13 @@ input:focus, select:focus, textarea:focus {
   white-space: nowrap;
 }
 .trigger-dup-chip svg { width: 11px; height: 11px; display: block; }
+.trigger-layer-chip {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600;
+  color: var(--accent-primary); background: rgba(47, 195, 222, 0.12);
+  border: 1px solid rgba(47, 195, 222, 0.3); border-radius: 5px; padding: 1px 6px;
+  white-space: nowrap;
+}
+.trigger-layer-chip svg { width: 11px; height: 11px; display: block; }
 /* The chip carries the error; a selected duplicate keeps its cyan selection
    border so the inspector's subject stays obvious. */
 .trigger-card-duplicate:not(.trigger-card-selected) { border-color: rgba(255, 95, 107, 0.4); }
@@ -711,6 +718,70 @@ input:focus, select:focus, textarea:focus {
 .action-check { width: 18px; height: 18px; color: var(--accent-primary); flex-shrink: 0; }
 .action-check svg { width: 18px; height: 18px; }
 .action-empty { font-size: 12px; color: var(--text-disabled); text-align: center; padding: 12px 4px; }
+
+/* Layer picker (which layer a trigger belongs to) */
+.layer-select { position: relative; flex: 1; min-width: 0; }
+.layer-select-btn {
+  width: 100%; display: flex; align-items: center; gap: 8px; min-height: 36px;
+  padding: 0 10px; background: var(--bg-surface); border: 1px solid var(--border-default);
+  border-radius: 9px; color: var(--text-primary); text-align: left; font-size: 12px;
+  font-weight: 500;
+}
+.layer-select-btn:hover { border-color: var(--border-hover); background: var(--bg-interactive); }
+.layer-select-btn-open { border-color: var(--accent-primary); background: var(--bg-interactive); }
+.layer-select-btn-set { border-color: rgba(47, 195, 222, 0.35); }
+.layer-select-icon { width: 14px; height: 14px; color: var(--accent-primary); flex-shrink: 0; }
+.layer-select-icon svg { width: 14px; height: 14px; display: block; }
+.layer-select-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-select-activator {
+  font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--text-secondary);
+  background: var(--bg-interactive); border-radius: 5px; padding: 1px 6px; flex-shrink: 0;
+}
+.layer-select-chevron { width: 14px; height: 14px; color: var(--text-disabled); flex-shrink: 0; }
+.layer-select-chevron svg { width: 14px; height: 14px; display: block; }
+.layer-select-pop {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 60; display: flex;
+  flex-direction: column; gap: 4px; padding: 6px; background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default); border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6); max-height: 240px; overflow-y: auto;
+}
+.layer-select-option {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px;
+  padding: 0 8px; background: transparent; border: 1px solid transparent; border-radius: 7px;
+  text-align: left; color: var(--text-primary); font-size: 12px; font-weight: 500;
+}
+.layer-select-option:hover { background: var(--bg-interactive); }
+.layer-select-option-active { background: var(--bg-interactive); border-color: var(--accent-primary); }
+.layer-select-check { width: 14px; height: 14px; color: var(--accent-primary); flex-shrink: 0; }
+.layer-select-check svg { width: 14px; height: 14px; display: block; }
+.layer-select-empty { font-size: 12px; color: var(--text-disabled); padding: 8px 6px; }
+.inspector-layer-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.inspector-layer-label {
+  font-size: 11px; font-weight: 500; color: var(--text-secondary); flex-shrink: 0;
+}
+
+/* Layer management inside the profile modal */
+.modal-hint { font-size: 12px; color: var(--text-secondary); margin: 2px 0 8px; }
+.layer-row {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin-bottom: 4px;
+  background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 9px;
+}
+.layer-row-icon { width: 14px; height: 14px; color: var(--accent-primary); flex-shrink: 0; }
+.layer-row-name { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-row-remove {
+  width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; color: var(--text-disabled); flex-shrink: 0;
+}
+.layer-row-remove:hover { color: var(--status-danger); background: rgba(255, 95, 107, 0.12); }
+.layer-row-remove svg { width: 14px; height: 14px; display: block; }
+.layer-add { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.layer-add .modal-input { flex: 1; min-width: 0; }
+.layer-activator-btn {
+  min-height: 40px; padding: 0 12px; border-radius: 10px; background: var(--bg-base);
+  border: 1px solid var(--border-default); color: var(--text-primary); font-size: 13px;
+  white-space: nowrap;
+}
+.layer-activator-btn:hover { border-color: var(--border-hover); background: var(--bg-interactive); }
 
 /* Action Cards (Action Editor Containers) */
 .action-card {

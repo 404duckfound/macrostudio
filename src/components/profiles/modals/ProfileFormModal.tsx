@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { AppWindow } from "lucide-react";
+import { AppWindow, Layers, X } from "lucide-react";
 import Modal from "../../common/ui/Modal";
 import ModalFooter from "../../common/ui/ModalFooter";
 import ProfileScopeField from "../ProfileScopeField";
-import type { Profile } from "../../../types";
+import KeyPicker from "../triggers/fields/KeyPicker";
+import { splitCombo } from "../../../lib/keyCatalog";
+import type { Layer, Profile } from "../../../types";
 
 type FormMode = "add" | "edit";
 
@@ -64,6 +66,13 @@ export default function ProfileFormModal({
   const [visibleExes, setVisibleExes] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  // Modifier layers: while the activator key is held, the layer's triggers
+  // take over from the normal ones.
+  const [layers, setLayers] = useState<Layer[]>(editing?.layers ?? []);
+  const [layerName, setLayerName] = useState("");
+  const [layerActivator, setLayerActivator] = useState("");
+  const [activatorPickerOpen, setActivatorPickerOpen] = useState(false);
+  const [activatorError, setActivatorError] = useState("");
 
   useEffect(() => {
     invoke<string[]>("system_visible_window_exes")
@@ -72,6 +81,27 @@ export default function ProfileFormModal({
   }, []);
 
   const copy = FORM_COPY[mode];
+
+  // An activator is a single key: AHK reads one key's physical state, so a
+  // combination cannot be held as the layer switch.
+  function pickActivator(combo: string) {
+    const { modifiers, main } = splitCombo(combo);
+    if (modifiers.length === 0 && main) return main;
+    if (modifiers.length === 1 && !main) return modifiers[0];
+    return null;
+  }
+
+  function addLayer() {
+    const cleanName = layerName.trim();
+    if (!cleanName || !layerActivator) return;
+    setLayers((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), name: cleanName, activator: layerActivator },
+    ]);
+    setLayerName("");
+    setLayerActivator("");
+    setActivatorError("");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -99,13 +129,13 @@ export default function ProfileFormModal({
     try {
       await onSubmit(
         editing
-          ? { ...editing, name: cleanName, target_exe: cleanTarget }
+          ? { ...editing, name: cleanName, target_exe: cleanTarget, layers }
           : {
               id: crypto.randomUUID(),
               name: cleanName,
               triggers: [],
               target_exe: cleanTarget,
-              layers: [],
+              layers,
             },
         editing === null,
       );
@@ -149,6 +179,83 @@ export default function ProfileFormModal({
           browsePath={browsePath}
           onBrowsePath={setBrowsePath}
         />
+        <div className="modal-field">
+          <div className="field-row">
+            <label className="modal-label">Layers</label>
+          </div>
+          <p className="modal-hint">
+            A layer takes over while its key is held: the triggers you put in
+            it replace the normal ones for the same key.
+          </p>
+          {layers.map((layer) => (
+            <div key={layer.id} className="layer-row">
+              <Layers className="layer-row-icon" aria-hidden="true" />
+              <span className="layer-row-name">{layer.name}</span>
+              <kbd className="kbd">{layer.activator}</kbd>
+              <button
+                type="button"
+                className="layer-row-remove"
+                aria-label={`Remove layer ${layer.name}`}
+                onClick={() =>
+                  setLayers((prev) => prev.filter((l) => l.id !== layer.id))
+                }
+              >
+                <X aria-hidden="true" />
+              </button>
+            </div>
+          ))}
+          <div className="layer-add">
+            <input
+              className="modal-input"
+              placeholder="Layer name"
+              aria-label="Layer name"
+              value={layerName}
+              maxLength={40}
+              autoComplete="off"
+              onChange={(e) => setLayerName(e.target.value)}
+            />
+            <button
+              type="button"
+              className="layer-activator-btn"
+              onClick={() => {
+                setActivatorPickerOpen((v) => !v);
+                setActivatorError("");
+              }}
+            >
+              {layerActivator || "Choose key…"}
+            </button>
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled={!layerName.trim() || !layerActivator}
+              onClick={addLayer}
+            >
+              Add
+            </button>
+          </div>
+          {activatorError && <span className="modal-error">{activatorError}</span>}
+          {activatorPickerOpen && (
+            <div className="key-picker-wrap">
+              <KeyPicker
+                open
+                currentCombo={layerActivator}
+                preserveCase
+                excludeLeftMouse={false}
+                onSelect={(combo) => {
+                  const key = pickActivator(combo);
+                  if (!key) {
+                    setActivatorError("Pick a single key to hold down.");
+                    return;
+                  }
+                  setLayerActivator(key);
+                  setActivatorPickerOpen(false);
+                  setActivatorError("");
+                }}
+                onClose={() => setActivatorPickerOpen(false)}
+              />
+            </div>
+          )}
+        </div>
         {error && <span className="modal-error">{error}</span>}
         <ModalFooter
           saving={saving}
