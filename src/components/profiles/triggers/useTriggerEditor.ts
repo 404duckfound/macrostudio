@@ -8,7 +8,7 @@ import { parseTrigger } from "../../../lib/keys";
 import { sameCombo, splitCombo } from "../../../lib/keyCatalog";
 import { useProfileStore } from "../../../stores/useProfileStore";
 import type { MacroAction, ModSide, Profile, Trigger } from "../../../types";
-import { cleanDraft, draftDropReport, toDrafts } from "./triggerDraft";
+import { cleanDraft, draftDropReport, droppedReportMessage, toDrafts } from "./triggerDraft";
 
 // AltGr is LeftCtrl + RightAlt physically: pin the recorded combo to those
 // sides so the trigger fires on AltGr alone instead of any Ctrl+Alt.
@@ -64,6 +64,20 @@ export function useTriggerEditor(active: Profile | null) {
   const [saving, setSaving] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
   const [flashAction, setFlashAction] = useState(false);
+  // What the last save left out, shown until the next edit. It carries the
+  // profile id so a profile switch drops the line instead of leaving it
+  // behind for a profile it does not describe.
+  const [saveNotice, setSaveNotice] = useState<{
+    profileId: string;
+    text: string;
+  } | null>(null);
+
+  // The drafts belong to the profile on screen. A list refresh (add, duplicate,
+  // delete, window match) hands us new profile objects with the same content,
+  // so the drafts must reset on a content change, not on object identity:
+  // otherwise an unrelated refresh would drop the unsaved edits and would
+  // flip the view to "clean" before the switch guard could ask.
+  const savedTriggers = JSON.stringify(active?.triggers ?? []);
 
   useEffect(() => {
     setDraftTriggers(toDrafts(active?.triggers));
@@ -72,7 +86,19 @@ export function useTriggerEditor(active: Profile | null) {
     setPickerOpen(false);
     setMatchPicker(null);
     setModifierPicker(null);
-  }, [active?.id, active?.triggers]);
+    setSaveNotice((n) =>
+      n && active && n.profileId === active.id ? n : null,
+    );
+  }, [active?.id, savedTriggers]);
+
+  /**
+   * Every user edit goes through here: it drops the "what the last save left
+   * out" line, because that line describes the state before the edit.
+   */
+  function mutateDrafts(fn: (prev: Trigger[]) => Trigger[]) {
+    setSaveNotice(null);
+    setDraftTriggers(fn);
+  }
 
   useEffect(() => {
     if (openMenuIdx === null) return;
@@ -104,7 +130,7 @@ export function useTriggerEditor(active: Profile | null) {
         return;
       }
       setCaptureError(null);
-      setDraftTriggers((prev) =>
+      mutateDrafts((prev) =>
         prev.map((x, i) =>
           i === sel
             ? {
@@ -138,7 +164,7 @@ export function useTriggerEditor(active: Profile | null) {
       }
       setCaptureError(null);
       const keep = new Set(combo.split("+").map((p) => p.trim()));
-      setDraftTriggers((prev) =>
+      mutateDrafts((prev) =>
         prev.map((x, i) => {
           if (i !== sel) return x;
           const mod_sides: Record<string, ModSide> = {};
@@ -225,11 +251,11 @@ export function useTriggerEditor(active: Profile | null) {
   }
 
   function patchSelected(patch: (t: Trigger) => Trigger) {
-    setDraftTriggers((prev) => prev.map((x, i) => (i === sel ? patch(x) : x)));
+    mutateDrafts((prev) => prev.map((x, i) => (i === sel ? patch(x) : x)));
   }
 
   function addTrigger() {
-    setDraftTriggers((prev) => [...prev, blankTrigger()]);
+    mutateDrafts((prev) => [...prev, blankTrigger()]);
     setSelectedIdx(draftTriggers.length);
   }
 
@@ -245,7 +271,7 @@ export function useTriggerEditor(active: Profile | null) {
       }));
       return;
     }
-    setDraftTriggers((prev) => [
+    mutateDrafts((prev) => [
       ...prev,
       { ...blankTrigger(shortcut), mod_sides: altGr ? altGrSides(shortcut) : {} },
     ]);
@@ -284,7 +310,7 @@ export function useTriggerEditor(active: Profile | null) {
     // Always adds a card: the physical-press path rewrites an unfinished one,
     // but the map flow is a deliberate creation and must not drop what the
     // user just built.
-    setDraftTriggers((prev) => [...prev, blankTrigger(combo)]);
+    mutateDrafts((prev) => [...prev, blankTrigger(combo)]);
     setSelectedIdx(draftTriggers.length);
     setModifierPicker(null);
     return null;
@@ -336,7 +362,7 @@ export function useTriggerEditor(active: Profile | null) {
   }
 
   function duplicateTrigger(idx: number) {
-    setDraftTriggers((prev) => {
+    mutateDrafts((prev) => {
       const src = prev[idx];
       if (!src) return prev;
       const copy: Trigger = {
@@ -358,7 +384,7 @@ export function useTriggerEditor(active: Profile | null) {
   }
 
   function deleteTrigger(idx: number) {
-    setDraftTriggers((prev) => prev.filter((_, i) => i !== idx));
+    mutateDrafts((prev) => prev.filter((_, i) => i !== idx));
     setSelectedIdx((cur) => Math.max(0, Math.min(cur, draftTriggers.length - 2)));
     setRecording(false);
     setPickerOpen(false);
@@ -366,7 +392,7 @@ export function useTriggerEditor(active: Profile | null) {
   }
 
   function removeSelected() {
-    setDraftTriggers((prev) => prev.filter((_, i) => i !== sel));
+    mutateDrafts((prev) => prev.filter((_, i) => i !== sel));
     setSelectedIdx(Math.max(0, sel - 1));
     setRecording(false);
     setPickerOpen(false);
@@ -421,7 +447,7 @@ export function useTriggerEditor(active: Profile | null) {
   }
 
   function discardChanges() {
-    setDraftTriggers(toDrafts(active?.triggers));
+    mutateDrafts(() => toDrafts(active?.triggers));
     setSelectedIdx(0);
     setRecording(false);
     setPickerOpen(false);
@@ -434,10 +460,18 @@ export function useTriggerEditor(active: Profile | null) {
     if (!active) return;
     setSaving(true);
     try {
+      // Report on the drafts, not on the cleaned list: the cards that are
+      // about to disappear are the ones the user must hear about.
+      const report = draftDropReport(draftTriggers);
       const updated: Profile = { ...active, triggers: cleanTriggers };
       await invoke("profile_save", { profile: updated });
       const list = await invoke<Profile[]>("profile_list");
       useProfileStore.getState().setProfiles(list);
+      setSaveNotice(
+        report.total > 0
+          ? { profileId: active.id, text: droppedReportMessage(report) }
+          : null,
+      );
     } finally {
       setSaving(false);
     }
@@ -453,6 +487,7 @@ export function useTriggerEditor(active: Profile | null) {
     assignedMains,
     cleanTriggers,
     dropReport,
+    saveNotice: saveNotice?.text ?? null,
     willDropCard,
     dirty,
     recording,

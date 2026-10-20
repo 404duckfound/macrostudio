@@ -5,6 +5,10 @@ import { useProfileStore } from "../../stores/useProfileStore";
 import SelectMenu from "../common/ui/SelectMenu";
 import ProfileDeleteModal from "./modals/ProfileDeleteModal";
 import ProfileFormModal from "./modals/ProfileFormModal";
+import {
+  dropReportMessage,
+  type DraftDropReport,
+} from "./triggers/triggerDraft";
 import type { Profile, Trigger } from "../../types";
 
 type ModalState =
@@ -13,35 +17,16 @@ type ModalState =
   | { kind: "delete"; profile: Profile }
   | null;
 
-interface DropSummary {
-  total: number;
-  noAction: number;
-  duplicate: number;
-  emptyShortcut: number;
-}
-
 interface ProfileHeaderProps {
   activeRun: { id: string; ok: boolean } | null;
-  dropSummary: DropSummary;
+  /** Cards the current save would drop, and why. */
+  dropSummary: DraftDropReport;
+  /** What the last save left out, shown until the next edit. */
+  saveNotice: string | null;
   dirty: boolean;
   onRequestSwitch: (id: string) => void;
   /** Right-aligned slot for the canvas view switcher. */
   tabs?: ReactNode;
-}
-
-/** One line naming every reason a save will omit a draft card. */
-function dropMessage({ total, noAction, duplicate, emptyShortcut }: DropSummary): string {
-  if (total === 1) {
-    if (noAction === 1) return "1 trigger has no action and will be dropped on save";
-    if (duplicate === 1)
-      return "1 trigger repeats a shortcut and will be dropped on save";
-    return "1 trigger has no shortcut and will be dropped on save";
-  }
-  const reasons: string[] = [];
-  if (noAction > 0) reasons.push(`${noAction} without an action`);
-  if (duplicate > 0) reasons.push(`${duplicate} with a duplicate shortcut`);
-  if (emptyShortcut > 0) reasons.push(`${emptyShortcut} without a shortcut`);
-  return `${total} triggers will be dropped on save (${reasons.join(", ")})`;
 }
 
 async function refresh(): Promise<Profile[]> {
@@ -65,6 +50,7 @@ function cloneTriggers(triggers: Trigger[]): Trigger[] {
 export default function ProfileHeader({
   activeRun,
   dropSummary,
+  saveNotice,
   dirty,
   onRequestSwitch,
   tabs,
@@ -83,12 +69,14 @@ export default function ProfileHeader({
     setDeleteError("");
   }
 
-  // Add, edit and delete change the list, so they bypass the switch guard:
-  // saving a profile cannot lose the unsaved edits the guard protects.
+  // Editing a profile name or its scope never touches the trigger drafts, so
+  // it can be saved right away. A *new* profile switches away from the
+  // current one, and that switch goes through the guard like any other: the
+  // unsaved edits of the profile on screen must not disappear with it.
   async function saveProfile(profile: Profile, isNew: boolean) {
     await invoke("profile_save", { profile });
     await refresh();
-    if (isNew) useProfileStore.getState().applySwitch(profile.id, "manual");
+    if (isNew) onRequestSwitch(profile.id);
     closeModal();
   }
 
@@ -226,11 +214,15 @@ export default function ProfileHeader({
             )}
             {tabs}
           </div>
-          {dropSummary.total > 0 && (
+          {(saveNotice || dropSummary.total > 0) && (
             <div className="flow-profile-sub-row">
-              <span className="flow-without-action">
-                {dropMessage(dropSummary)}
-              </span>
+              {saveNotice ? (
+                <span className="flow-drop-notice">{saveNotice}</span>
+              ) : (
+                <span className="flow-without-action">
+                  {dropReportMessage(dropSummary)}
+                </span>
+              )}
             </div>
           )}
         </div>

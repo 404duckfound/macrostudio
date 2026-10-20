@@ -348,6 +348,8 @@ input:focus, select:focus, textarea:focus {
 .trigger-noaction-btn:hover { background: rgba(255, 176, 46, 0.2); color: #ffd48a; }
 .trigger-card-right { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .flow-without-action { color: var(--status-warning); font-weight: 600; }
+/* What the last save left out: same voice as the pre-save warning, past tense. */
+.flow-drop-notice { color: var(--status-warning); font-weight: 600; }
 @keyframes step-flash {
   0%, 100% { box-shadow: none; }
   30%, 70% { box-shadow: 0 0 0 2px rgba(47, 195, 222, 0.7); }

@@ -128,6 +128,7 @@ export default function ProfilesView({
           <ProfileHeader
             activeRun={activeRun}
             dropSummary={dropReport}
+            saveNotice={editor.saveNotice}
             dirty={dirty}
             onRequestSwitch={(id) => requestSwitch(id, "manual")}
             tabs={

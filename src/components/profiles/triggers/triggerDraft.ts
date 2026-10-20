@@ -97,6 +97,47 @@ export function draftDropReport(drafts: Trigger[]): DraftDropReport {
   return report;
 }
 
+/** The reasons behind a drop report, e.g. "1 without an action, 2 with a duplicate shortcut". */
+function dropReasons(report: DraftDropReport): string[] {
+  const reasons: string[] = [];
+  if (report.noAction > 0) reasons.push(`${report.noAction} without an action`);
+  if (report.duplicate > 0)
+    reasons.push(`${report.duplicate} with a duplicate shortcut`);
+  if (report.emptyShortcut > 0)
+    reasons.push(`${report.emptyShortcut} without a shortcut`);
+  return reasons;
+}
+
+/** One line naming every reason a save will omit a draft card. */
+export function dropReportMessage(report: DraftDropReport): string {
+  if (report.total === 0) return "";
+  if (report.total === 1) {
+    if (report.noAction === 1)
+      return "1 trigger has no action and will be dropped on save";
+    if (report.duplicate === 1)
+      return "1 trigger repeats a shortcut and will be dropped on save";
+    return "1 trigger has no shortcut and will be dropped on save";
+  }
+  return `${report.total} triggers will be dropped on save (${dropReasons(report).join(", ")})`;
+}
+
+/**
+ * The same report in the past tense, for the line a save leaves behind. A card
+ * that vanishes on save is the bug this report exists for, so the drop is
+ * announced as well as warned about.
+ */
+export function droppedReportMessage(report: DraftDropReport): string {
+  if (report.total === 0) return "";
+  if (report.total === 1) {
+    if (report.noAction === 1)
+      return "Saved - 1 trigger without an action was dropped";
+    if (report.duplicate === 1)
+      return "Saved - 1 trigger with a duplicate shortcut was dropped";
+    return "Saved - 1 trigger without a shortcut was dropped";
+  }
+  return `Saved - ${report.total} triggers were dropped (${dropReasons(report).join(", ")})`;
+}
+
 export function toDrafts(triggers: Trigger[] | undefined): Trigger[] {
   if (!triggers?.length) return [];
   return triggers.map((t) => ({
