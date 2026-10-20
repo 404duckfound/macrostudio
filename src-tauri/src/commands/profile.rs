@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::services::generator::{compile_to_ahk_v2, Trigger};
+use crate::services::generator::{compile_to_ahk_v2, Layer, Trigger};
 use crate::commands::macros::load_macros;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -10,6 +10,10 @@ pub struct Profile {
     #[serde(default)]
     pub triggers: Vec<Trigger>,
     pub target_exe: Option<String>,
+    /// Modifier layers (G-Shift style). Missing in older JSON, so old profiles
+    /// load unchanged and compile to the same script.
+    #[serde(default)]
+    pub layers: Vec<Layer>,
 }
 
 fn profiles_dir() -> Result<std::path::PathBuf, String> {
@@ -20,7 +24,12 @@ fn profiles_dir() -> Result<std::path::PathBuf, String> {
 }
 
 fn write_ahk_file(dir: &std::path::Path, profile: &Profile) {
-    let script = compile_to_ahk_v2(&profile.triggers, &profile.name, &load_macros());
+    let script = compile_to_ahk_v2(
+        &profile.triggers,
+        &profile.name,
+        &load_macros(),
+        &profile.layers,
+    );
     let path = dir.join(format!("{}.ahk", profile.id));
     let _ = std::fs::write(path, script);
 }
@@ -97,9 +106,52 @@ mod tests {
             name: "N".into(),
             triggers: vec![],
             target_exe: None,
+            layers: vec![],
         };
         let json = serde_json::to_string(&p).unwrap();
         assert!(!json.contains("\"enabled\""));
+    }
+
+    // Profiles written before the layers existed have no "layers" key: they
+    // load with an empty layer list, so their script stays byte for byte the
+    // same as before.
+    #[test]
+    fn profile_without_layers_loads_empty() {
+        let old = r#"{"id":"x","name":"N","target_exe":null,
+            "triggers":[{"shortcut":"F9","actions":[]}]}"#;
+        let p: Profile = serde_json::from_str(old).unwrap();
+        assert!(p.layers.is_empty());
+        assert_eq!(p.triggers[0].layer, None);
+    }
+
+    // A profile with layers keeps them, and the trigger points at one.
+    #[test]
+    fn profile_with_layers_round_trips() {
+        let p = Profile {
+            id: "x".into(),
+            name: "N".into(),
+            triggers: vec![Trigger {
+                shortcut: "F9".into(),
+                actions: vec![],
+                block_key: false,
+                fire_on_release: false,
+                mod_sides: Default::default(),
+                wildcard: false,
+                force_hook: false,
+                layer: Some("caps".into()),
+            }],
+            target_exe: None,
+            layers: vec![Layer {
+                id: "caps".into(),
+                name: "Caps".into(),
+                activator: "CapsLock".into(),
+            }],
+        };
+        let json = serde_json::to_string(&p).unwrap();
+        let back: Profile = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.layers.len(), 1);
+        assert_eq!(back.layers[0].activator, "CapsLock");
+        assert_eq!(back.triggers[0].layer.as_deref(), Some("caps"));
     }
 
     // Triggers written before blocking moved down from the profile have no

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useProfileStore } from "../stores/useProfileStore";
-import { macroSignature } from "../components/profiles/triggers/triggerDraft";
-import type { Trigger } from "../types";
+import { runtimeSignature } from "../components/profiles/triggers/triggerDraft";
+import type { Layer, Trigger } from "../types";
 
 const POLL_MS = 2000;
 
@@ -40,13 +40,19 @@ export function useProfileRunner() {
   }, []);
 
   const start = useCallback(
-    async (profileId: string, profileName: string, triggers: Trigger[]) => {
+    async (
+      profileId: string,
+      profileName: string,
+      triggers: Trigger[],
+      layers: Layer[],
+    ) => {
       setError(null);
       try {
         await invoke("ahk_start_profile", {
           profileId,
           profileName,
           triggers,
+          layers,
         });
       } catch (e) {
         setError(String(e));
@@ -89,7 +95,9 @@ export function useProfileRunner() {
   const active = profiles.find((p) => p.id === activeId) ?? null;
   // Depends on the trigger content, not the array identity: profile_list
   // returns fresh objects, so keying on identity would restart on every load.
-  const signature = active ? macroSignature(active.triggers, macros) : null;
+  const signature = active
+    ? runtimeSignature(active.triggers, macros, active.layers ?? [])
+    : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -104,7 +112,7 @@ export function useProfileRunner() {
       }
       if (cancelled || !shouldRun || !active) return;
       try {
-        await start(active.id, active.name, active.triggers);
+        await start(active.id, active.name, active.triggers, active.layers ?? []);
       } catch {}
     })();
     return () => {

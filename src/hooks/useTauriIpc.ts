@@ -68,6 +68,7 @@ function buildDefaultProfile(): Profile {
     name: DEFAULT_NAME,
     triggers: [],
     target_exe: null,
+    layers: [],
   };
 }
 

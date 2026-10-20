@@ -1,4 +1,4 @@
-import type { Macro, MacroAction, ModSide, Trigger } from "../../../types";
+import type { Layer, Macro, MacroAction, ModSide, Trigger } from "../../../types";
 
 // Actions the UI can no longer edit or compile (removed types like custom
 // and keys, or unknown future ones) are dropped on clean/save, mirroring the
@@ -42,6 +42,10 @@ export function cleanDraft(drafts: Trigger[]): Trigger[] {
       mod_sides: pruneSides(shortcut, t.mod_sides),
       wildcard: t.wildcard ?? false,
       force_hook: t.force_hook ?? false,
+      // The layer assignment has to survive the draft round trip, otherwise
+      // saving a profile would quietly move its triggers back to the normal
+      // layer.
+      layer: t.layer ?? null,
     });
   }
   return out;
@@ -147,14 +151,20 @@ export function toDrafts(triggers: Trigger[] | undefined): Trigger[] {
     mod_sides: { ...(t.mod_sides ?? {}) },
     wildcard: t.wildcard ?? false,
     force_hook: t.force_hook ?? false,
+    layer: t.layer ?? null,
     actions: t.actions.filter((a) => !isDroppedAction(a)).slice(0, 1).map((a) => ({ ...a })),
   }));
 }
 
 // Runner signature input: the referenced macros' bodies ride along so editing
-// a macro restarts the running profile. Unknown ids resolve to null (same
-// rule as the backend compiler: dangling refs emit nothing).
-export function macroSignature(triggers: Trigger[], macros: Macro[]): string {
+// a macro restarts the running profile, and so do the layers, because they
+// change the generated script. Unknown ids resolve to null (same rule as the
+// backend compiler: dangling refs emit nothing).
+export function runtimeSignature(
+  triggers: Trigger[],
+  macros: Macro[],
+  layers: Layer[] = [],
+): string {
   const ids = new Set<string>();
   for (const t of triggers) {
     for (const a of t.actions) {
@@ -164,5 +174,5 @@ export function macroSignature(triggers: Trigger[], macros: Macro[]): string {
   const bodies = [...ids]
     .sort()
     .map((id) => macros.find((m) => m.id === id)?.blocks ?? null);
-  return JSON.stringify([triggers, bodies]);
+  return JSON.stringify([triggers, bodies, layers]);
 }

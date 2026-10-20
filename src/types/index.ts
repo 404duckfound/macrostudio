@@ -24,6 +24,17 @@ export interface Macro {
 
 export type ModSide = "left" | "right";
 
+/**
+ * A modifier layer, G-Shift style: while its activator key is physically
+ * held, the layer's triggers take over from the normal ones.
+ */
+export interface Layer {
+  id: string;
+  name: string;
+  /** The key held down to switch the layer on, e.g. "CapsLock". */
+  activator: string;
+}
+
 export interface Trigger {
   shortcut: string;
   actions: MacroAction[];
@@ -32,6 +43,8 @@ export interface Trigger {
   mod_sides: Record<string, ModSide>;
   wildcard: boolean;
   force_hook: boolean;
+  /** The layer this trigger belongs to (a Layer id). None = the normal layer. */
+  layer?: string | null;
 }
 
 export interface Profile {
@@ -39,4 +52,5 @@ export interface Profile {
   name: string;
   triggers: Trigger[];
   target_exe: string | null;
+  layers: Layer[];
 }

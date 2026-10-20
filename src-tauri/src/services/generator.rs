@@ -123,6 +123,28 @@ pub struct Trigger {
     // hotkey itself.
     #[serde(default)]
     pub force_hook: bool,
+    // The layer this trigger belongs to (a Layer id). None is the normal
+    // layer. Missing in older JSON, so old triggers keep their behaviour.
+    #[serde(default)]
+    pub layer: Option<String>,
+}
+
+/// A modifier layer, G-Shift style: while its activator key is physically
+/// held, the layer's triggers take over from the normal ones.
+///
+/// AHK has this built in. The layer's hotkeys are registered as HotIf
+/// variants, and the global variant of a hotkey always has the lowest
+/// precedence -- so while the activator is down the layer's version fires and
+/// the normal one does not.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Layer {
+    /// Stable id the triggers reference.
+    pub id: String,
+    /// Name shown in the UI.
+    #[serde(default)]
+    pub name: String,
+    /// The key held down to switch the layer on, e.g. "CapsLock".
+    pub activator: String,
 }
 
 /// Quotes `value` as an AHK double-quoted literal: quotes and backticks are
@@ -141,6 +163,7 @@ pub fn compile_to_ahk_v2(
     triggers: &[Trigger],
     script_title: &str,
     macros: &[Macro],
+    layers: &[Layer],
 ) -> String {
     // #NoTrayIcon: keep AHK's own green tray icon from appearing at all. The
     // Macro Studio window is the only indicator; the tray should not show two.
@@ -152,6 +175,12 @@ pub fn compile_to_ahk_v2(
         "#Requires AutoHotkey v2.0\n#NoTrayIcon\nA_ScriptName := {}\n\n",
         ahk_string_literal(script_title)
     );
+    // A layer reads the activator's *physical* state, which AHK only tracks
+    // accurately while the keyboard hook is installed. Without this the layer
+    // would follow the logical state (CapsLock toggled on, not held).
+    if !layers.is_empty() {
+        script.push_str("InstallKeybdHook()\n\n");
+    }
     // Suppressing needs no prefix: simply omitting `~` is enough. `*` is the hook
     // modifier -- it changes *when* a hotkey fires (it also catches the key-up
     // and fires while extra modifiers are held), so treating it as a swallow
@@ -163,6 +192,7 @@ pub fn compile_to_ahk_v2(
     let mut seen = std::collections::HashSet::new();
     let blocks: Vec<&Trigger> = triggers
         .iter()
+        .filter(|t| t.layer.is_none())
         .filter(|t| !t.shortcut.trim().is_empty())
         .filter(|t| {
             // Wildcard and release variants are distinct hotkeys; the hook
@@ -178,54 +208,177 @@ pub fn compile_to_ahk_v2(
         })
         .collect();
     for trigger in &blocks {
-        let hook = if trigger.force_hook { "$" } else { "" };
-        let tilde = if trigger.block_key { "" } else { "~" };
-        let star = if trigger.wildcard { "*" } else { "" };
-        let up = if trigger.fire_on_release { " Up" } else { "" };
-        let key = format!(
-            "{hook}{tilde}{star}{}{up}",
-            map_trigger_hotkey(trigger.shortcut.trim(), &trigger.mod_sides)
-        );
+        let key = hotkey_spec(trigger);
         script.push_str(&format!("{key}::\n{{\n"));
-        for (action_idx, action) in trigger.actions.iter().enumerate() {
-            match action {
-                Action::Mouse { button, x, y } => {
-                    script.push_str(&mouse_click_line(button, *x, *y));
-                }
-                Action::MacroRef { macro_id } => {
-                    // Unknown ids (deleted out of band, hand-edited JSON) emit
-                    // nothing: a dangling reference must never break a script.
-                    if let Some(found) = macros.iter().find(|m| &m.id == macro_id) {
-                        for block in &found.blocks {
-                            emit_block(&mut script, block);
-                        }
-                    }
-                }
-                Action::Script { code } => {
-                    for line in code.lines() {
-                        script.push_str(&format!("    {line}\n"));
-                    }
-                }
-                Action::Key {
-                    key,
-                    behavior,
-                    pre_delay_ms,
-                    repeat,
-                } => {
-                    script.push_str(&key_action_lines(
-                        key,
-                        *behavior,
-                        *pre_delay_ms,
-                        *repeat,
-                        trigger.shortcut.trim(),
-                        action_idx,
-                    ));
-                }
-            }
-        }
+        emit_trigger_body(&mut script, trigger, macros);
         script.push_str("}\n");
     }
+    // Layer triggers: a function per trigger plus a HotIf registration that
+    // makes them variants of the same hotkeys. While the activator is held the
+    // variant wins -- the global variant has the lowest precedence and stays
+    // silent -- which is the G-Shift behaviour.
+    for (layer_index, layer) in layers.iter().enumerate() {
+        let mut layer_seen = std::collections::HashSet::new();
+        let layer_triggers: Vec<&Trigger> = triggers
+            .iter()
+            .filter(|t| t.layer.as_deref() == Some(layer.id.as_str()))
+            .filter(|t| !t.shortcut.trim().is_empty())
+            .filter(|t| {
+                layer_seen.insert(format!(
+                    "{}{}{}",
+                    if t.wildcard { "*" } else { "" },
+                    map_trigger_hotkey(t.shortcut.trim(), &t.mod_sides),
+                    if t.fire_on_release { " up" } else { "" }
+                ))
+            })
+            .collect();
+        if layer_triggers.is_empty() {
+            continue;
+        }
+        script.push_str(&format!(
+            "; layer \"{}\" -- active while {} is held\n",
+            layer.name, layer.activator
+        ));
+        for (trigger_index, trigger) in layer_triggers.iter().enumerate() {
+            let name = layer_function_name(layer_index, trigger_index, trigger);
+            // The parameter is the hotkey name: AHK hands it to every hotkey
+            // callback, and a callback without one is rejected.
+            script.push_str(&format!("{name}(HotkeyName)\n{{\n"));
+            emit_trigger_body(&mut script, trigger, macros);
+            script.push_str("}\n");
+        }
+        script.push_str(&format!(
+            "HotIf (*) => GetKeyState(\"{}\", \"P\")\n",
+            activator_key_name(&layer.activator)
+        ));
+        for (trigger_index, trigger) in layer_triggers.iter().enumerate() {
+            let name = layer_function_name(layer_index, trigger_index, trigger);
+            // The action is the function itself, not its name in quotes: a
+            // quoted action names a hotkey label, not a function.
+            script.push_str(&format!(
+                "Hotkey \"{}\", {name}\n",
+                layer_hotkey_spec(trigger, &layer.activator)
+            ));
+        }
+        // Blank criteria: the hotkeys below are global again.
+        script.push_str("HotIf\n");
+    }
     script
+}
+
+/// The hotkey name of a trigger, with the prefixes its own flags ask for.
+fn hotkey_spec(trigger: &Trigger) -> String {
+    let hook = if trigger.force_hook { "$" } else { "" };
+    let tilde = if trigger.block_key { "" } else { "~" };
+    let star = if trigger.wildcard { "*" } else { "" };
+    let up = if trigger.fire_on_release { " Up" } else { "" };
+    format!(
+        "{hook}{tilde}{star}{}{up}",
+        map_trigger_hotkey(trigger.shortcut.trim(), &trigger.mod_sides)
+    )
+}
+
+/// The hotkey name of a layer trigger.
+///
+/// When the activator is a modifier (Shift, Ctrl, Alt, Win) the layer's
+/// hotkey has to carry it: AHK does not fire a plain "p" hotkey while Shift
+/// is held, so the layer's key would never fire. The trigger's own shortcut
+/// may already name that modifier, in which case it is not repeated.
+fn layer_hotkey_spec(trigger: &Trigger, activator: &str) -> String {
+    let hook = if trigger.force_hook { "$" } else { "" };
+    let tilde = if trigger.block_key { "" } else { "~" };
+    let star = if trigger.wildcard { "*" } else { "" };
+    let up = if trigger.fire_on_release { " Up" } else { "" };
+    let key = map_trigger_hotkey(trigger.shortcut.trim(), &trigger.mod_sides);
+    let symbol = match activator_modifier_symbol(activator) {
+        Some(s) if !key.contains(s) => s,
+        _ => "",
+    };
+    format!("{hook}{tilde}{star}{symbol}{key}{up}")
+}
+
+/// The AHK modifier symbol of an activator key, if it is a modifier at all.
+fn activator_modifier_symbol(name: &str) -> Option<&'static str> {
+    match name {
+        "Ctrl" => Some("^"),
+        "Shift" => Some("+"),
+        "Alt" => Some("!"),
+        "Win" | "Meta" => Some("#"),
+        _ => None,
+    }
+}
+
+/// A layer trigger needs a name, not a hotkey label: HotIf registers it at
+/// runtime, so its body lives in a function.
+fn layer_function_name(layer_index: usize, trigger_index: usize, trigger: &Trigger) -> String {
+    // Runs of non-alphanumeric characters collapse into one underscore, so
+    // "Shift+P" and "P" do not end up with different-looking names.
+    let mut key = String::new();
+    for c in map_trigger_hotkey(trigger.shortcut.trim(), &trigger.mod_sides).chars() {
+        if c.is_ascii_alphanumeric() {
+            key.push(c);
+        } else if !key.ends_with('_') {
+            key.push('_');
+        }
+    }
+    let key = key.trim_matches('_').to_string();
+    let key = if key.is_empty() { "Key".to_string() } else { key };
+    format!("Layer{layer_index}_T{trigger_index}_{key}")
+}
+
+/// The AHK key name for a layer activator. The mouse buttons and "Meta" are
+/// spelled differently in AHK than in our key catalog.
+fn activator_key_name(name: &str) -> String {
+    match name {
+        "MouseLeft" => "LButton".to_string(),
+        "MouseRight" => "RButton".to_string(),
+        "MouseMiddle" => "MButton".to_string(),
+        "MouseX1" => "XButton1".to_string(),
+        "MouseX2" => "XButton2".to_string(),
+        "Meta" => "Win".to_string(),
+        other => other.to_string(),
+    }
+}
+
+/// The body of a trigger: what it does when it fires. Shared by the hotkey
+/// label and the layer function, so both look the same.
+fn emit_trigger_body(script: &mut String, trigger: &Trigger, macros: &[Macro]) {
+    for (action_idx, action) in trigger.actions.iter().enumerate() {
+        match action {
+            Action::Mouse { button, x, y } => {
+                script.push_str(&mouse_click_line(button, *x, *y));
+            }
+            Action::MacroRef { macro_id } => {
+                // Unknown ids (deleted out of band, hand-edited JSON) emit
+                // nothing: a dangling reference must never break a script.
+                if let Some(found) = macros.iter().find(|m| &m.id == macro_id) {
+                    for block in &found.blocks {
+                        emit_block(script, block);
+                    }
+                }
+            }
+            Action::Script { code } => {
+                for line in code.lines() {
+                    script.push_str(&format!("    {line}\n"));
+                }
+            }
+            Action::Key {
+                key,
+                behavior,
+                pre_delay_ms,
+                repeat,
+            } => {
+                script.push_str(&key_action_lines(
+                    key,
+                    *behavior,
+                    *pre_delay_ms,
+                    *repeat,
+                    trigger.shortcut.trim(),
+                    action_idx,
+                ));
+            }
+        }
+    }
 }
 
 fn emit_block(script: &mut String, block: &Block) {
@@ -421,6 +574,7 @@ mod tests {
             mod_sides: std::collections::HashMap::new(),
             wildcard: false,
             force_hook: false,
+            layer: None,
         }
     }
 
@@ -433,6 +587,20 @@ mod tests {
             mod_sides: std::collections::HashMap::new(),
             wildcard: false,
             force_hook: false,
+            layer: None,
+        }
+    }
+
+    /// A trigger that belongs to a layer.
+    fn layered(layer: &str, shortcut: &str, actions: Vec<Action>) -> Trigger {
+        Trigger { layer: Some(layer.to_string()), ..trig(shortcut, actions) }
+    }
+
+    fn layer(id: &str, name: &str, activator: &str) -> Layer {
+        Layer {
+            id: id.to_string(),
+            name: name.to_string(),
+            activator: activator.to_string(),
         }
     }
 
@@ -456,8 +624,7 @@ mod tests {
                 ),
                 trig("F9", vec![macroref("m1")]),
             ],
-            TEST_TITLE,
-            &macros);
+            TEST_TITLE, &macros, &[]);
         assert!(out.contains("^+F1::\n{\n    Sleep(5)\n}\n"));
         assert!(out.contains("F9::\n{\n    Sleep(10)\n}\n"));
     }
@@ -478,7 +645,7 @@ mod tests {
                         y: 6,
                     },
                 ],
-            )], TEST_TITLE, &[]);
+            )], TEST_TITLE, &[], &[]);
         assert!(out.contains("    Click(\"Right\")\n    Click(5, 6, \"Left\")\n"));
     }
 
@@ -496,7 +663,7 @@ mod tests {
         let out = compile_to_ahk_v2(&[trig(
                 "F9",
                 vec![macroref("m1")],
-            )], TEST_TITLE, &macros);
+            )], TEST_TITLE, &macros, &[]);
         assert!(out.contains("    Sleep(15)\n    Sleep(50)\n    Click(10, 20, \"Left\")\n"));
     }
 
@@ -510,14 +677,14 @@ mod tests {
         let out = compile_to_ahk_v2(&[trig(
                 "F9",
                 vec![macroref("m1")],
-            )], TEST_TITLE, &macros);
+            )], TEST_TITLE, &macros, &[]);
         assert!(out.contains("    Click(\"Right\")\n"));
         assert!(!out.contains("Click(0, 0,"));
     }
 
     #[test]
     fn suppress_on_emits_bare_hotkey() {
-        let out = compile_to_ahk_v2(&[trig("F9", vec![])], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![])], TEST_TITLE, &[], &[]);
         assert!(out.contains("\nF9::"));
         assert!(!out.contains("*F9::"));
         assert!(!out.contains("~F9::"));
@@ -525,7 +692,7 @@ mod tests {
 
     #[test]
     fn suppress_off_prefixes_tilde() {
-        let out = compile_to_ahk_v2(&[passthrough("F9", vec![])], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[passthrough("F9", vec![])], TEST_TITLE, &[], &[]);
         assert!(out.contains("~F9::"));
         assert!(!out.contains("*F9::"));
     }
@@ -533,7 +700,7 @@ mod tests {
     #[test]
     fn each_trigger_keeps_its_own_prefix() {
         let out =
-            compile_to_ahk_v2(&[trig("F9", vec![]), passthrough("F10", vec![])], TEST_TITLE, &[]);
+            compile_to_ahk_v2(&[trig("F9", vec![]), passthrough("F10", vec![])], TEST_TITLE, &[], &[]);
         assert!(out.contains("\nF9::"));
         assert!(out.contains("\n~F10::"));
     }
@@ -544,7 +711,7 @@ mod tests {
     #[test]
     fn duplicate_shortcut_emits_one_hotkey_even_with_opposing_prefixes() {
         let out =
-            compile_to_ahk_v2(&[trig("F9", vec![]), passthrough("F9", vec![])], TEST_TITLE, &[]);
+            compile_to_ahk_v2(&[trig("F9", vec![]), passthrough("F9", vec![])], TEST_TITLE, &[], &[]);
         assert!(out.contains("\nF9::"));
         assert!(!out.contains("~F9::"));
         assert_eq!(out.matches("F9::").count(), 1);
@@ -552,14 +719,14 @@ mod tests {
 
     #[test]
     fn empty_triggers_emit_no_hotkey() {
-        let out = compile_to_ahk_v2(&[], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[], TEST_TITLE, &[], &[]);
         assert!(!out.contains("::"));
         assert!(out.starts_with("#Requires AutoHotkey v2.0"));
     }
 
     #[test]
     fn script_sets_dialog_title_to_profile_name() {
-        let out = compile_to_ahk_v2(&[trig("F9", vec![])], "Render Farm", &[]);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![])], "Render Farm", &[], &[]);
         assert!(out.contains("\nA_ScriptName := \"Render Farm\"\n"));
     }
 
@@ -569,14 +736,14 @@ mod tests {
         assert_eq!(ahk_string_literal("a\"b"), "\"a`\"b\"");
         assert_eq!(ahk_string_literal("a`b"), "\"a``b\"");
         assert_eq!(ahk_string_literal("a\r\nb"), "\"a  b\"");
-        let out = compile_to_ahk_v2(&[], "Say \"hi\"\r\nExitApp", &[]);
+        let out = compile_to_ahk_v2(&[], "Say \"hi\"\r\nExitApp", &[], &[]);
         assert!(out.contains("A_ScriptName := \"Say `\"hi`\"  ExitApp\"\n"));
         assert!(!out.contains("ExitApp\n"));
     }
 
     #[test]
     fn script_suppresses_autohotkey_tray_icon() {
-        let out = compile_to_ahk_v2(&[trig("F9", vec![])], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![])], TEST_TITLE, &[], &[]);
         // Directives carry a leading `#`; without it AHK does not recognise
         // `NoTrayIcon` and the tray icon shows up anyway.
         assert!(out.contains("\n#NoTrayIcon\n"));
@@ -586,7 +753,7 @@ mod tests {
     #[test]
     fn shortcutless_triggers_emit_nothing() {
         let macros = vec![named_macro("m1", vec![Block::Delay { ms: 5 }])];
-        let out = compile_to_ahk_v2(&[trig("", vec![macroref("m1")]), trig("F9", vec![])], TEST_TITLE, &macros);
+        let out = compile_to_ahk_v2(&[trig("", vec![macroref("m1")]), trig("F9", vec![])], TEST_TITLE, &macros, &[]);
         assert_eq!(out.matches("::").count(), 1);
         assert!(!out.contains("Sleep(5)"));
     }
@@ -598,19 +765,19 @@ mod tests {
                 vec![Action::Script {
                     code: "MsgBox(\"a\")\nSleep(10)".to_string(),
                 }],
-            )], TEST_TITLE, &[]);
+            )], TEST_TITLE, &[], &[]);
         assert!(out.contains("    MsgBox(\"a\")\n    Sleep(10)\n"));
     }
 
     #[test]
     fn blank_trigger_strings_are_skipped() {
-        let out = compile_to_ahk_v2(&[trig("", vec![]), trig("   ", vec![])], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("", vec![]), trig("   ", vec![])], TEST_TITLE, &[], &[]);
         assert!(!out.contains("::"));
     }
 
     #[test]
     fn duplicate_triggers_emit_single_hotkey() {
-        let out = compile_to_ahk_v2(&[trig("F9", vec![]), trig("F9", vec![])], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![]), trig("F9", vec![])], TEST_TITLE, &[], &[]);
         assert_eq!(out.matches("F9::").count(), 1);
     }
 
@@ -618,7 +785,7 @@ mod tests {
     // keys.ts); it must compile to the Win hotkey prefix, same as "Win".
     #[test]
     fn meta_label_maps_to_win_hotkey() {
-        let out = compile_to_ahk_v2(&[trig("Meta+F9", vec![])], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("Meta+F9", vec![])], TEST_TITLE, &[], &[]);
         assert!(out.contains("#F9::\n"));
         assert!(!out.contains("MetaF9"));
     }
@@ -630,7 +797,7 @@ mod tests {
                 trig("F13", vec![]),
                 trig("Ctrl+F24", vec![]),
             ],
-            TEST_TITLE, &[]);
+            TEST_TITLE, &[], &[]);
         assert!(out.contains("\nF13::\n"));
         assert!(out.contains("\n^F24::\n"));
     }
@@ -644,7 +811,7 @@ mod tests {
             "shortcut": "F9", "block_key": false, "enabled": false, "actions": []
         });
         let t: Trigger = serde_json::from_value(old).unwrap();
-        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[], &[]);
         assert!(out.contains("F9::"));
     }
 
@@ -657,7 +824,7 @@ mod tests {
                 trig("MouseX1", vec![]),
                 trig("Ctrl+MouseLeft", vec![]),
             ],
-            TEST_TITLE, &[]);
+            TEST_TITLE, &[], &[]);
         assert!(out.contains("LButton::"));
         assert!(out.contains("RButton::"));
         assert!(out.contains("MButton::"));
@@ -676,7 +843,7 @@ mod tests {
 
     #[test]
     fn key_tap_emits_send() {
-        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 0, 1)])], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 0, 1)])], TEST_TITLE, &[], &[]);
         assert!(out.contains("F9::\n{\n    Send(\"{Enter}\")\n}\n"));
         assert!(!out.contains("KeyDown"));
         assert!(!out.contains("Loop"));
@@ -686,7 +853,7 @@ mod tests {
     // down, wait for the trigger's release, then up -- in that order.
     #[test]
     fn key_hold_keeps_target_down_while_trigger_held() {
-        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("a", KeyBehavior::Hold, 0, 1)])], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("a", KeyBehavior::Hold, 0, 1)])], TEST_TITLE, &[], &[]);
         let down = out.find("Send(\"{a down}\")").unwrap();
         let wait = out.find("KeyWait(\"F9\")").unwrap();
         let up = out.find("Send(\"{a up}\")").unwrap();
@@ -696,7 +863,7 @@ mod tests {
     // A combo trigger waits on its main key, not the modifiers.
     #[test]
     fn key_hold_uses_main_key_of_combo_trigger() {
-        let out = compile_to_ahk_v2(&[trig("Ctrl+F9", vec![key_action("a", KeyBehavior::Hold, 0, 1)])], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("Ctrl+F9", vec![key_action("a", KeyBehavior::Hold, 0, 1)])], TEST_TITLE, &[], &[]);
         assert!(out.contains("    KeyWait(\"F9\")\n"));
     }
 
@@ -704,7 +871,7 @@ mod tests {
     // even presses release it.
     #[test]
     fn key_toggle_flips_with_static_flag() {
-        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("a", KeyBehavior::Toggle, 0, 1)])], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("a", KeyBehavior::Toggle, 0, 1)])], TEST_TITLE, &[], &[]);
         assert!(out.contains("static "));
         assert!(out.contains("Send(\"{a down}\")\n"));
         assert!(out.contains("Send(\"{a up}\")\n"));
@@ -714,16 +881,16 @@ mod tests {
     // ignored there and only Tap loops.
     #[test]
     fn key_hold_and_toggle_ignore_repeat() {
-        let held = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::Hold, 0, 9)])], TEST_TITLE, &[]);
+        let held = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::Hold, 0, 9)])], TEST_TITLE, &[], &[]);
         assert!(!held.contains("Loop"));
 
-        let toggled = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::Toggle, 0, 9)])], TEST_TITLE, &[]);
+        let toggled = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::Toggle, 0, 9)])], TEST_TITLE, &[], &[]);
         assert!(!toggled.contains("Loop"));
     }
 
     #[test]
     fn key_combo_expands_to_braces() {
-        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("Ctrl+Shift+Enter", KeyBehavior::Tap, 0, 1)])], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("Ctrl+Shift+Enter", KeyBehavior::Tap, 0, 1)])], TEST_TITLE, &[], &[]);
         assert!(out.contains("    Send(\"{Ctrl}{Shift}{Enter}\")\n"));
     }
 
@@ -731,39 +898,39 @@ mod tests {
     fn key_letter_case_survives_compilation() {
         // AHK'de `{a}` shift'siz, `{A}` shift'li gonderir; buyuk harfe cevirmek
         // tap hedefinin anlamini bozardi.
-        let lower = compile_to_ahk_v2(&[trig("F9", vec![key_action("a", KeyBehavior::Tap, 0, 1)])], TEST_TITLE, &[]);
+        let lower = compile_to_ahk_v2(&[trig("F9", vec![key_action("a", KeyBehavior::Tap, 0, 1)])], TEST_TITLE, &[], &[]);
         assert!(lower.contains("    Send(\"{a}\")\n"));
         assert!(!lower.contains("    Send(\"{A}\")\n"));
 
-        let upper = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::Tap, 0, 1)])], TEST_TITLE, &[]);
+        let upper = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::Tap, 0, 1)])], TEST_TITLE, &[], &[]);
         assert!(upper.contains("    Send(\"{A}\")\n"));
 
         // Hold/Toggle fiziksel tus adidir; AHK'ta case duyarsiz.
-        let held = compile_to_ahk_v2(&[trig("F9", vec![key_action("a", KeyBehavior::Hold, 0, 1)])], TEST_TITLE, &[]);
+        let held = compile_to_ahk_v2(&[trig("F9", vec![key_action("a", KeyBehavior::Hold, 0, 1)])], TEST_TITLE, &[], &[]);
         assert!(held.contains("    Send(\"{a down}\")\n"));
     }
 
     #[test]
     fn key_pre_delay_and_repeat_wrap_in_loop() {
-        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 200, 4)])], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 200, 4)])], TEST_TITLE, &[], &[]);
         assert!(out.contains("    Sleep(200)\n    Loop 4\n    {\n        Send(\"{Enter}\")\n    }\n"));
         assert_eq!(out.matches("Sleep(200)").count(), 1);
     }
 
     #[test]
     fn key_repeat_is_normalized_and_ignored_for_hold() {
-        let zero = compile_to_ahk_v2(&[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 0, 0)])], TEST_TITLE, &[]);
+        let zero = compile_to_ahk_v2(&[trig("F9", vec![key_action("Enter", KeyBehavior::Tap, 0, 0)])], TEST_TITLE, &[], &[]);
         assert!(zero.contains("    Send(\"{Enter}\")\n"));
         assert!(!zero.contains("Loop"));
 
-        let held = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::Hold, 0, 9)])], TEST_TITLE, &[]);
+        let held = compile_to_ahk_v2(&[trig("F9", vec![key_action("A", KeyBehavior::Hold, 0, 9)])], TEST_TITLE, &[], &[]);
         assert!(held.contains("    Send(\"{A down}\")\n"));
         assert!(!held.contains("Loop"));
     }
 
     #[test]
     fn key_action_with_empty_target_emits_nothing() {
-        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("", KeyBehavior::Tap, 0, 1)])], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![key_action("", KeyBehavior::Tap, 0, 1)])], TEST_TITLE, &[], &[]);
         assert!(out.contains("F9::\n{\n}\n"));
         assert!(!out.contains("Send("));
     }
@@ -861,6 +1028,7 @@ mod tests {
             )],
             TEST_TITLE,
             &macros,
+            &[],
         );
         assert!(out.contains("    Click(\"Left\")\n    Sleep(50)\n"));
     }
@@ -873,6 +1041,7 @@ mod tests {
                 vec![Action::MacroRef { macro_id: "gone".to_string() }],
             )],
             TEST_TITLE,
+            &[],
             &[],
         );
         assert!(out.contains("F9::\n{\n}\n"));
@@ -895,7 +1064,7 @@ mod tests {
     fn up_suffix_fires_on_release() {
         let mut t = trig("F9", vec![]);
         t.fire_on_release = true;
-        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[], &[]);
         assert!(out.contains("F9 Up::\n"));
     }
 
@@ -905,12 +1074,12 @@ mod tests {
     fn modifier_side_emits_angle_prefix() {
         let mut t = trig("Ctrl+F9", vec![]);
         t.mod_sides.insert("Ctrl".to_string(), ModSide::Left);
-        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[], &[]);
         assert!(out.contains("<^F9::\n"));
 
         let mut t = trig("Alt+F9", vec![]);
         t.mod_sides.insert("Alt".to_string(), ModSide::Right);
-        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[], &[]);
         assert!(out.contains(">!F9::\n"));
     }
 
@@ -921,7 +1090,7 @@ mod tests {
         let mut t = trig("Ctrl+Alt+M", vec![]);
         t.mod_sides.insert("Ctrl".to_string(), ModSide::Left);
         t.mod_sides.insert("Alt".to_string(), ModSide::Right);
-        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[], &[]);
         assert!(out.contains("<^>!M::\n"));
     }
 
@@ -931,7 +1100,7 @@ mod tests {
     fn up_and_down_variants_coexist() {
         let mut released = trig("F9", vec![]);
         released.fire_on_release = true;
-        let out = compile_to_ahk_v2(&[trig("F9", vec![]), released], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![]), released], TEST_TITLE, &[], &[]);
         assert_eq!(out.matches("F9 Up::").count(), 1);
         assert_eq!(out.matches("::\n").count(), 2);
     }
@@ -955,7 +1124,7 @@ mod tests {
     fn wildcard_prefix_fires_with_extra_modifiers() {
         let mut t = trig("F9", vec![]);
         t.wildcard = true;
-        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[], &[]);
         assert!(out.contains("*F9::\n"));
     }
 
@@ -964,7 +1133,7 @@ mod tests {
     fn hook_prefix_forces_keyboard_hook() {
         let mut t = trig("F9", vec![]);
         t.force_hook = true;
-        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[], &[]);
         assert!(out.contains("$F9::\n"));
     }
 
@@ -976,7 +1145,7 @@ mod tests {
         t.wildcard = true;
         t.force_hook = true;
         t.fire_on_release = true;
-        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[], &[]);
         assert!(out.contains("$~*F9 Up::\n"));
     }
 
@@ -987,12 +1156,12 @@ mod tests {
     fn wildcard_variants_coexist_hook_only_collapses() {
         let mut wild = trig("F9", vec![]);
         wild.wildcard = true;
-        let out = compile_to_ahk_v2(&[trig("F9", vec![]), wild], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![]), wild], TEST_TITLE, &[], &[]);
         assert_eq!(out.matches("::\n").count(), 2);
 
         let mut hooked = trig("F9", vec![]);
         hooked.force_hook = true;
-        let out = compile_to_ahk_v2(&[trig("F9", vec![]), hooked], TEST_TITLE, &[]);
+        let out = compile_to_ahk_v2(&[trig("F9", vec![]), hooked], TEST_TITLE, &[], &[]);
         assert_eq!(out.matches("::\n").count(), 1);
     }
 
@@ -1022,4 +1191,137 @@ mod tests {
         let m: Macro = serde_json::from_value(old).unwrap();
         assert!(m.blocks.is_empty());
     }
+
+    // A layer trigger is not a hotkey label: HotIf registers it at runtime,
+    // so its body lives in a function and the hotkey is a variant of the same
+    // name. The global variant has the lowest precedence, so while the
+    // activator is held the layer wins and the normal trigger stays silent.
+    #[test]
+    fn layer_trigger_becomes_a_hotif_variant() {
+        let out = compile_to_ahk_v2(
+            &[
+                trig("P", vec![Action::Script { code: "Send(\"{F1}\")".to_string() }]),
+                layered("caps", "P", vec![Action::Script { code: "Send(\"^c\")".to_string() }]),
+            ],
+            TEST_TITLE,
+            &[],
+            &[layer("caps", "Caps", "CapsLock")],
+        );
+        // The normal trigger keeps its hotkey label.
+        assert!(out.contains("P::\n{\n    Send(\"{F1}\")\n}\n"));
+        // The layer trigger is a function plus a HotIf registration.
+        assert!(out.contains("; layer \"Caps\" -- active while CapsLock is held\n"));
+        assert!(out.contains("HotIf (*) => GetKeyState(\"CapsLock\", \"P\")\n"));
+        assert!(out.contains("Hotkey \"P\", Layer0_T0_P\n"));
+        assert!(out.contains("Send(\"^c\")\n"));
+        // Blank criteria at the end, so later hotkeys stay global.
+        assert!(out.trim_end().ends_with("HotIf"));
+    }
+
+    // The activator is read from the physical key state, which is only
+    // accurate while the keyboard hook is installed.
+    #[test]
+    fn layer_installs_the_keyboard_hook() {
+        let out = compile_to_ahk_v2(
+            &[layered("caps", "P", vec![])],
+            TEST_TITLE,
+            &[],
+            &[layer("caps", "Caps", "CapsLock")],
+        );
+        assert!(out.contains("InstallKeybdHook()\n"));
+    }
+
+    // A profile without layers must compile to exactly what it did before:
+    // no hook call, no HotIf, no layer functions.
+    #[test]
+    fn layerless_profile_output_is_unchanged() {
+        let out = compile_to_ahk_v2(
+            &[trig("P", vec![Action::Script { code: "Send(\"{F1}\")".to_string() }])],
+            TEST_TITLE,
+            &[],
+            &[],
+        );
+        assert!(!out.contains("HotIf"));
+        assert!(!out.contains("InstallKeybdHook"));
+        assert!(out.contains("#Requires AutoHotkey v2.0\n#NoTrayIcon\n"));
+        assert!(out.contains("P::\n{\n    Send(\"{F1}\")\n}\n"));
+    }
+
+    // The same key can exist in the normal layer and in a layer: they are
+    // two variants of one hotkey, not a duplicate.
+    #[test]
+    fn same_key_in_normal_and_layer_keeps_both() {
+        let out = compile_to_ahk_v2(
+            &[
+                trig("P", vec![Action::Script { code: "Send(\"normal\")".to_string() }]),
+                layered("caps", "P", vec![Action::Script { code: "Send(\"layer\")".to_string() }]),
+            ],
+            TEST_TITLE,
+            &[],
+            &[layer("caps", "Caps", "CapsLock")],
+        );
+        assert!(out.contains("P::\n{\n    Send(\"normal\")\n}\n"));
+        assert!(out.contains("Hotkey \"P\", Layer0_T0_P\n"));
+    }
+
+    // A trigger can only belong to a layer that exists; a layer without
+    // triggers emits nothing at all.
+    #[test]
+    fn unknown_layer_id_and_empty_layer_emit_nothing() {
+        let out = compile_to_ahk_v2(
+            &[layered("ghost", "P", vec![])],
+            TEST_TITLE,
+            &[],
+            &[layer("caps", "Caps", "CapsLock")],
+        );
+        assert!(!out.contains("HotIf"));
+        assert!(!out.contains("Layer0_"));
+    }
+
+    // Old trigger JSON has no layer field: it belongs to the normal layer.
+    #[test]
+    fn old_trigger_json_has_no_layer() {
+        let old = serde_json::json!({
+            "shortcut": "F9", "block_key": false, "actions": []
+        });
+        let t: Trigger = serde_json::from_value(old).unwrap();
+        assert_eq!(t.layer, None);
+    }
+
+    // A modifier activator has to be part of the layer's hotkey: AHK does not
+    // fire a plain "p" hotkey while Shift is held, so the layer would never
+    // fire. A trigger that already names the modifier must not repeat it.
+    #[test]
+    fn modifier_activator_joins_the_layer_hotkey() {
+        let out = compile_to_ahk_v2(
+            &[layered("shift", "P", vec![])],
+            TEST_TITLE,
+            &[],
+            &[layer("shift", "Shift", "Shift")],
+        );
+        assert!(out.contains("HotIf (*) => GetKeyState(\"Shift\", \"P\")\n"));
+        assert!(out.contains("Hotkey \"+P\", Layer0_T0_P\n"));
+
+        let out = compile_to_ahk_v2(
+            &[layered("shift", "Shift+P", vec![])],
+            TEST_TITLE,
+            &[],
+            &[layer("shift", "Shift", "Shift")],
+        );
+        assert!(out.contains("Hotkey \"+P\", Layer0_T0_P\n"));
+    }
+
+    // A non-modifier activator (CapsLock) leaves the hotkey name alone: the
+    // key still fires while a toggle key is held down.
+    #[test]
+    fn non_modifier_activator_leaves_the_hotkey_alone() {
+        let out = compile_to_ahk_v2(
+            &[layered("caps", "P", vec![])],
+            TEST_TITLE,
+            &[],
+            &[layer("caps", "Caps", "CapsLock")],
+        );
+        assert!(out.contains("Hotkey \"P\", Layer0_T0_P\n"));
+    }
 }
+
