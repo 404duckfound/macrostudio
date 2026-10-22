@@ -19,7 +19,7 @@ html, body, #root { height: 100%; }
 body {
   margin: 0; background: var(--bg-base); color: var(--text-primary);
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 15px; line-height: 24px; overflow: hidden;
+  font-size: 15px; line-height: 24px; font-weight: 500; letter-spacing: 0.2px; overflow: hidden;
 }
 h1, h2, h3, h4, p { margin: 0; }
 
@@ -60,6 +60,10 @@ button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px
 }
 .btn-ghost:hover:not(:disabled) { color: var(--text-primary); background: var(--bg-interactive); }
 .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+/* The base button is an inline-flex box with no spacing between its children,
+   so an icon and its label would sit flush: every shared button that carries
+   both (empty-state CTAs, save buttons with a spinner) needs this gap. */
+.btn-primary, .btn-secondary, .btn-danger, .btn-ghost { gap: 8px; }
 .btn-icon-sm { width: 14px; height: 14px; display: block; }
 input, select, textarea {
   font-family: inherit; font-size: 14px; color: var(--text-primary); background: var(--bg-base);
@@ -177,21 +181,27 @@ input:focus, select:focus, textarea:focus {
 .rail-menu-item-danger:hover:not(:disabled) { background: rgba(255, 95, 107, 0.12); color: var(--status-danger); }
 
 /* Profiles View: Flow Canvas & Header */
-.workspace { flex: 1; display: flex; min-width: 0; min-height: 0; background: var(--bg-surface); }
+.workspace { flex: 1; display: flex; min-width: 0; min-height: 0; background: var(--bg-surface); animation: fade-in-up 0.2s ease-out; }
+@keyframes fade-in-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { animation: spin 0.8s linear infinite; }
 .flow-canvas { flex: 1; min-width: 0; overflow-y: auto; padding: 24px 28px; display: flex; flex-direction: column; }
 .flow-canvas-empty { align-items: center; justify-content: center; }
 .workspace-empty-state {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; max-width: 360px; gap: 12px;
 }
-.workspace-empty-icon {
-  width: 52px; height: 52px; border-radius: 14px; background: var(--bg-surface);
-  border: 1px solid var(--border-default); color: var(--text-secondary); display: flex;
+.workspace-empty-illustration {
+  width: 64px; height: 64px; border-radius: 18px; background: var(--bg-surface);
+  border: 1px solid var(--border-default); color: var(--accent-primary); display: flex;
   align-items: center; justify-content: center;
+  box-shadow: 0 0 0 1px rgba(47, 195, 222, 0.08), 0 8px 24px rgba(0, 0, 0, 0.25);
 }
-.workspace-empty-icon svg { width: 26px; height: 26px; }
-.workspace-empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text-primary); }
-.workspace-empty-state p { font-size: 13px; line-height: 20px; color: var(--text-secondary); }
+.workspace-empty-illustration svg { width: 30px; height: 30px; }
+.workspace-empty-state h3 { font-size: 18px; font-weight: 600; color: var(--text-primary); margin-top: 4px; }
+.workspace-empty-state p { font-size: 13px; line-height: 20px; color: var(--text-secondary); max-width: 300px; }
+.workspace-empty-state .btn-primary { margin-top: 8px; }
 .flow-inner { width: 100%; display: flex; flex-direction: column; }
 .flow-head { min-height: 56px; display: flex; flex-direction: column; justify-content: center; padding-bottom: 10px; }
 .flow-profile-header { display: flex; flex-direction: column; gap: 8px; }
@@ -203,7 +213,21 @@ input:focus, select:focus, textarea:focus {
   grid-template-areas: "select notes tabs";
   align-items: center; gap: 12px; min-height: 38px;
 }
-.flow-head-select { grid-area: select; }
+.flow-head-select { grid-area: select; display: flex; align-items: center; gap: 8px; }
+/* Profile settings: the one door to the parts of a profile the picker cannot
+   show (name, target window, layers). Sized like the picker button beside it,
+   but icon-only so the row keeps its single loud control. */
+.flow-head-settings {
+  width: 36px; height: 36px; min-height: 0; padding: 0; flex-shrink: 0;
+  border-radius: 9px; background: var(--bg-surface);
+  border: 1px solid var(--border-default); color: var(--text-secondary);
+}
+.flow-head-settings:hover:not(:disabled) {
+  color: var(--text-primary); background: var(--bg-surface-elevated);
+  border-color: var(--border-hover);
+}
+.flow-head-settings:disabled { opacity: 0.4; cursor: not-allowed; }
+.flow-head-settings svg { width: 16px; height: 16px; display: block; }
 .flow-notes {
   grid-area: notes; display: flex; align-items: center; gap: 8px;
   flex-wrap: wrap; min-width: 0;
@@ -355,20 +379,26 @@ input:focus, select:focus, textarea:focus {
 .trigger-card {
   width: 100%; background: var(--bg-surface-elevated); border: 1px solid var(--border-default);
   border-radius: 8px; padding: 12px 16px; cursor: pointer; display: flex; align-items: center;
-  justify-content: space-between; gap: 14px; transition: all 0.15s ease;
+  justify-content: space-between; gap: 14px;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 .trigger-card:hover { background: var(--bg-interactive); border-color: var(--border-hover); }
+.trigger-card:hover:not(.trigger-card-selected) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); border-color: var(--border-hover); }
 .trigger-card-selected {
   background: var(--bg-surface); border-color: var(--accent-primary);
 }
 .trigger-card-recording { border-color: var(--accent-primary); animation: record-pulse 1.5s ease-in-out infinite; }
 .trigger-card-left { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1; }
-.trigger-icon {
+/* One recipe for both ends of a card: the trigger's leading badge and the
+   action's type badge are the same box at the same size, so the pair reads as
+   a mapping instead of two different icon idioms. */
+.trigger-icon, .trigger-action-icon {
   width: 36px; height: 36px; border-radius: 9px; background: var(--bg-interactive);
   border: 1px solid var(--border-default); color: var(--accent-primary); display: flex;
   align-items: center; justify-content: center; flex-shrink: 0;
 }
-.trigger-icon svg { width: 18px; height: 18px; display: block; }
+.trigger-icon svg, .trigger-action-icon svg { width: 18px; height: 18px; display: block; }
 .trigger-card-content { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; flex-wrap: wrap; }
 .trigger-card-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .trigger-flags { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
@@ -404,11 +434,7 @@ input:focus, select:focus, textarea:focus {
    construction; the type icon rides beside it and macro/script names switch back
    to the sans face and ellipsize instead of growing. */
 .trigger-action-arrow { width: 13px; height: 13px; color: var(--text-disabled); flex-shrink: 0; }
-.trigger-action-chip { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
-.trigger-action-chip svg { width: 18px; height: 18px; color: var(--text-secondary); flex-shrink: 0; }
-/* Tint through the Lucide shape itself: the icon reads as a filled keycap
-   without a second, hand-drawn SVG in the codebase. */
-.trigger-action-key svg, .trigger-action-mouse svg { fill: rgba(47, 195, 222, 0.18); }
+.trigger-action-chip { display: inline-flex; align-items: center; gap: 14px; min-width: 0; }
 .trigger-action-keycap {
   max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -416,7 +442,7 @@ input:focus, select:focus, textarea:focus {
   font-family: inherit;
 }
 .trigger-action-empty .trigger-action-keycap { color: var(--text-disabled); font-weight: 500; }
-.trigger-action-empty svg { color: var(--text-disabled); fill: rgba(255, 255, 255, 0.06); }
+.trigger-action-empty .trigger-action-icon { color: var(--text-disabled); }
 /* Pass/block now lives in the card's flag row (TriggerList), so this rule is
    gone with the standalone right-side indicator. */
 .trigger-noaction-btn {
@@ -501,11 +527,51 @@ input:focus, select:focus, textarea:focus {
   display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.07em;
   text-transform: uppercase; color: var(--text-secondary);
 }
-.keymap-mouse-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: var(--key-gap, 4px);
-  margin-top: 8px;
+/* Mouse drawing: one illustration in the side column instead of a keycap grid.
+   Every visible part is a real <button> laid over the SVG, so clicks, titles,
+   disabled state and the focus ring keep the keyboard cells' behavior. The
+   inner fill span carries the shape (clip-path), which leaves the button box
+   unclipped so its focus outline is not cut off. */
+.keymap-mouse { position: relative; width: 100%; max-width: 156px; margin: 8px auto 0; }
+.keymap-mouse-svg { display: block; width: 100%; height: auto; }
+.keymap-mouse-body { fill: var(--bg-interactive); stroke: var(--border-default); stroke-width: 1.2; }
+.keymap-mouse-seam { fill: none; stroke: var(--border-hover); stroke-width: 1.2; }
+.keymap-mouse-tab { fill: var(--bg-surface-elevated); stroke: var(--border-default); stroke-width: 1.2; }
+.keymap-mouse-wheel-shape { fill: var(--bg-base); stroke: var(--border-default); stroke-width: 1.2; }
+.keymap-mouse-part {
+  position: absolute; display: flex; align-items: center; justify-content: center;
+  padding: 0; border: 0; background: transparent; border-radius: 6px;
+  color: var(--text-secondary); font-family: "JetBrains Mono", monospace;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.02em; line-height: 1;
 }
-.keymap-mouse-key { flex: 1 1 auto; width: auto; min-height: 34px; font-size: 11px; }
+.keymap-mouse-part-fill {
+  position: absolute; inset: 0; border-radius: inherit; background: transparent;
+  transition: background 0.15s ease;
+}
+.keymap-mouse-part-label { position: relative; pointer-events: none; }
+.keymap-mouse-part:hover:not(:disabled) { color: var(--accent-primary); }
+.keymap-mouse-part:hover:not(:disabled) .keymap-mouse-part-fill { background: rgba(47, 195, 222, 0.18); }
+.keymap-mouse-part:disabled { cursor: default; }
+.keymap-mouse-part-assigned { color: var(--text-primary); }
+.keymap-mouse-part-assigned .keymap-mouse-part-fill { background: rgba(47, 195, 222, 0.12); }
+.keymap-mouse-part-selected { color: var(--accent-on); }
+.keymap-mouse-part-selected .keymap-mouse-part-fill,
+.keymap-mouse-part-selected:hover:not(:disabled) .keymap-mouse-part-fill {
+  background: var(--accent-primary);
+}
+.keymap-mouse-left .keymap-mouse-part-fill {
+  clip-path: polygon(100% 0%, 48% 3%, 20% 16%, 6% 38%, 0% 66%, 0% 88%, 78% 93%, 78% 34%, 100% 34%);
+}
+.keymap-mouse-right .keymap-mouse-part-fill {
+  clip-path: polygon(0% 0%, 52% 3%, 80% 16%, 94% 38%, 100% 66%, 100% 88%, 22% 93%, 22% 34%, 0% 34%);
+}
+.keymap-mouse-wheel { border-radius: 999px; }
+.keymap-mouse-wheel .keymap-mouse-part-fill { border-radius: 999px; }
+.keymap-mouse-side { font-size: 9px; }
+.keymap-mouse-legend {
+  display: block; margin-top: 6px; font-size: 10px; line-height: 14px;
+  color: var(--text-disabled); text-align: center;
+}
 .keymap-mini-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .keymap-mini-item {
   display: flex; align-items: center; justify-content: flex-start; width: 100%;
@@ -966,7 +1032,9 @@ input:focus, select:focus, textarea:focus {
 .custom-block-card {
   display: flex; flex-direction: column; gap: 8px; background: var(--bg-base);
   border: 1px solid var(--border-default); border-radius: 9px; padding: 10px 12px;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
 }
+.custom-block-card:hover { border-color: var(--border-hover); background: var(--bg-surface-elevated); }
 .custom-block-head { display: flex; align-items: center; justify-content: space-between; }
 .custom-block-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary); }
 .custom-block-badge .block-icon { width: 14px; height: 14px; }
@@ -1046,6 +1114,7 @@ input:focus, select:focus, textarea:focus {
   font-size: 12px; font-weight: 500; color: var(--status-danger); padding: 5px 10px;
   border-radius: 999px; background: rgba(255, 95, 107, 0.1);
   border: 1px solid rgba(255, 95, 107, 0.3);
+  animation: shake 0.3s ease-out;
 }
 .modal-foot {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -1102,8 +1171,10 @@ input:focus, select:focus, textarea:focus {
 .settings-subtitle { font-size: 13px; color: var(--text-secondary); }
 .settings-section-card {
   background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 12px;
-  padding: 18px 20px; display: flex; flex-direction: column; gap: 16px;
+  padding: 16px 18px; display: flex; flex-direction: column; gap: 14px;
+  transition: border-color 0.15s ease;
 }
+.settings-section-card:hover { border-color: var(--border-hover); }
 .settings-section-head { display: flex; align-items: center; gap: 12px; }
 .settings-section-icon {
   width: 36px; height: 36px; border-radius: 9px; background: var(--bg-interactive);
@@ -1126,7 +1197,8 @@ input:focus, select:focus, textarea:focus {
   display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; padding-top: 12px;
   border-top: 1px solid var(--border-muted);
 }
-.settings-info-item { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; }
+.settings-info-item { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; margin: 0 -8px; border-radius: 6px; transition: background 0.15s ease; }
+.settings-info-item:hover { background: var(--bg-interactive); }
 .settings-info-item:nth-child(2) { border-left: 1px solid var(--border-muted); padding-left: 18px; }
 .settings-info-item.full-width { grid-column: 1 / -1; border-top: 1px solid var(--border-muted); padding-top: 12px; }
 .settings-info-label { font-size: 11px; font-weight: 500; letter-spacing: 0; color: var(--text-secondary); }
@@ -1145,10 +1217,33 @@ input:focus, select:focus, textarea:focus {
 .settings-ignore-add input { flex: 1; min-height: 36px; font-size: 13px; }
 .settings-ignore-btn { min-height: 36px; display: inline-flex; align-items: center; gap: 6px; }
 .settings-ignore-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+/* Ignored windows animate in and out: a removed row fades out before the store
+   drops it (the 150ms delay lives in SettingsView), so the list collapses once
+   instead of jumping between two frames. */
+@keyframes ignore-row-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ignore-row-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(8px); }
+}
+.settings-empty-hint {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  border: 1px dashed var(--border-default); border-radius: 8px;
+  color: var(--text-disabled); font-size: 13px;
+  animation: ignore-row-in 0.16s ease-out;
+}
 .settings-ignore-item {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   background: var(--bg-base); border: 1px solid var(--border-muted); border-radius: 8px;
   padding: 6px 6px 6px 12px;
+  animation: ignore-row-in 0.16s ease-out;
+  transition: border-color 0.15s ease;
+}
+.settings-ignore-item:hover { border-color: var(--border-hover); }
+.settings-ignore-item-out {
+  animation: ignore-row-out 0.15s ease-in forwards; pointer-events: none;
 }
 .settings-ignore-remove { min-height: 28px; padding: 0 8px; }
 
@@ -1198,8 +1293,61 @@ input:focus, select:focus, textarea:focus {
 .key-picker-tick:hover { color: var(--text-primary); border-color: var(--border-hover); }
 .key-picker-tick-on { background: rgba(47, 195, 222, 0.15); border-color: var(--accent-primary); color: var(--accent-primary); }
 
+/* Narrow viewports: stack the inspector under the canvas instead of side-by-side. */
+@media (max-width: 960px) {
+  .workspace-profiles { flex-direction: column; }
+  .inspector { width: 100%; border-left: none; border-top: 1px solid var(--border-muted); max-height: 50vh; }
+}
+
 /* Reduced motion — one block for every animated thing above, kept last so a
    selector added later is covered by listing it here. */
+/* Reduced motion — one block for every animated thing above, kept last so a
+   selector added later is covered by listing it here. The spinner is missing on
+   purpose: it is the only thing telling the user that a save is still running,
+   and a frozen glyph would read as a stuck button. */
 @media (prefers-reduced-motion: reduce) {
-  .trigger-recording-hint, .modal, .action-select-pop, .key-picker-pop, .rail-menu, .shortcut-card-recording, .key-target-picking, .trigger-card-recording, .step-flash { animation: none; }
+  .trigger-recording-hint, .modal, .action-select-pop, .key-picker-pop, .rail-menu,
+  .shortcut-card-recording, .key-target-picking, .trigger-card-recording, .step-flash,
+  .workspace, .modal-error, .settings-ignore-item, .settings-empty-hint,
+  [data-tip]:hover::after, [data-tip]:focus-visible::after {
+    animation: none;
+  }
+  .trigger-card, .custom-block-card, .settings-section-card, .settings-info-item,
+  .settings-ignore-item, .keymap-key, .keymap-mouse-part, .keymap-mouse-part-fill,
+  .select-menu-btn, .btn-secondary, .btn-primary, .btn-ghost, .canvas-tab {
+    transition: none;
+  }
+  /* The lift is decoration: with motion off the card keeps its border hint. */
+  .trigger-card:hover:not(.trigger-card-selected) { transform: none; box-shadow: none; }
+}
+
+/* Windows high contrast: the palette collapses to system colors, so the tinted
+   borders that identify a control and its state disappear. These rules keep the
+   outline of every surface and the selected/assigned states visible, without
+   inventing a second theme. */
+@media (forced-colors: active) {
+  .trigger-card, .custom-block-card, .step-card, .settings-section-card,
+  .settings-ignore-item, .settings-empty-hint, .keymap, .keymap-side, .keymap-key,
+  .select-menu-btn, .select-menu-list, .rail-menu, .modal, .canvas-tabs,
+  .btn-secondary, .shortcut-card, .action-select-btn, .scope-card, .layer-row,
+  .key-picker-key, .key-picker-tick, .stepper {
+    border: 1px solid CanvasText;
+  }
+  .trigger-card-selected, .keymap-key-selected, .select-menu-btn-open, .canvas-tab-on,
+  .segment-on, .scope-card-active, .layer-select-btn-open, .action-select-btn-open,
+  .keymap-mouse-part-selected, .keymap-key-assigned, .keymap-mouse-part-assigned {
+    border: 2px solid Highlight;
+  }
+  /* The mouse is drawn in SVG: the fills are CSS, but the silhouette still has
+     to be told which system colors to use. */
+  .keymap-mouse-body, .keymap-mouse-tab, .keymap-mouse-wheel-shape {
+    fill: Canvas; stroke: CanvasText;
+  }
+  .keymap-mouse-seam { stroke: CanvasText; }
+  .keymap-mouse-part-selected { color: HighlightText; }
+  .keymap-mouse-part-selected .keymap-mouse-part-fill { background: Highlight; }
+  button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid Highlight; outline-offset: 2px;
+  }
+  .select-menu-dot, .dirty-dot, .save-dot { background: CanvasText; }
 }

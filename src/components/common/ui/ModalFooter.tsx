@@ -1,3 +1,5 @@
+import Spinner from "./Spinner";
+
 interface ModalFooterProps {
   saving: boolean;
   onCancel: () => void;
@@ -34,6 +36,7 @@ export default function ModalFooter({
           type="submit"
           disabled={saving}
         >
+          {saving && <Spinner size={14} />}
           {submitLabel}
         </button>
       </span>
