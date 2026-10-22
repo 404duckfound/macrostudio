@@ -354,7 +354,7 @@ input:focus, select:focus, textarea:focus {
 .trigger-card-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
 .trigger-card {
   width: 100%; background: var(--bg-surface-elevated); border: 1px solid var(--border-default);
-  border-radius: 12px; padding: 12px 16px; cursor: pointer; display: flex; align-items: center;
+  border-radius: 8px; padding: 12px 16px; cursor: pointer; display: flex; align-items: center;
   justify-content: space-between; gap: 14px; transition: all 0.15s ease;
 }
 .trigger-card:hover { background: var(--bg-interactive); border-color: var(--border-hover); }
@@ -603,7 +603,7 @@ input:focus, select:focus, textarea:focus {
 .step-card {
   display: flex; flex-direction: column; gap: 10px; padding: 12px 14px;
   background: var(--bg-surface-elevated); border: 1px solid var(--border-default);
-  border-radius: 12px;
+  border-radius: 8px;
 }
 .step-head { display: flex; align-items: center; gap: 10px; }
 .step-num {
