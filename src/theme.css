@@ -286,9 +286,9 @@ input:focus, select:focus, textarea:focus {
 .select-menu-item-active { color: var(--text-primary); }
 .select-menu-dot {
   width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%;
-  background: var(--status-success); box-shadow: 0 0 6px var(--status-success);
+  background: var(--status-success);
 }
-.select-menu-dot-error { background: var(--status-danger); box-shadow: 0 0 6px var(--status-danger); }
+.select-menu-dot-error { background: var(--status-danger); }
 .select-menu-item-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .select-menu-item-label {
   display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; font-weight: 500;
