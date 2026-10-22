@@ -359,14 +359,13 @@ input:focus, select:focus, textarea:focus {
 }
 .trigger-card:hover { background: var(--bg-interactive); border-color: var(--border-hover); }
 .trigger-card-selected {
-  background: rgba(47, 195, 222, 0.08); border-color: var(--accent-primary);
-  box-shadow: 0 0 0 1px rgba(47, 195, 222, 0.35);
+  background: var(--bg-surface); border-color: var(--accent-primary);
 }
 .trigger-card-recording { border-color: var(--accent-primary); animation: record-pulse 1.5s ease-in-out infinite; }
 .trigger-card-left { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1; }
 .trigger-icon {
-  width: 36px; height: 36px; border-radius: 9px; background: rgba(47, 195, 222, 0.1);
-  border: 1px solid rgba(47, 195, 222, 0.3); color: var(--accent-primary); display: flex;
+  width: 36px; height: 36px; border-radius: 9px; background: var(--bg-interactive);
+  border: 1px solid var(--border-default); color: var(--accent-primary); display: flex;
   align-items: center; justify-content: center; flex-shrink: 0;
 }
 .trigger-icon svg { width: 18px; height: 18px; display: block; }
