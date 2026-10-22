@@ -41,7 +41,7 @@ function actionPreviewLabel(
 
 interface TriggerListProps {
   triggers: Trigger[];
-  selectedIdx: number;
+  selectedIdx: number | null;
   recording: boolean;
   macros: Macro[];
   /** The profile's layers, for the badge on the cards. */
@@ -109,58 +109,6 @@ export default function TriggerList({
                 <div className="trigger-card-content">
                   <div className="trigger-card-body">
                     <div className="trigger-flags">
-                      <span
-                        role="img"
-                        aria-label={
-                          t.block_key
-                            ? "Original keypress is blocked by Macro Studio"
-                            : "Original keypress passes through to active app"
-                        }
-                        data-tip={
-                          t.block_key
-                            ? "Blocked — Macro Studio swallows the keypress"
-                            : "Pass-through — the keypress reaches the active app (~)"
-                        }
-                        className={`trigger-flag ${
-                          t.block_key ? "trigger-flag-block" : ""
-                        }`}
-                      >
-                        {t.block_key ? (
-                          <Ban aria-hidden="true" />
-                        ) : (
-                          <Eye aria-hidden="true" />
-                        )}
-                      </span>
-                      {t.fire_on_release && (
-                        <span
-                          role="img"
-                          aria-label="Fires on key release"
-                          data-tip="Fires on key release"
-                          className="trigger-flag"
-                        >
-                          <ArrowUp aria-hidden="true" />
-                        </span>
-                      )}
-                      {t.wildcard && (
-                        <span
-                          role="img"
-                          aria-label="Wildcard: also fires with extra modifiers held"
-                          data-tip="Wildcard — also fires with extra modifiers held"
-                          className="trigger-flag"
-                        >
-                          <Asterisk aria-hidden="true" />
-                        </span>
-                      )}
-                      {t.force_hook && (
-                        <span
-                          role="img"
-                          aria-label="Keyboard hook forced"
-                          data-tip="Keyboard hook forced"
-                          className="trigger-flag"
-                        >
-                          <Anchor aria-hidden="true" />
-                        </span>
-                      )}
                       {duplicate && (
                         <span
                           role="status"
@@ -213,10 +161,64 @@ export default function TriggerList({
                 </div>
               </div>
               <div className="trigger-card-right">
+                <div className="trigger-flags trigger-flags-right">
+                  <span
+                    role="img"
+                    aria-label={
+                      t.block_key
+                        ? "Original keypress is blocked by Macro Studio"
+                        : "Original keypress passes through to active app"
+                    }
+                    data-tip={
+                      t.block_key
+                        ? "Blocked — Macro Studio swallows the keypress"
+                        : "Pass-through — the keypress reaches the active app (~)"
+                    }
+                    className={`trigger-flag ${
+                      t.block_key ? "trigger-flag-block" : ""
+                    }`}
+                  >
+                    {t.block_key ? (
+                      <Ban aria-hidden="true" />
+                    ) : (
+                      <Eye aria-hidden="true" />
+                    )}
+                  </span>
+                  {t.fire_on_release && (
+                    <span
+                      role="img"
+                      aria-label="Fires on key release"
+                      data-tip="Fires on key release"
+                      className="trigger-flag"
+                    >
+                      <ArrowUp aria-hidden="true" />
+                    </span>
+                  )}
+                  {t.wildcard && (
+                    <span
+                      role="img"
+                      aria-label="Wildcard: also fires with extra modifiers held"
+                      data-tip="Wildcard — also fires with extra modifiers held"
+                      className="trigger-flag"
+                    >
+                      <Asterisk aria-hidden="true" />
+                    </span>
+                  )}
+                  {t.force_hook && (
+                    <span
+                      role="img"
+                      aria-label="Keyboard hook forced"
+                      data-tip="Keyboard hook forced"
+                      className="trigger-flag"
+                    >
+                      <Anchor aria-hidden="true" />
+                    </span>
+                  )}
+                </div>
                 <div className="trigger-menu-wrap">
                   <button
                     type="button"
-                    className="rail-dots"
+                    className={`rail-dots ${menuOpen ? "rail-dots-open" : ""}`}
                     aria-label="Trigger options"
                     title="Options"
                     aria-expanded={menuOpen}

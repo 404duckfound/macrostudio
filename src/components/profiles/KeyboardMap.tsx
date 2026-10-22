@@ -13,7 +13,7 @@ interface KeyboardMapProps {
   disabled: boolean;
   /** Draft triggers, for the mouse-button mini list. */
   triggers: Trigger[];
-  selectedIdx: number;
+  selectedIdx: number | null;
   /**
    * Receives the key name, where it was pressed, and the modifiers held
    * during the click: holding a modifier means the user wants a combination,

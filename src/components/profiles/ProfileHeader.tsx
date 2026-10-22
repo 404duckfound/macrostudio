@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Copy, Pencil, Plus, Star, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, CircleAlert, Copy, Pencil, Plus, Star, Trash2 } from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import SelectMenu from "../common/ui/SelectMenu";
 import ProfileDeleteModal from "./modals/ProfileDeleteModal";
@@ -19,6 +19,8 @@ type ModalState =
 
 interface ProfileHeaderProps {
   activeRun: { id: string; ok: boolean } | null;
+  /** Why the engine could not start the profile, if it failed. */
+  runError: string | null;
   /** Cards the current save would drop, and why. */
   dropSummary: DraftDropReport;
   /** What the last save left out, shown until the next edit. */
@@ -49,6 +51,7 @@ function cloneTriggers(triggers: Trigger[]): Trigger[] {
 
 export default function ProfileHeader({
   activeRun,
+  runError,
   dropSummary,
   saveNotice,
   dirty,
@@ -124,6 +127,7 @@ export default function ProfileHeader({
       <div className="flow-head">
         <div className="flow-profile-header">
           <div className="flow-profile-title-row">
+            <div className="flow-head-select">
             <SelectMenu
               label="Select profile"
               value={activeId}
@@ -204,27 +208,40 @@ export default function ProfileHeader({
                 );
               }}
             />
-            {/* Sits on the profile selector's row: an empty second row used to
-                leave a gap under the header even when nothing was shown. */}
+            </div>
+            {/* One place for every screen-level message: engine failure, unsaved
+                work, a save that would drop cards, and what the last save left
+                out. All of them share the pill shape so none shouts louder. */}
+            {(runError || dirty || dropSummary.total > 0 || saveNotice) && (
+            <div className="flow-notes">
+            {runError && (
+              <span className="flow-note flow-note-danger" role="alert">
+                <CircleAlert aria-hidden="true" />
+                {runError}
+              </span>
+            )}
             {dirty && (
-              <span className="flow-dirty-indicator">
+              <span className="flow-note flow-note-warn">
                 <span className="dirty-dot" aria-hidden="true" />
                 Unsaved changes
               </span>
             )}
-            {tabs}
-          </div>
-          {(saveNotice || dropSummary.total > 0) && (
-            <div className="flow-profile-sub-row">
-              {saveNotice ? (
-                <span className="flow-drop-notice">{saveNotice}</span>
-              ) : (
-                <span className="flow-without-action">
-                  {dropReportMessage(dropSummary)}
-                </span>
-              )}
+            {dropSummary.total > 0 && (
+              <span className="flow-note flow-note-warn">
+                <AlertTriangle aria-hidden="true" />
+                {dropReportMessage(dropSummary)}
+              </span>
+            )}
+            {saveNotice && (
+              <span className="flow-note flow-note-info">
+                <Check aria-hidden="true" />
+                {saveNotice}
+              </span>
+            )}
             </div>
-          )}
+            )}
+            {tabs && <div className="flow-head-tabs">{tabs}</div>}
+          </div>
         </div>
       </div>
 

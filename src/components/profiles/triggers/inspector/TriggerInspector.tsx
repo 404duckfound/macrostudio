@@ -15,7 +15,7 @@ import TriggerModifiers from "../fields/TriggerModifiers";
 
 interface TriggerInspectorProps {
   selected: Trigger | undefined;
-  selectedIdx: number;
+  selectedIdx: number | null;
   selectedChips: string[];
   single: MacroAction | null;
   /** The profile's layers, for the layer picker. */

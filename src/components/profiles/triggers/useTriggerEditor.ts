@@ -24,7 +24,9 @@ function blankTrigger(shortcut = ""): Trigger {
   return {
     shortcut,
     actions: [],
-    block_key: false,
+    // New triggers block the key by default (plain `F9::` form); turning this
+    // off switches to the pass-through `~F9::` form.
+    block_key: true,
     fire_on_release: false,
     mod_sides: {},
     wildcard: false,
@@ -44,7 +46,7 @@ export function useTriggerEditor(active: Profile | null) {
   const [draftTriggers, setDraftTriggers] = useState<Trigger[]>(
     active?.triggers ?? [],
   );
-  const [selectedIdx, setSelectedIdx] = useState(0);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(0);
   const [recording, setRecording] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
@@ -118,8 +120,13 @@ export function useTriggerEditor(active: Profile | null) {
     };
   }, [openMenuIdx]);
 
-  const sel = Math.min(selectedIdx, Math.max(0, draftTriggers.length - 1));
-  const selected = draftTriggers[sel] ?? null;
+  // Null means nothing is selected: the inspector shows its empty state and
+  // clicking the selected card again clears the selection.
+  const sel =
+    selectedIdx === null
+      ? null
+      : Math.min(selectedIdx, Math.max(0, draftTriggers.length - 1));
+  const selected = sel === null ? null : draftTriggers[sel] ?? null;
 
   const captureShortcut = useCallback(
     (combo: string, altGr = false) => {
@@ -237,6 +244,7 @@ export function useTriggerEditor(active: Profile | null) {
   );
   const willDropCard = dropReport.total > 0;
   const duplicateConflict = useMemo(() => {
+    if (sel === null) return null;
     const t = draftTriggers[sel];
     if (!t || !dropReport.duplicates.includes(sel)) return null;
     return `"${t.shortcut.trim()}" is already used by another trigger.`;
@@ -250,6 +258,18 @@ export function useTriggerEditor(active: Profile | null) {
     setRecording(false);
     setPickerOpen(false);
     setModifierPicker(null);
+  }
+
+  // Clicking the already-selected card clears the selection so the inspector
+  // can be closed without editing anything. Any in-flight capture is dropped
+  // with it: a recording without a selected card has nowhere to land.
+  function toggleTriggerAt(idx: number) {
+    if (sel === idx) {
+      setSelectedIdx(null);
+      setRecording(false);
+      setPickerOpen(false);
+      setModifierPicker(null);
+    } else selectTriggerAt(idx);
   }
 
   function patchSelected(patch: (t: Trigger) => Trigger) {
@@ -396,7 +416,9 @@ export function useTriggerEditor(active: Profile | null) {
 
   function deleteTrigger(idx: number) {
     mutateDrafts((prev) => prev.filter((_, i) => i !== idx));
-    setSelectedIdx((cur) => Math.max(0, Math.min(cur, draftTriggers.length - 2)));
+    setSelectedIdx((cur) =>
+      cur === null ? null : Math.max(0, Math.min(cur, draftTriggers.length - 2)),
+    );
     setRecording(false);
     setPickerOpen(false);
     setOpenMenuIdx(null);
@@ -404,7 +426,7 @@ export function useTriggerEditor(active: Profile | null) {
 
   function removeSelected() {
     mutateDrafts((prev) => prev.filter((_, i) => i !== sel));
-    setSelectedIdx(Math.max(0, sel - 1));
+    setSelectedIdx(sel === null ? null : Math.max(0, sel - 1));
     setRecording(false);
     setPickerOpen(false);
   }
@@ -510,6 +532,7 @@ export function useTriggerEditor(active: Profile | null) {
     shortcutError: captureError ?? duplicateConflict,
     flashAction,
     selectTriggerAt,
+    toggleTriggerAt,
     patchSelected,
     addTrigger,
     openEmptyOn,

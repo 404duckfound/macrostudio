@@ -58,11 +58,6 @@ export default function TriggerModifiers({
           </span>
         )}
         <span className="section-label">Trigger Modifiers</span>
-        {active.length > 0 ? (
-          <span className="section-summary">{active.join(" · ")}</span>
-        ) : (
-          <span className="section-summary">None</span>
-        )}
         <span className="section-chevron" aria-hidden="true">
           {open ? <ChevronUp /> : <ChevronDown />}
         </span>
@@ -73,11 +68,6 @@ export default function TriggerModifiers({
             <div className="block-card-info">
               <div className="block-card-title-row">
                 <span className="toggle-title">Fire on release</span>
-                {trigger.fire_on_release && (
-                  <span className="toggle-symbol" aria-hidden="true">
-                    Up
-                  </span>
-                )}
               </div>
               <span className="toggle-sub">
                 {trigger.fire_on_release
@@ -99,29 +89,26 @@ export default function TriggerModifiers({
             </button>
           </div>
           {/* `block_key` is not a modifier, but it reads as one here: the same
-              row shape, the same switch, one more line in the Modifiers step. */}
+              row shape, the same switch, one more line in the Modifiers step.
+              The switch is inverted for the user: blocking is the plain state
+              (off), so the toggle adds the `~` pass-through prefix. */}
           <div className="block-card">
             <div className="block-card-info">
               <div className="block-card-title-row">
-                <span className="toggle-title">Block Original Keypress</span>
-                {!trigger.block_key && (
-                  <span className="toggle-symbol" aria-hidden="true">
-                    ~
-                  </span>
-                )}
+                <span className="toggle-title">Pass Through Original Keypress</span>
               </div>
               <span className="toggle-sub">
                 {trigger.block_key
-                  ? "Suppresses the native physical key event"
-                  : "Allows physical key event to pass through"}
+                  ? "Allows physical key event to pass through"
+                  : "Suppresses the native physical key event"}
               </span>
             </div>
             <button
               type="button"
               role="switch"
-              aria-label="Block Original Keypress"
-              aria-checked={trigger.block_key}
-              className={`switch ${trigger.block_key ? "switch-on" : ""}`}
+              aria-label="Pass Through Original Keypress"
+              aria-checked={!trigger.block_key}
+              className={`switch ${!trigger.block_key ? "switch-on" : ""}`}
               onClick={() =>
                 onPatch((t) => ({ ...t, block_key: !t.block_key }))
               }
@@ -133,11 +120,6 @@ export default function TriggerModifiers({
             <div className="block-card-info">
               <div className="block-card-title-row">
                 <span className="toggle-title">Wildcard</span>
-                {trigger.wildcard && (
-                  <span className="toggle-symbol" aria-hidden="true">
-                    *
-                  </span>
-                )}
               </div>
               <span className="toggle-sub">
                 {trigger.wildcard
@@ -162,11 +144,6 @@ export default function TriggerModifiers({
             <div className="block-card-info">
               <div className="block-card-title-row">
                 <span className="toggle-title">Keyboard hook</span>
-                {trigger.force_hook && (
-                  <span className="toggle-symbol" aria-hidden="true">
-                    $
-                  </span>
-                )}
               </div>
               <span className="toggle-sub">
                 {trigger.force_hook

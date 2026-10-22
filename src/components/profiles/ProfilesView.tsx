@@ -15,8 +15,10 @@ import { useTriggerEditor } from "./triggers/useTriggerEditor";
 
 export default function ProfilesView({
   activeRun,
+  runError,
 }: {
   activeRun: { id: string; ok: boolean } | null;
+  runError: string | null;
 }) {
   const activeId = useProfileStore((s) => s.activeId);
   const profiles = useProfileStore((s) => s.profiles);
@@ -127,6 +129,7 @@ export default function ProfilesView({
         <div className="flow-inner">
           <ProfileHeader
             activeRun={activeRun}
+            runError={runError}
             dropSummary={dropReport}
             saveNotice={editor.saveNotice}
             dirty={dirty}
@@ -180,7 +183,7 @@ export default function ProfilesView({
               layers={active?.layers ?? []}
               openMenuIdx={openMenuIdx}
               duplicateIndices={dropReport.duplicates}
-              onSelect={editor.selectTriggerAt}
+              onSelect={editor.toggleTriggerAt}
               onFocusAction={editor.focusActionStep}
               onDuplicate={editor.duplicateTrigger}
               onDelete={editor.deleteTrigger}

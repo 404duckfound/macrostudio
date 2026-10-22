@@ -18,11 +18,10 @@ function App() {
       <TitleBar>
         <Navbar view={view} onView={setView} />
       </TitleBar>
-      {error && <div className="run-error">{error}</div>}
       <div className="app-body-row">
         <div className="app-content">
           {view === "profiles" ? (
-            <ProfilesView activeRun={activeRun} />
+            <ProfilesView activeRun={activeRun} runError={error} />
           ) : view === "macros" ? (
             <MacrosView />
           ) : (
