@@ -165,10 +165,9 @@ export default function SettingsView() {
 
             <div className="settings-about-row">
               <div className="settings-about-meta">
-                <span className="settings-app-name">Macro Studio Dark Engine</span>
-                <span className="settings-app-build">Version 0.1.0 • Windows x64 Native Desktop</span>
+                <span className="settings-app-name">Macro Studio</span>
+                <span className="settings-app-build">Version 0.1.0 · Windows x64</span>
               </div>
-              <span className="settings-badge-pill">Tauri v2 + React 19</span>
             </div>
           </div>
         </div>
