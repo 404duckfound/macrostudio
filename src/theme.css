@@ -968,9 +968,9 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid var(--border-default); border-radius: 9px; padding: 10px 12px;
 }
 .custom-block-head { display: flex; align-items: center; justify-content: space-between; }
-.custom-block-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--accent-primary); }
+.custom-block-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary); }
 .custom-block-badge .block-icon { width: 14px; height: 14px; }
-.custom-block-kind { text-transform: uppercase; letter-spacing: 0.04em; }
+.custom-block-kind { letter-spacing: 0.01em; }
 .custom-block-delete {
   width: 24px; height: 24px; border-radius: 6px; color: var(--text-disabled); display: flex;
   align-items: center; justify-content: center;
