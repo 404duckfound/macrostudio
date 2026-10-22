@@ -5,6 +5,7 @@ import { useProfileStore } from "../../stores/useProfileStore";
 import MacroHeader from "./MacroHeader";
 import type { ActionBlock, Macro, Profile } from "../../types";
 import BlockRow from "./BlockRow";
+import Spinner from "../common/ui/Spinner";
 
 function blankMacro(): Macro {
   return { id: crypto.randomUUID(), name: "New macro", blocks: [] };
@@ -108,29 +109,27 @@ export default function MacrosView() {
 
   return (
     <main className="workspace">
-      <div className="flow-canvas">
+      <div className={`flow-canvas ${draft ? "" : "flow-canvas-empty"}`}>
         {!draft ? (
-          <div className="flow-canvas-empty">
-            <div className="workspace-empty-state">
-              <div className="workspace-empty-icon">
-                <Boxes aria-hidden="true" />
-              </div>
-              <h3>{macros.length === 0 ? "No Macros Yet" : "No Macro Selected"}</h3>
-              <p>
-                {macros.length === 0
-                  ? "Macros are reusable block lists — mouse clicks, pauses — that triggers can run."
-                  : "Pick a macro to edit its blocks, or create a new one."}
-              </p>
-              <button
-                className="btn-primary"
-                type="button"
-                disabled={saving}
-                onClick={() => void addMacro()}
-              >
-                <Plus aria-hidden="true" />
-                <span>Create Macro</span>
-              </button>
+          <div className="workspace-empty-state">
+            <div className="workspace-empty-illustration">
+              <Boxes aria-hidden="true" />
             </div>
+            <h3>{macros.length === 0 ? "No Macros Yet" : "No Macro Selected"}</h3>
+            <p>
+              {macros.length === 0
+                ? "Macros are reusable block lists — mouse clicks, pauses — that triggers can run."
+                : "Pick a macro to edit its blocks, or create a new one."}
+            </p>
+            <button
+              className="btn-primary"
+              type="button"
+              disabled={saving}
+              onClick={() => void addMacro()}
+            >
+              <Plus aria-hidden="true" />
+              <span>Create Macro</span>
+            </button>
           </div>
         ) : (
           <div className="macro-editor">
@@ -192,8 +191,8 @@ export default function MacrosView() {
                 onClick={() => void saveDraft()}
                 disabled={saving || !dirty}
               >
-                <Save aria-hidden="true" />
-                <span>Save</span>
+                {saving ? <Spinner size={14} /> : <Save aria-hidden="true" />}
+                <span>{saving ? "Saving…" : "Save"}</span>
               </button>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Cpu, FolderOpen, Info, Monitor, Plus, RotateCcw, X } from "lucide-react";
 import {
   DEFAULT_FOCUS_FALLBACK_MS,
@@ -13,11 +13,36 @@ export default function SettingsView() {
   const addIgnoredExe = useProfileStore((s) => s.addIgnoredExe);
   const removeIgnoredExe = useProfileStore((s) => s.removeIgnoredExe);
   const [draft, setDraft] = useState("");
+  // Rows mid-fade-out: the store drops them 150ms later, so the exit animation
+  // has time to play instead of the row vanishing between two frames.
+  const [removing, setRemoving] = useState<Set<string>>(new Set());
+  const fadeTimers = useRef<number[]>([]);
+
+  useEffect(
+    () => () => {
+      fadeTimers.current.forEach((id) => window.clearTimeout(id));
+    },
+    [],
+  );
 
   function addDraft() {
     if (!draft.trim()) return;
     addIgnoredExe(draft);
     setDraft("");
+  }
+
+  function removeIgnored(exe: string) {
+    if (removing.has(exe)) return;
+    setRemoving((prev) => new Set(prev).add(exe));
+    const id = window.setTimeout(() => {
+      removeIgnoredExe(exe);
+      setRemoving((prev) => {
+        const next = new Set(prev);
+        next.delete(exe);
+        return next;
+      });
+    }, 150);
+    fadeTimers.current.push(id);
   }
 
   return (
@@ -101,16 +126,24 @@ export default function SettingsView() {
               </button>
             </div>
             {ignoredExes.length === 0 ? (
-              <p className="settings-setting-desc">No ignored windows.</p>
+              <div className="settings-empty-hint">
+                <span>No ignored windows.</span>
+              </div>
             ) : (
               <ul className="settings-ignore-list">
                 {ignoredExes.map((exe) => (
-                  <li key={exe.toLowerCase()} className="settings-ignore-item">
+                  <li
+                    key={exe.toLowerCase()}
+                    className={`settings-ignore-item ${
+                      removing.has(exe) ? "settings-ignore-item-out" : ""
+                    }`}
+                  >
                     <span className="settings-path-text">{exe}</span>
                     <button
                       type="button"
                       className="btn-ghost settings-ignore-remove"
-                      onClick={() => removeIgnoredExe(exe)}
+                      onClick={() => removeIgnored(exe)}
+                      disabled={removing.has(exe)}
                       title={`Stop ignoring ${exe}`}
                       aria-label={`Stop ignoring ${exe}`}
                     >
