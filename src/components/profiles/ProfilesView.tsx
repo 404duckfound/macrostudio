@@ -124,7 +124,7 @@ export default function ProfilesView({
   }
 
   return (
-    <main className="workspace">
+    <main className="workspace workspace-profiles">
       <div className="flow-canvas">
         <div className="flow-inner">
           <ProfileHeader

@@ -99,8 +99,8 @@ export default function TriggerModifiers({
               </div>
               <span className="toggle-sub">
                 {trigger.block_key
-                  ? "Allows physical key event to pass through"
-                  : "Suppresses the native physical key event"}
+                  ? "Suppresses the native physical key event"
+                  : "Allows physical key event to pass through"}
               </span>
             </div>
             <button

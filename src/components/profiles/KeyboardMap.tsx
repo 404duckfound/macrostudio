@@ -71,7 +71,7 @@ export default function KeyboardMap({
       <div className="keymap" role="group" aria-label="Keyboard map">
         {KEYBOARD_ROWS.map((row, ri) => (
           <div key={ri} className="keymap-row">
-            {row.map((k) => {
+            {row.map((k, ki) => {
               const isAssigned =
                 k.name != null && assigned.has(k.name.toUpperCase());
               const isSelected =
@@ -80,7 +80,10 @@ export default function KeyboardMap({
                 k.name.toUpperCase() === selectedMain;
               return (
                 <button
-                  key={k.label + ri}
+                  // The row index alone is not unique: the shift row has two
+                  // "Shift" keys, so both would claim the same React key.
+                  // The column index makes the pair unique.
+                  key={`${ri}-${ki}`}
                   type="button"
                   data-map-key={k.name ?? undefined}
                   style={{ "--w": k.w } as CSSProperties}

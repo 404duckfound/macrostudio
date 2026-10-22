@@ -205,8 +205,19 @@ input:focus, select:focus, textarea:focus {
   flex-wrap: wrap; min-width: 0;
 }
 .flow-head-tabs { grid-area: tabs; justify-self: end; }
-@media (max-width: 1180px) {
-  .flow-profile-title-row {
+/* The header row lives in the canvas, which sits next to the 400px inspector
+   dock, so the canvas is 456px narrower than the window (400 dock + 28+28
+   canvas padding). The breakpoint therefore has to be expressed against the
+   window width with the dock added back in: the row needs ~760px of canvas
+   content to keep the notes bubble on one line next to the picker, so the
+   switch happens at ~1216px of window width. (A container query would be the
+   semantically right tool here, but `.flow-canvas` is an ancestor of the
+   fixed-position rail menu and the key-match picker; making it a container
+   would turn those into canvas-relative elements and break their placement.)
+   Scoped to the profiles view, which is the only view with a notes row and an
+   inspector dock; the macros view has no dock and no notes. */
+@media (max-width: 1216px) {
+  .workspace-profiles .flow-profile-title-row {
     grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "select tabs" "notes notes";
     row-gap: 8px;
   }
@@ -504,7 +515,7 @@ input:focus, select:focus, textarea:focus {
 }
 .keymap-mini-empty { margin-top: 8px; font-size: 11px; line-height: 16px; color: var(--text-disabled); }
 
-@media (max-width: 1120px) {
+@media (max-width: 1180px) {
   .keymap-layout { grid-template-columns: 1fr; }
   .keymap-side { flex-direction: row; flex-wrap: wrap; }
   .keymap-side-block { flex: 1 1 200px; min-width: 0; }
