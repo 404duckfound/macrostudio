@@ -171,8 +171,17 @@ export default function ProfilesView({
               disabled={recording}
               triggers={draftTriggers}
               selectedIdx={selectedIdx}
+              macros={macros}
+              layers={active?.layers ?? []}
+              openMenuIdx={openMenuIdx}
+              duplicateIndices={dropReport.duplicates}
               onPick={editor.mapKeyDown}
-              onSelectTrigger={editor.selectTriggerAt}
+              onSelectTrigger={editor.toggleTriggerAt}
+              onFocusAction={editor.focusActionStep}
+              onDuplicate={editor.duplicateTrigger}
+              onDelete={editor.deleteTrigger}
+              onToggleMenu={editor.toggleMenu}
+              onAdd={editor.addTrigger}
             />
           ) : (
             <TriggerList

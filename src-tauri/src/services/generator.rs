@@ -275,6 +275,9 @@ pub fn compile_to_ahk_v2(
 
 /// The hotkey name of a trigger, with the prefixes its own flags ask for.
 fn hotkey_spec(trigger: &Trigger) -> String {
+    if let Some(modifier) = lone_modifier_hotkey(trigger) {
+        return modifier;
+    }
     let hook = if trigger.force_hook { "$" } else { "" };
     let tilde = if trigger.block_key { "" } else { "~" };
     let star = if trigger.wildcard { "*" } else { "" };
@@ -285,6 +288,29 @@ fn hotkey_spec(trigger: &Trigger) -> String {
     )
 }
 
+/// A modifier used as the entire shortcut is itself the trigger key. AHK's
+/// modifier symbols cannot represent that case, so bind its physical key name
+/// directly; side selection still follows the inspector's `mod_sides` value.
+fn lone_modifier_hotkey(trigger: &Trigger) -> Option<String> {
+    let parts = key_parts(trigger.shortcut.trim());
+    let [modifier] = parts.as_slice() else {
+        return None;
+    };
+    let side_key = if *modifier == "Meta" { "Win" } else { modifier };
+    let side = match trigger.mod_sides.get(side_key) {
+        Some(ModSide::Right) => "R",
+        _ => "L",
+    };
+    let key = match *modifier {
+        "Ctrl" => "Control",
+        "Shift" => "Shift",
+        "Alt" => "Alt",
+        "Win" | "Meta" => "Win",
+        _ => return None,
+    };
+    Some(format!("{side}{key}"))
+}
+
 /// The hotkey name of a layer trigger.
 ///
 /// When the activator is a modifier (Shift, Ctrl, Alt, Win) the layer's
@@ -292,6 +318,9 @@ fn hotkey_spec(trigger: &Trigger) -> String {
 /// is held, so the layer's key would never fire. The trigger's own shortcut
 /// may already name that modifier, in which case it is not repeated.
 fn layer_hotkey_spec(trigger: &Trigger, activator: &str) -> String {
+    if let Some(modifier) = lone_modifier_hotkey(trigger) {
+        return modifier;
+    }
     let hook = if trigger.force_hook { "$" } else { "" };
     let tilde = if trigger.block_key { "" } else { "~" };
     let star = if trigger.wildcard { "*" } else { "" };
@@ -561,6 +590,7 @@ fn map_trigger_hotkey(
                 "MouseMiddle" => "MButton".to_string(),
                 "MouseX1" => "XButton1".to_string(),
                 "MouseX2" => "XButton2".to_string(),
+                "Escape" => "Esc".to_string(),
                 other => other.to_string(),
             }
         })
@@ -1088,6 +1118,44 @@ mod tests {
         t.mod_sides.insert("Alt".to_string(), ModSide::Right);
         let out = compile_to_ahk_v2(&[t], TEST_TITLE, &[], &[]);
         assert!(out.contains(">!F9::\n"));
+    }
+
+    #[test]
+    fn escape_hotkey_uses_ahk_esc_spelling() {
+        let out = compile_to_ahk_v2(&[trig("Escape", vec![])], TEST_TITLE, &[], &[]);
+        assert!(out.contains("\nEsc::\n"));
+    }
+
+    #[test]
+    fn lone_shift_uses_left_shift_without_trigger_modifiers() {
+        let out = compile_to_ahk_v2(&[trig("Shift", vec![])], TEST_TITLE, &[], &[]);
+        assert!(out.contains("\nLShift::\n"));
+        assert!(!out.contains("~LShift::"));
+        assert!(!out.contains("*LShift::"));
+        assert!(!out.contains("LShift Up::"));
+    }
+
+    #[test]
+    fn lone_ctrl_can_target_right_control() {
+        let mut trigger = trig("Ctrl", vec![]);
+        trigger.mod_sides.insert("Ctrl".to_string(), ModSide::Right);
+        let out = compile_to_ahk_v2(&[trigger], TEST_TITLE, &[], &[]);
+        assert!(out.contains("\nRControl::\n"));
+    }
+
+    #[test]
+    fn lone_modifier_ignores_tilde_release_and_block_setting() {
+        let mut trigger = passthrough("Alt", vec![]);
+        trigger.block_key = false;
+        trigger.fire_on_release = true;
+        trigger.wildcard = true;
+        trigger.force_hook = true;
+        let out = compile_to_ahk_v2(&[trigger], TEST_TITLE, &[], &[]);
+        assert!(out.contains("\nLAlt::\n"));
+        assert!(!out.contains("~LAlt"));
+        assert!(!out.contains("*LAlt"));
+        assert!(!out.contains("$LAlt"));
+        assert!(!out.contains("LAlt Up"));
     }
 
     // What the recorder stores for AltGr+M: a plain combo plus left-Ctrl /

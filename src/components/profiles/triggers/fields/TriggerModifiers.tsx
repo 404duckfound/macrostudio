@@ -25,6 +25,9 @@ export default function TriggerModifiers({
     .split("+")
     .map((p) => p.trim())
     .filter((p) => (MODIFIERS as readonly string[]).includes(p));
+  const modifierOnly =
+    trigger.shortcut.split("+").map((part) => part.trim()).filter(Boolean).length === 1 &&
+    present.length === 1;
   const active: string[] = [
     ...(trigger.force_hook ? ["$"] : []),
     ...(trigger.wildcard ? ["*"] : []),
@@ -92,30 +95,36 @@ export default function TriggerModifiers({
               row shape, the same switch, one more line in the Modifiers step.
               The switch is inverted for the user: blocking is the plain state
               (off), so the toggle adds the `~` pass-through prefix. */}
-          <div className="block-card">
-            <div className="block-card-info">
-              <div className="block-card-title-row">
-                <span className="toggle-title">Pass Through Original Keypress</span>
+          {modifierOnly ? (
+            <p className="toggle-sub modifier-only-note">
+              Modifier-only triggers always consume the modifier press; pass-through is not available.
+            </p>
+          ) : (
+            <div className="block-card">
+              <div className="block-card-info">
+                <div className="block-card-title-row">
+                  <span className="toggle-title">Pass Through Original Keypress</span>
+                </div>
+                <span className="toggle-sub">
+                  {trigger.block_key
+                    ? "Suppresses the native physical key event"
+                    : "Allows physical key event to pass through"}
+                </span>
               </div>
-              <span className="toggle-sub">
-                {trigger.block_key
-                  ? "Suppresses the native physical key event"
-                  : "Allows physical key event to pass through"}
-              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-label="Pass Through Original Keypress"
+                aria-checked={!trigger.block_key}
+                className={`switch ${!trigger.block_key ? "switch-on" : ""}`}
+                onClick={() =>
+                  onPatch((t) => ({ ...t, block_key: !t.block_key }))
+                }
+              >
+                <span className="switch-thumb" />
+              </button>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-label="Pass Through Original Keypress"
-              aria-checked={!trigger.block_key}
-              className={`switch ${!trigger.block_key ? "switch-on" : ""}`}
-              onClick={() =>
-                onPatch((t) => ({ ...t, block_key: !t.block_key }))
-              }
-            >
-              <span className="switch-thumb" />
-            </button>
-          </div>
+          )}
           <div className="block-card">
             <div className="block-card-info">
               <div className="block-card-title-row">

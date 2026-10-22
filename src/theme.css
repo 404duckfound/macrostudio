@@ -228,6 +228,10 @@ input:focus, select:focus, textarea:focus {
 }
 .flow-head-settings:disabled { opacity: 0.4; cursor: not-allowed; }
 .flow-head-settings svg { width: 16px; height: 16px; display: block; }
+.flow-head-settings[data-tip]:hover::after,
+.flow-head-settings[data-tip]:focus-visible::after {
+  top: calc(100% + 8px); bottom: auto;
+}
 .flow-notes {
   grid-area: notes; display: flex; align-items: center; gap: 8px;
   flex-wrap: wrap; min-width: 0;
@@ -485,30 +489,36 @@ input:focus, select:focus, textarea:focus {
 .canvas-tab:hover { color: var(--text-primary); }
 .canvas-tab-on { background: var(--bg-interactive); color: var(--text-primary); }
 
-/* Keyboard map. The keyboard fills the canvas width: every key is sized from
-   one shared 15-unit row, so columns line up across rows instead of each row
-   stretching on its own. */
+/* Keyboard map. Each row shares a 74-column grid (four tracks per key unit),
+   so keys align by their intended keyboard columns without accumulating gaps. */
 .keymap-layout {
-  display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 12px;
-  align-items: start; width: 100%;
+  flex: 1; min-height: 0; display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  grid-template-rows: auto minmax(260px, 1fr);
+  grid-template-areas: "keyboard keyboard" "mouse triggers";
+  gap: 12px; align-items: stretch; width: 100%;
 }
+.flow-inner:has(.keymap-layout) { flex: 1; min-height: 0; }
 .keymap {
   --key-gap: 4px;
   display: flex; flex-direction: column; gap: var(--key-gap); padding: 10px;
-  width: 100%; min-width: 0; background: var(--bg-surface);
+  grid-area: keyboard; width: 100%; min-width: 0; background: var(--bg-surface);
   border: 1px solid var(--border-default); border-radius: 12px;
 }
-.keymap-row { display: flex; gap: var(--key-gap); min-width: 0; }
-.keymap-row:last-child { justify-content: center; }
+.keymap-row {
+  display: grid; grid-template-columns: repeat(74, minmax(0, 1fr));
+  column-gap: 0; min-width: 0; width: 100%;
+}
 .keymap-key {
-  flex: 0 0 calc((100% - 14 * var(--key-gap)) / 15 * var(--w, 1));
-  width: auto; min-width: 0; min-height: 40px; padding: 4px 4px; border-radius: 7px;
+  justify-self: start; width: calc(100% - var(--key-gap));
+  min-width: 0; min-height: 40px; padding: 4px 4px; border-radius: 7px;
   background: var(--bg-interactive); border: 1px solid var(--border-default);
   border-bottom-width: 2px; border-bottom-color: rgba(0, 0, 0, 0.55);
   color: var(--text-primary); font-family: "JetBrains Mono", monospace;
   font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden;
   text-overflow: ellipsis;
 }
+.keymap-key-icon { width: 16px; height: 16px; stroke-width: 2; }
 .keymap-key:hover:not(:disabled) { border-color: var(--accent-primary); color: var(--accent-primary); }
 .keymap-key:disabled { cursor: default; }
 .keymap-key-deco { opacity: 0.35; }
@@ -521,7 +531,7 @@ input:focus, select:focus, textarea:focus {
 .keymap-side {
   display: flex; flex-direction: column; gap: 16px; padding: 12px;
   background: var(--bg-surface); border: 1px solid var(--border-default);
-  border-radius: 12px; min-width: 0;
+  border-radius: 12px; min-width: 0; min-height: 0; overflow: auto;
 }
 .keymap-side-title {
   display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.07em;
@@ -532,7 +542,12 @@ input:focus, select:focus, textarea:focus {
    disabled state and the focus ring keep the keyboard cells' behavior. The
    inner fill span carries the shape (clip-path), which leaves the button box
    unclipped so its focus outline is not cut off. */
-.keymap-mouse { position: relative; width: 100%; max-width: 156px; margin: 8px auto 0; }
+.keymap-mouse-block { grid-area: mouse; align-items: center; }
+.keymap-mouse { position: relative; width: 100%; max-width: 200px; margin: auto; }
+.keymap-mouse-part[data-tip]:hover::after,
+.keymap-mouse-part[data-tip]:focus-visible::after { bottom: calc(100% + 8px); }
+.keymap-trigger-rail { grid-area: triggers; }
+.keymap-trigger-rail .trigger-card-list { overflow-y: auto; min-height: 0; }
 .keymap-mouse-svg { display: block; width: 100%; height: auto; }
 .keymap-mouse-body { fill: var(--bg-interactive); stroke: var(--border-default); stroke-width: 1.2; }
 .keymap-mouse-seam { fill: none; stroke: var(--border-hover); stroke-width: 1.2; }
@@ -572,22 +587,27 @@ input:focus, select:focus, textarea:focus {
   display: block; margin-top: 6px; font-size: 10px; line-height: 14px;
   color: var(--text-disabled); text-align: center;
 }
-.keymap-mini-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
-.keymap-mini-item {
-  display: flex; align-items: center; justify-content: flex-start; width: 100%;
-  min-height: 32px; padding: 4px 6px; border-radius: 6px; border: 1px solid transparent;
-  text-align: left;
-}
-.keymap-mini-item:hover { background: var(--bg-interactive); }
-.keymap-mini-item-selected {
-  border-color: var(--accent-primary); background: rgba(47, 195, 222, 0.08);
-}
-.keymap-mini-empty { margin-top: 8px; font-size: 11px; line-height: 16px; color: var(--text-disabled); }
+.keymap-trigger-rail .trigger-card { padding: 8px; gap: 6px; }
+.keymap-trigger-rail .trigger-card-left { gap: 7px; }
+.keymap-trigger-rail .trigger-card-content { gap: 5px; }
+.keymap-trigger-rail .trigger-icon, .keymap-trigger-rail .trigger-action-icon { width: 28px; height: 28px; }
+.keymap-trigger-rail .trigger-icon svg, .keymap-trigger-rail .trigger-action-icon svg { width: 15px; height: 15px; }
+.keymap-trigger-rail .trigger-card-right { gap: 3px; }
+.modifier-only-note { padding: 0 2px; }
 
 @media (max-width: 1180px) {
-  .keymap-layout { grid-template-columns: 1fr; }
-  .keymap-side { flex-direction: row; flex-wrap: wrap; }
-  .keymap-side-block { flex: 1 1 200px; min-width: 0; }
+  .keymap-layout {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    grid-template-rows: auto minmax(240px, 1fr);
+    grid-template-areas: "keyboard keyboard" "mouse triggers";
+  }
+}
+@media (max-width: 700px) {
+  .keymap-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(240px, auto) minmax(280px, 1fr);
+    grid-template-areas: "keyboard" "mouse" "triggers";
+  }
 }
 /* Chooser for several triggers sharing one main key. Anchored from the key's
    rect, so it must not scroll with the map. */
@@ -639,9 +659,9 @@ input:focus, select:focus, textarea:focus {
 }
 .action-select-pop, .key-picker-pop, .rail-menu { animation: pop-in 0.15s ease-out; }
 
-/* Inspector (Right Fixed 400px Dock) */
+/* Inspector (Right Fixed 360px Dock) */
 .inspector {
-  width: 400px; flex-shrink: 0; background: var(--bg-surface);
+  width: 360px; flex-shrink: 0; background: var(--bg-surface);
   border-left: 1px solid var(--border-muted); display: flex; flex-direction: column;
   min-height: 0; overflow: hidden;
 }

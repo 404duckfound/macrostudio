@@ -1,7 +1,6 @@
 // EN QWERTY layout data for the canvas Keyboard tab. `name` is the exact
 // combo-main string written on assign (must match keyCatalog / generator
-// spellings); `null` marks a decorative key that cannot be assigned
-// (wide Shift keys). `w` is the flex width in key units.
+// spellings); `w` is the flex width in key units.
 
 export interface MapKey {
   label: string;
@@ -10,6 +9,11 @@ export interface MapKey {
 }
 
 export const KEYBOARD_ROWS: MapKey[][] = [
+  [
+    { label: "Esc", name: "Escape", w: 1 },
+    ...Array.from({ length: 12 }, (_, i) => ({ label: `F${i + 1}`, name: `F${i + 1}`, w: 1 })),
+    { label: "", name: null, w: 5.5 },
+  ],
   [
     { label: "`", name: "`", w: 1 },
     { label: "1", name: "1", w: 1 },
@@ -25,6 +29,10 @@ export const KEYBOARD_ROWS: MapKey[][] = [
     { label: "-", name: "-", w: 1 },
     { label: "=", name: "=", w: 1 },
     { label: "Backspace", name: "Backspace", w: 2 },
+    { label: "", name: null, w: 0.5 },
+    { label: "Ins", name: "Insert", w: 1 },
+    { label: "Home", name: "Home", w: 1 },
+    { label: "PgUp", name: "PgUp", w: 1 },
   ],
   [
     { label: "Tab", name: "Tab", w: 1.5 },
@@ -41,6 +49,10 @@ export const KEYBOARD_ROWS: MapKey[][] = [
     { label: "[", name: "[", w: 1 },
     { label: "]", name: "]", w: 1 },
     { label: "\\", name: "\\", w: 1.5 },
+    { label: "", name: null, w: 0.5 },
+    { label: "Del", name: "Delete", w: 1 },
+    { label: "End", name: "End", w: 1 },
+    { label: "PgDn", name: "PgDn", w: 1 },
   ],
   [
     { label: "Caps", name: "CapsLock", w: 1.75 },
@@ -56,9 +68,10 @@ export const KEYBOARD_ROWS: MapKey[][] = [
     { label: ";", name: ";", w: 1 },
     { label: "'", name: "'", w: 1 },
     { label: "Enter", name: "Enter", w: 2.25 },
+    { label: "", name: null, w: 3.5 },
   ],
   [
-    { label: "Shift", name: null, w: 2.25 },
+    { label: "Shift", name: "Shift", w: 2.5 },
     { label: "Z", name: "Z", w: 1 },
     { label: "X", name: "X", w: 1 },
     { label: "C", name: "C", w: 1 },
@@ -69,9 +82,25 @@ export const KEYBOARD_ROWS: MapKey[][] = [
     { label: ",", name: ",", w: 1 },
     { label: ".", name: ".", w: 1 },
     { label: "/", name: "/", w: 1 },
-    { label: "Shift", name: null, w: 2.75 },
+    { label: "Shift", name: "Shift", w: 2.5 },
+    { label: "", name: null, w: 1.5 },
+    { label: "↑", name: "Up", w: 1 },
+    { label: "", name: null, w: 1 },
   ],
-  [{ label: "Space", name: "Space", w: 8 }],
+  [
+    { label: "Ctrl", name: "Ctrl", w: 1.25 },
+    { label: "Win", name: "Win", w: 1.25 },
+    { label: "Alt", name: "Alt", w: 1.25 },
+    { label: "Space", name: "Space", w: 6.25 },
+    { label: "Alt", name: "Alt", w: 1.25 },
+    { label: "Win", name: "Win", w: 1.25 },
+    { label: "Menu", name: "AppsKey", w: 1.25 },
+    { label: "Ctrl", name: "Ctrl", w: 1.25 },
+    { label: "", name: null, w: 0.5 },
+    { label: "←", name: "Left", w: 1 },
+    { label: "↓", name: "Down", w: 1 },
+    { label: "→", name: "Right", w: 1 },
+  ],
 ];
 
 // Mouse buttons are not part of the keyboard grid but live on the same tab:

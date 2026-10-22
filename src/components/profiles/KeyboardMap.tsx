@@ -1,9 +1,8 @@
 import type { CSSProperties } from "react";
+import { Delete } from "lucide-react";
 import { KEYBOARD_ROWS, MOUSE_KEYS } from "../../lib/keyboardLayout";
-import { splitCombo } from "../../lib/keyCatalog";
-import { parseTrigger } from "../../lib/keys";
-import type { Trigger } from "../../types";
-import Chips from "./triggers/fields/Chips";
+import type { Layer, Macro, Trigger } from "../../types";
+import TriggerList from "./triggers/list/TriggerList";
 
 interface KeyboardMapProps {
   /** Uppercase main keys used by any draft trigger. */
@@ -11,8 +10,12 @@ interface KeyboardMapProps {
   /** Uppercase main key of the selected trigger, if any. */
   selectedMain: string | null;
   disabled: boolean;
-  /** Draft triggers, for the mouse-button mini list. */
+  /** Draft triggers, also shown in the map's full trigger rail. */
   triggers: Trigger[];
+  macros: Macro[];
+  layers: Layer[];
+  openMenuIdx: number | null;
+  duplicateIndices: number[];
   selectedIdx: number | null;
   /**
    * Receives the key name, where it was pressed, and the modifiers held
@@ -25,6 +28,11 @@ interface KeyboardMapProps {
     modifiers: string[],
   ) => void;
   onSelectTrigger: (idx: number) => void;
+  onFocusAction: (idx: number) => void;
+  onDuplicate: (idx: number) => void;
+  onDelete: (idx: number) => void;
+  onToggleMenu: (idx: number) => void;
+  onAdd: () => void;
 }
 
 /** The modifiers a click was made with, in the spellings the key picker uses. */
@@ -88,15 +96,18 @@ export default function KeyboardMap({
   disabled,
   triggers,
   selectedIdx,
+  macros,
+  layers,
+  openMenuIdx,
+  duplicateIndices,
   onPick,
   onSelectTrigger,
+  onFocusAction,
+  onDuplicate,
+  onDelete,
+  onToggleMenu,
+  onAdd,
 }: KeyboardMapProps) {
-  const mouseTriggers = triggers
-    .map((trigger, index) => ({ trigger, index }))
-    .filter(({ trigger }) =>
-      splitCombo(trigger.shortcut).main?.startsWith("Mouse"),
-    );
-
   function pick(
     name: string,
     el: HTMLButtonElement,
@@ -112,6 +123,16 @@ export default function KeyboardMap({
         {KEYBOARD_ROWS.map((row, ri) => (
           <div key={ri} className="keymap-row">
             {row.map((k, ki) => {
+              if (k.label === "" && k.name === null) {
+                return (
+                  <span
+                    key={`${ri}-${ki}`}
+                    className="keymap-spacer"
+                    style={{ gridColumn: `span ${k.w * 4}` } as CSSProperties}
+                    aria-hidden="true"
+                  />
+                );
+              }
               const isAssigned =
                 k.name != null && assigned.has(k.name.toUpperCase());
               const isSelected =
@@ -126,7 +147,8 @@ export default function KeyboardMap({
                   key={`${ri}-${ki}`}
                   type="button"
                   data-map-key={k.name ?? undefined}
-                  style={{ "--w": k.w } as CSSProperties}
+                  aria-label={k.label || undefined}
+                  style={{ gridColumn: `span ${k.w * 4}` } as CSSProperties}
                   className={`keymap-key ${isAssigned ? "keymap-key-assigned" : ""} ${
                     isSelected ? "keymap-key-selected" : ""
                   } ${k.name == null ? "keymap-key-deco" : ""}`}
@@ -143,7 +165,11 @@ export default function KeyboardMap({
                     pick(k.name, e.currentTarget, heldModifiers(e));
                   }}
                 >
-                  {k.label}
+                  {k.name === "Backspace" ? (
+                    <Delete className="keymap-key-icon" aria-hidden="true" />
+                  ) : (
+                    k.label
+                  )}
                 </button>
               );
             })}
@@ -151,8 +177,7 @@ export default function KeyboardMap({
         ))}
       </div>
 
-      <aside className="keymap-side" aria-label="Mouse buttons and mouse triggers">
-        <div className="keymap-side-block">
+      <section className="keymap-side keymap-mouse-block" aria-label="Mouse buttons">
           <span className="keymap-side-title">Mouse buttons</span>
           <div className="keymap-mouse" role="group" aria-label="Mouse buttons">
             <svg
@@ -190,7 +215,7 @@ export default function KeyboardMap({
                   className={`keymap-mouse-part ${shape.className} ${
                     isAssigned ? "keymap-mouse-part-assigned" : ""
                   } ${isSelected ? "keymap-mouse-part-selected" : ""}`}
-                  title={
+                  data-tip={
                     isAssigned
                       ? `${k.name} is in use — click to edit that trigger`
                       : `Start a new trigger on ${k.name}`
@@ -203,34 +228,26 @@ export default function KeyboardMap({
               );
             })}
           </div>
-          <span className="keymap-mouse-legend">M = middle click</span>
-        </div>
+      </section>
 
-        <div className="keymap-side-block">
-          <span className="keymap-side-title">Mouse triggers</span>
-          {mouseTriggers.length === 0 ? (
-            <p className="keymap-mini-empty">
-              No mouse triggers yet. Click a mouse button to start one.
-            </p>
-          ) : (
-            <div className="keymap-mini-list">
-              {mouseTriggers.map(({ trigger, index }) => (
-                <button
-                  key={index}
-                  type="button"
-                  className={`keymap-mini-item ${
-                    index === selectedIdx ? "keymap-mini-item-selected" : ""
-                  }`}
-                  title="Edit this trigger"
-                  onClick={() => onSelectTrigger(index)}
-                >
-                  <Chips parts={parseTrigger(trigger.shortcut)} />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </aside>
+      <section className="keymap-side keymap-trigger-rail" aria-label="Triggers">
+          <span className="keymap-side-title">Triggers</span>
+          <TriggerList
+            triggers={triggers}
+            selectedIdx={selectedIdx}
+            recording={disabled}
+            macros={macros}
+            layers={layers}
+            openMenuIdx={openMenuIdx}
+            duplicateIndices={duplicateIndices}
+            onSelect={onSelectTrigger}
+            onFocusAction={onFocusAction}
+            onDuplicate={onDuplicate}
+            onDelete={onDelete}
+            onToggleMenu={onToggleMenu}
+            onAdd={onAdd}
+          />
+      </section>
     </div>
   );
 }

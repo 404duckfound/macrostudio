@@ -165,6 +165,9 @@ export function splitCombo(combo: string): {
     .split("+")
     .map((p) => p.trim())
     .filter((p) => p.length > 0);
+  if (parts.length === 1 && isModifier(parts[0])) {
+    return { modifiers: [], main: parts[0] };
+  }
   const modifiers = MODIFIERS.filter((m) => parts.includes(m));
   const rest = parts.filter((p) => !isModifier(p));
   return { modifiers, main: rest.length > 0 ? rest[rest.length - 1] : null };
