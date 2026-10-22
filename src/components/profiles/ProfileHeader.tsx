@@ -1,6 +1,16 @@
 import { useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { AlertTriangle, Check, CircleAlert, Copy, Pencil, Plus, Star, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  CircleAlert,
+  Copy,
+  Pencil,
+  Plus,
+  SlidersHorizontal,
+  Star,
+  Trash2,
+} from "lucide-react";
 import { useProfileStore } from "../../stores/useProfileStore";
 import SelectMenu from "../common/ui/SelectMenu";
 import ProfileDeleteModal from "./modals/ProfileDeleteModal";
@@ -60,6 +70,7 @@ export default function ProfileHeader({
 }: ProfileHeaderProps) {
   const profiles = useProfileStore((s) => s.profiles);
   const activeId = useProfileStore((s) => s.activeId);
+  const activeProfile = profiles.find((p) => p.id === activeId) ?? null;
   const defaultId = useProfileStore((s) => s.defaultId);
   const activeWindow = useProfileStore((s) => s.activeWindow);
   const setDefaultId = useProfileStore((s) => s.setDefaultId);
@@ -208,12 +219,29 @@ export default function ProfileHeader({
                 );
               }}
             />
+            {/* The modal behind this door holds what the picker cannot show:
+                the profile's name, the window it targets and its layers.
+                Editing starts where reading starts, so it sits beside the
+                picker instead of inside its option menu. */}
+            <button
+              type="button"
+              className="flow-head-settings"
+              aria-label="Profile settings"
+              data-tip="Profile settings"
+              disabled={!activeProfile}
+              onClick={() => {
+                if (!activeProfile) return;
+                setModal({ kind: "form", mode: "edit", profile: activeProfile });
+              }}
+            >
+              <SlidersHorizontal aria-hidden="true" />
+            </button>
             </div>
             {/* One place for every screen-level message: engine failure, unsaved
                 work, a save that would drop cards, and what the last save left
                 out. All of them share the pill shape so none shouts louder. */}
             {(runError || dirty || dropSummary.total > 0 || saveNotice) && (
-            <div className="flow-notes">
+            <div className="flow-notes" aria-live="polite" aria-atomic="true">
             {runError && (
               <span className="flow-note flow-note-danger" role="alert">
                 <CircleAlert aria-hidden="true" />

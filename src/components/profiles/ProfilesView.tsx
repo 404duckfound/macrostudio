@@ -83,7 +83,7 @@ export default function ProfilesView({
       <main className="workspace">
         <div className="flow-canvas flow-canvas-empty">
           <div className="workspace-empty-state">
-            <div className="workspace-empty-icon">
+            <div className="workspace-empty-illustration">
               <Layers aria-hidden="true" />
             </div>
             <h3>{hasProfiles ? "No Profile Selected" : "No Profiles Yet"}</h3>

@@ -6,6 +6,7 @@ import {
   Trash2,
   Undo2,
 } from "lucide-react";
+import { useEffect, useRef } from "react";
 import type { Layer, MacroAction, Trigger } from "../../../../types";
 import ActionEditor from "../../actions/ActionEditor";
 import ActionTypeCard from "../../actions/ActionTypeCard";
@@ -42,6 +43,9 @@ interface TriggerInspectorProps {
 }
 
 export default function TriggerInspector(props: TriggerInspectorProps) {
+  const inspectorRef = useRef<HTMLElement>(null);
+  const firstRun = useRef(true);
+
   const {
     selected,
     selectedIdx,
@@ -69,8 +73,28 @@ export default function TriggerInspector(props: TriggerInspectorProps) {
     onAddTrigger,
   } = props;
 
+  // A selection change moves focus into the inspector, so a keyboard user lands
+  // on the trigger's own controls instead of staying on the card they just
+  // picked. The first render is skipped: it already has a profile's selection,
+  // and stealing focus on load would pull the user out of the header. The step
+  // heads' "Clear" links are skipped too - they destroy a value rather than
+  // being an entry point into the step.
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
+    if (selectedIdx == null) return;
+    const first = inspectorRef.current?.querySelector<HTMLElement>(
+      '.inspector-body .key-picker-open-area, .inspector-body input:not([disabled]), ' +
+        ".inspector-body select:not([disabled]), .inspector-body textarea:not([disabled]), " +
+        ".inspector-body button:not([disabled]):not(.link-btn)",
+    );
+    first?.focus();
+  }, [selectedIdx]);
+
   return (
-    <aside className="inspector">
+    <aside className="inspector" ref={inspectorRef}>
       <div className="inspector-head">
         <div className="inspector-head-left">
           <h3>Trigger Inspector</h3>

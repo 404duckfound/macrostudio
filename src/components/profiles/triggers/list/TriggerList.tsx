@@ -191,7 +191,9 @@ export default function TriggerList({
                         }`}
                         aria-label={`Action: ${preview.label}`}
                       >
-                        <PreviewIcon aria-hidden="true" />
+                        <span className="trigger-action-icon">
+                          <PreviewIcon aria-hidden="true" />
+                        </span>
                         {actionParts ? (
                           <Chips parts={actionParts} />
                         ) : (

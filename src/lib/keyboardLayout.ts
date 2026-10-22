@@ -75,11 +75,13 @@ export const KEYBOARD_ROWS: MapKey[][] = [
 ];
 
 // Mouse buttons are not part of the keyboard grid but live on the same tab:
-// the side column renders them with the same keycap language.
-export const MOUSE_KEYS: MapKey[] = [
-  { label: "Left", name: "MouseLeft", w: 1 },
-  { label: "Right", name: "MouseRight", w: 1 },
-  { label: "Middle", name: "MouseMiddle", w: 1 },
-  { label: "X1", name: "MouseX1", w: 1 },
-  { label: "X2", name: "MouseX2", w: 1 },
+// the side column draws a mouse and turns these names into its clickable
+// areas. `name` is the exact main-key spelling the generator matches
+// (MouseLeft -> LButton), so it must not be re-cased.
+export const MOUSE_KEYS: { label: string; name: string }[] = [
+  { label: "Left", name: "MouseLeft" },
+  { label: "Right", name: "MouseRight" },
+  { label: "Middle", name: "MouseMiddle" },
+  { label: "X1", name: "MouseX1" },
+  { label: "X2", name: "MouseX2" },
 ];
