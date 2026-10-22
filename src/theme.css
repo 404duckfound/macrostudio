@@ -385,12 +385,24 @@ input:focus, select:focus, textarea:focus {
 /* The chip carries the error; a selected duplicate keeps its cyan selection
    border so the inspector's subject stays obvious. */
 .trigger-card-duplicate:not(.trigger-card-selected) { border-color: rgba(255, 95, 107, 0.4); }
-.trigger-action-pill {
-  font-size: 11px; font-weight: 500; color: var(--text-secondary);
-  background: var(--bg-interactive); border: 1px solid var(--border-default);
-  border-radius: 6px; padding: 2px 8px; white-space: nowrap; overflow: hidden;
-  text-overflow: ellipsis; max-width: 240px;
+/* The card reads as a mapping: trigger chips, a quiet arrow, then the action.
+   The action reuses the .kbd keycap itself, so the boxes are the same height by
+   construction; the type icon rides beside it and macro/script names switch back
+   to the sans face and ellipsize instead of growing. */
+.trigger-action-arrow { width: 13px; height: 13px; color: var(--text-disabled); flex-shrink: 0; }
+.trigger-action-chip { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.trigger-action-chip svg { width: 18px; height: 18px; color: var(--text-secondary); flex-shrink: 0; }
+/* Tint through the Lucide shape itself: the icon reads as a filled keycap
+   without a second, hand-drawn SVG in the codebase. */
+.trigger-action-key svg, .trigger-action-mouse svg { fill: rgba(47, 195, 222, 0.18); }
+.trigger-action-keycap {
+  max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.trigger-action-macro .trigger-action-keycap, .trigger-action-script .trigger-action-keycap {
+  font-family: inherit;
+}
+.trigger-action-empty .trigger-action-keycap { color: var(--text-disabled); font-weight: 500; }
+.trigger-action-empty svg { color: var(--text-disabled); fill: rgba(255, 255, 255, 0.06); }
 /* Pass/block now lives in the card's flag row (TriggerList), so this rule is
    gone with the standalone right-side indicator. */
 .trigger-noaction-btn {

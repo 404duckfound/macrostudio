@@ -2,9 +2,12 @@ import { useState } from "react";
 import {
   AlertTriangle,
   Anchor,
+  ArrowRight,
   ArrowUp,
   Asterisk,
   Ban,
+  Boxes,
+  Code,
   Copy,
   Ellipsis,
   Eye,
@@ -19,23 +22,45 @@ import { splitCombo } from "../../../../lib/keyCatalog";
 import type { Layer, Macro, MacroAction, Trigger } from "../../../../types";
 import Chips from "../fields/Chips";
 
-function actionPreviewLabel(
+/** The action's kind and the text that goes on the card, without its prefix. */
+interface ActionPreview {
+  kind: "key" | "mouse" | "macro" | "script";
+  label: string;
+  /** The action exists but has no key/button/macro chosen yet. */
+  empty: boolean;
+}
+
+/* Lucide icons, with key and mouse tinted through their own shapes instead of a
+   hand-drawn glyph: the project keeps every icon on Lucide. */
+const PREVIEW_ICONS = {
+  key: Keyboard,
+  mouse: Mouse,
+  macro: Boxes,
+  script: Code,
+} as const;
+
+function actionPreview(
   action: MacroAction | null | undefined,
   macros: Macro[],
-): string | null {
+): ActionPreview | null {
   if (!action) return null;
   switch (action.type) {
     case "key":
-      return action.key ? `Key: ${action.key}` : "Key: (empty)";
+      return action.key
+        ? { kind: "key", label: action.key, empty: false }
+        : { kind: "key", label: "(empty)", empty: true };
     case "mouse":
-      return `Mouse: ${action.button}`;
+      return { kind: "mouse", label: action.button, empty: false };
     case "macro": {
-      if (!action.macro_id) return "Macro: (empty)";
+      if (!action.macro_id)
+        return { kind: "macro", label: "(empty)", empty: true };
       const found = macros.find((m) => m.id === action.macro_id);
-      return found ? `Macro: ${found.name || "(unnamed)"}` : "Macro: (deleted)";
+      return found
+        ? { kind: "macro", label: found.name || "(unnamed)", empty: false }
+        : { kind: "macro", label: "(deleted)", empty: true };
     }
     case "script":
-      return "AHK Script";
+      return { kind: "script", label: "AHK Script", empty: false };
   }
 }
 
@@ -84,7 +109,14 @@ export default function TriggerList({
     <>
       <div className="trigger-card-list">
         {triggers.map((t, i) => {
-          const preview = actionPreviewLabel(t.actions[0], macros);
+          const preview = actionPreview(t.actions[0], macros);
+          const PreviewIcon = PREVIEW_ICONS[preview?.kind ?? "key"];
+          // Keys and mice reuse the trigger's own chip row, so a modifier combo
+          // (Ctrl+F1) reads as Ctrl + F1 instead of one glued keycap.
+          const actionParts =
+            preview && !preview.empty && (preview.kind === "key" || preview.kind === "mouse")
+              ? parseTrigger(preview.label)
+              : null;
           const menuOpen = openMenuIdx === i;
           const duplicate = duplicateIndices.includes(i);
           const main = splitCombo(t.shortcut).main;
@@ -108,7 +140,8 @@ export default function TriggerList({
                 </div>
                 <div className="trigger-card-content">
                   <div className="trigger-card-body">
-                    <div className="trigger-flags">
+                    {(duplicate || t.layer) && (
+                      <div className="trigger-flags">
                       {duplicate && (
                         <span
                           role="status"
@@ -132,7 +165,8 @@ export default function TriggerList({
                             "Layer"}
                         </span>
                       )}
-                    </div>
+                      </div>
+                    )}
                     <div className="trigger-chips">
                       {recording && i === selectedIdx ? (
                         <span className="trigger-recording-hint">
@@ -144,7 +178,29 @@ export default function TriggerList({
                     </div>
                   </div>
                   {preview ? (
-                    <span className="trigger-action-pill">{preview}</span>
+                    <>
+                      {t.shortcut.trim() && (
+                        <ArrowRight
+                          className="trigger-action-arrow"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <span
+                        className={`trigger-action-chip trigger-action-${preview.kind} ${
+                          preview.empty ? "trigger-action-empty" : ""
+                        }`}
+                        aria-label={`Action: ${preview.label}`}
+                      >
+                        <PreviewIcon aria-hidden="true" />
+                        {actionParts ? (
+                          <Chips parts={actionParts} />
+                        ) : (
+                          <span className="kbd trigger-action-keycap">
+                            {preview.label}
+                          </span>
+                        )}
+                      </span>
+                    </>
                   ) : (
                     <button
                       type="button"
